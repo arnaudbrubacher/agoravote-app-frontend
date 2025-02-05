@@ -55,10 +55,12 @@ export default {
     handleLogin() {
       // Add logic for login
       alert(`Login Email: ${this.loginEmail}, Login Password: ${this.loginPassword}`);
+      this.$router.push('/dashboard');
     },
     handleSignup() {
       // Add logic for signup
       alert(`Signup Name: ${this.signupName}, Signup Email: ${this.signupEmail}, Signup Password: ${this.signupPassword}`);
+      this.$router.push('/dashboard');
     }
   }
 }
