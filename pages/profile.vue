@@ -2,10 +2,7 @@
   <div class="space-y-6">
     <!-- Profile Info Card -->
     <Card>
-      <CardHeader>
-        <CardTitle>Profile Information</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <CardContent class="p-6">
         <div class="flex items-start space-x-6">
           <div class="relative">
             <div v-if="profilePicture" class="w-24 h-24">
@@ -34,7 +31,7 @@
               @change="updateProfilePicture" 
             />
           </div>
-          <div class="space-y-2">
+          <div class="space-y-2 py-2">
             <h3 class="text-lg font-medium">{{ userName }}</h3>
             <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
           </div>
@@ -42,95 +39,56 @@
       </CardContent>
     </Card>
 
-    <!-- Posts Section -->
+    <!-- Posts Card -->
     <Card>
-      <CardHeader>
-        <CardTitle>Your Posts</CardTitle>
+      <CardHeader class="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Your Posts</CardTitle>
+        </div>
+        <Button @click="createPost">New Post</Button>
       </CardHeader>
       <CardContent>
-        <div class="space-y-4">
-          <!-- New Post Form -->
-          <form @submit.prevent="createPost" class="space-y-4 mb-6 border rounded-lg p-4">
-            <div class="space-y-2">
-              <Label for="subject">Subject</Label>
-              <Input 
-                id="subject"
-                v-model="newPost.subject"
-                placeholder="Post subject"
-                type="text"
-              />
-            </div>
-
-            <div class="space-y-2">
-              <Label for="content">Content</Label>
-              <Input 
-                id="content"
-                v-model="newPost.content"
-                type="text"
-                placeholder="Write your post..."
-              />
-            </div>
-
-            <div class="space-y-2">
-              <Label for="file">Attachment</Label>
+        <div v-if="userPosts.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div 
+            v-for="post in userPosts" 
+            :key="post.id" 
+            class="flex flex-col p-4 border rounded-lg h-[240px]"
+          >
+            <div class="space-y-3">
+              <h3 class="text-lg font-medium">{{ post.title }}</h3>
               <div class="flex items-center space-x-2">
-                <Button 
-                  type="button"
-                  variant="outline"
-                  @click="triggerPostFileInput"
-                >
-                  Upload File
-                </Button>
-                <span v-if="newPost.file" class="text-sm">
-                  {{ newPost.file.name }}
-                </span>
+                <span class="font-medium">{{ userName }}</span>
+                <span class="text-sm text-muted-foreground">{{ post.date }}</span>
               </div>
-              <input 
-                id="postFile"
-                type="file"
-                ref="postFileInput"
-                class="hidden"
-                @change="handleFileUpload"
-              />
+              <p class="text-sm text-muted-foreground line-clamp-4">{{ post.content }}</p>
             </div>
-
-            <Button type="submit" class="w-full">Create Post</Button>
-          </form>
-
-          <!-- Posts List -->
-          <div v-if="userPosts.length" class="space-y-4">
-            <div 
-              v-for="post in userPosts" 
-              :key="post.id" 
-              class="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-              @click="selectedPost = post"
+            <Button 
+              variant="ghost" 
+              @click="openPost(post)" 
+              class="border mt-auto w-full"
             >
-              <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                  <h3 class="font-medium">{{ post.subject }}</h3>
-                  <span class="text-sm text-muted-foreground">{{ post.date }}</span>
-                </div>
-                <p class="line-clamp-2">{{ post.content }}</p>
-                <div v-if="post.file" class="flex items-center space-x-2">
-                  <Icon name="heroicons:document" class="h-5 w-5" />
-                  <span class="text-primary">{{ post.fileName }}</span>
-                </div>
-              </div>
-            </div>
+              View
+            </Button>
           </div>
-          <div v-else class="text-center py-8 text-muted-foreground">
-            No posts yet
-          </div>
+        </div>
+        <div v-else class="text-center py-8 text-muted-foreground">
+          No posts yet
         </div>
       </CardContent>
     </Card>
 
-    <PostViewer 
+    <PostDetailsDialog 
       v-if="selectedPost"
       :post="selectedPost"
       @close="selectedPost = null"
       @edit="editPost"
       @delete="deletePost"
+    />
+
+    <NewPostDialog 
+      v-if="showNewPostDialog"
+      @close="showNewPostDialog = false"
+      @submit="handleNewPost"
     />
   </div>
 </template>
@@ -141,6 +99,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import PostDetailsDialog from '@/components/PostDetailsDialog.vue'
+import NewPostDialog from '@/components/NewPostDialog.vue'
 
 definePageMeta({
   layout: 'profile-layout'
@@ -156,14 +116,16 @@ const fileInput = ref(null)
 const userPosts = ref([
   { 
     id: 1, 
-    subject: 'Project Update Meeting',
-    content: 'Meeting notes from yesterday\'s discussion about the new features. Key points: improved user interface, better performance, and new voting system.',
+    title: 'Project Update Meeting',
+    content: 'Meeting notes from yesterday\'s discussion about the new features.',
+    author: userName,
     date: '2 hours ago'
   },
   { 
     id: 2, 
-    subject: 'Technical Documentation',
-    content: 'Updated documentation for the API endpoints. Please review and provide feedback.',
+    title: 'Technical Documentation',
+    content: 'Updated documentation for the API endpoints.',
+    author: userName,
     date: '1 day ago',
     file: true,
     fileName: 'api-docs.pdf',
@@ -171,8 +133,10 @@ const userPosts = ref([
   },
   { 
     id: 3, 
+    title: 'Team Building Event Photos',
     subject: 'Team Building Event',
     content: 'Photos from our team building event last weekend. Great memories!',
+    author: userName,
     date: '3 days ago',
     file: true,
     fileName: 'team-photos.zip',
@@ -216,39 +180,28 @@ const handleFileUpload = (event) => {
   }
 }
 
+const showNewPostDialog = ref(false)
+
 const createPost = () => {
-  if (!newPost.value.subject.trim() || !newPost.value.content.trim()) return
+  showNewPostDialog.value = true
+}
 
+const handleNewPost = (postData) => {
   const post = {
-    id: newPost.value.id || Date.now(),
-    subject: newPost.value.subject,
-    content: newPost.value.content,
-    date: newPost.value.id ? newPost.value.date : 'Just now'
+    id: Date.now(),
+    subject: postData.title,
+    content: postData.content,
+    date: 'Just now'
   }
 
-  if (newPost.value.file) {
-    post.file = newPost.value.file
-    post.fileName = newPost.value.file.name
-    post.fileUrl = URL.createObjectURL(newPost.value.file)
+  if (postData.file) {
+    post.file = postData.file
+    post.fileName = postData.file.name
+    post.fileUrl = URL.createObjectURL(postData.file)
   }
 
-  if (newPost.value.id) {
-    // Update existing post
-    const index = userPosts.value.findIndex(p => p.id === newPost.value.id)
-    if (index !== -1) {
-      userPosts.value[index] = post
-    }
-  } else {
-    // Create new post
-    userPosts.value.unshift(post)
-  }
-
-  // Reset form
-  newPost.value = {
-    subject: '',
-    content: '',
-    file: null
-  }
+  userPosts.value.unshift(post)
+  showNewPostDialog.value = false
 }
 
 const selectedPost = ref(null)

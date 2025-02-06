@@ -3,7 +3,7 @@
     <header class="border-b">
       <div class="container flex h-16 items-center px-4">
         <div class="flex w-full items-center">
-          <Button variant="ghost" @click="router.back()" class="absolute">
+          <Button variant="ghost" @click="router.back()" class="absolute border">
             <Icon name="heroicons:arrow-left" class="h-4 w-4" />
             Back
           </Button>

@@ -96,23 +96,24 @@
           </div>
 
           <!-- Documents Required -->
-          <div class="space-y-2">
-            <Label>Documents Required</Label>
-            <div v-for="(document, index) in form.documents" :key="index" class="flex space-x-2 items-center">
-              <Input 
-                v-model="document.name" 
-                placeholder="Document name" 
-                class="flex-1"
-              />
-              <Button 
-                variant="destructive" 
-                size="icon" 
-                @click="removeDocument(index)"
-              >
-                <Icon name="heroicons:trash" class="h-4 w-4" />
-              </Button>
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <Label>Documents Required for Admission</Label>
             </div>
             <Button variant="outline" @click="addDocument">Add Document</Button>
+            
+            <div v-if="form.documents.length" class="space-y-2">
+              <div v-for="(doc, index) in form.documents" :key="index" class="flex items-center space-x-2">
+                <Input v-model="doc.name" placeholder="Document name" />
+                <Button 
+                  variant="destructive" 
+                  size="icon" 
+                  @click="removeDocument(index)"
+                >
+                  <Icon name="heroicons:trash" class="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
 
           <!-- Form Actions -->
@@ -175,11 +176,20 @@ const removeDocument = (index) => {
 }
 
 const handleSubmit = async () => {
-  if (!form.value.name.trim() || (form.requiresPassword && form.password !== form.confirmPassword)) return
+  if (!form.value.name.trim()) return
   
   isSubmitting.value = true
   try {
-    await emit('submit', { ...form.value })
+    const newGroup = {
+      ...form.value,
+      id: `group-${Date.now()}`, // Generate unique ID
+      members: [],
+      votes: [],
+      posts: [],
+      lastActive: new Date().toISOString()
+    }
+    
+    await emit('submit', newGroup)
     form.value = {
       name: '',
       description: '',
