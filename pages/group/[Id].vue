@@ -1,70 +1,158 @@
 <template>
-  <div class="group-container max-w-4xl mx-auto mt-10 p-6 border border-gray-300 rounded-lg bg-white">
-    <h2 class="text-2xl font-bold mb-6">{{ group.name }}</h2>
-    <div class="mb-10">
-      <h3 class="text-xl font-semibold mb-4">Votes</h3>
-      <button @click="createVote" class="w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mb-2">Create New Vote</button>
-      <ul>
-        <li v-for="vote in votes" :key="vote.id" class="mb-2">
-          {{ vote.title }} ({{ vote.status }})
-        </li>
-      </ul>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <Button variant="ghost" @click="goToDashboard" class="p-2">
+          <Icon name="heroicons:arrow-left" class="h-4 w-4" />
+          <span class="ml-2">Back</span>
+        </Button>
+        <h1 class="text-3xl font-bold">{{ group.name }}</h1>
+      </div>
+      <Button variant="outline" @click="goToSettings">Settings</Button>
     </div>
-    <div class="mb-10">
-      <h3 class="text-xl font-semibold mb-4">Posts</h3>
-      <button @click="createPost" class="w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mb-2">Create New Post</button>
-      <ul>
-        <li v-for="post in posts" :key="post.id" class="mb-2">
-          {{ post.title }} ({{ post.status }})
-        </li>
-      </ul>
-    </div>
-    <div class="mb-10">
-      <h3 class="text-xl font-semibold mb-4">Members</h3>
-      <button @click="addMember" class="w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mb-2">Add New Member</button>
-      <ul>
-        <li v-for="member in members" :key="member.id" class="mb-2">
-          {{ member.name }}
-        </li>
-      </ul>
-    </div>
+
+    <Tabs defaultValue="votes" class="w-full">
+      <TabsList>
+        <TabsTrigger value="votes">Votes</TabsTrigger>
+        <TabsTrigger value="posts">Posts</TabsTrigger>
+        <TabsTrigger value="members">Members</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="votes">
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Votes</CardTitle>
+              <CardDescription>Current and past votes</CardDescription>
+            </div>
+            <Button @click="createVote">New Vote</Button>
+          </CardHeader>
+          <CardContent>
+            <div v-if="votes.length" class="space-y-4">
+              <div v-for="vote in votes" :key="vote.id" class="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <h3 class="font-medium">{{ vote.title }}</h3>
+                  <p class="text-sm text-muted-foreground">{{ vote.status }}</p>
+                </div>
+                <Button variant="ghost" @click="openVote(vote.id)">View</Button>
+              </div>
+            </div>
+            <div v-else class="text-center py-8 text-muted-foreground">
+              No votes yet
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="posts">
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Posts</CardTitle>
+              <CardDescription>Group discussions</CardDescription>
+            </div>
+            <Button @click="createPost">New Post</Button>
+          </CardHeader>
+          <CardContent>
+            <div v-if="posts.length" class="space-y-4">
+              <div v-for="post in posts" :key="post.id" class="p-4 border rounded-lg">
+                <div class="flex items-center space-x-2 mb-2">
+                  <span class="font-medium">{{ post.author }}</span>
+                  <span class="text-sm text-muted-foreground">{{ post.date }}</span>
+                </div>
+                <p>{{ post.content }}</p>
+              </div>
+            </div>
+            <div v-else class="text-center py-8 text-muted-foreground">
+              No posts yet
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="members">
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Members</CardTitle>
+              <CardDescription>Group participants</CardDescription>
+            </div>
+            <Button @click="addMember">Add Member</Button>
+          </CardHeader>
+          <CardContent>
+            <div v-if="members.length" class="space-y-2">
+              <div v-for="member in members" :key="member.id" class="flex items-center justify-between p-2">
+                <div class="flex items-center space-x-2">
+                  <span class="font-medium">{{ member.name }}</span>
+                  <span class="text-sm text-muted-foreground">{{ member.role }}</span>
+                </div>
+                <Button variant="ghost" size="sm">Remove</Button>
+              </div>
+            </div>
+            <div v-else class="text-center py-8 text-muted-foreground">
+              No members yet
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   </div>
 </template>
 
 <script setup>
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+definePageMeta({
+  layout: 'app-layout'
+})
+
 const route = useRoute()
+const router = useRouter()
 const groupId = route.params.id
 
 const group = ref({
-  id: groupId,
   name: `Group ${groupId}`
 })
 
 const votes = ref([
-  { id: 1, title: 'Vote 1', status: 'Active' },
-  { id: 2, title: 'Vote 2', status: 'History' }
+  { id: 1, title: 'Budget Approval', status: 'Active' },
+  { id: 2, title: 'Board Election', status: 'Completed' }
 ])
 
 const posts = ref([
-  { id: 1, title: 'Post 1', status: 'Active' },
-  { id: 2, title: 'Post 2', status: 'History' }
+  { id: 1, author: 'John Doe', date: '2 hours ago', content: 'Meeting notes from yesterday...' },
+  { id: 2, author: 'Jane Smith', date: '1 day ago', content: 'Updates on the project...' }
 ])
 
 const members = ref([
-  { id: 1, name: 'Member 1' },
-  { id: 2, name: 'Member 2' }
+  { id: 1, name: 'John Doe', role: 'Admin' },
+  { id: 2, name: 'Jane Smith', role: 'Member' }
 ])
 
 const createVote = () => {
-  alert('Create new vote')
+  router.push(`/group/${groupId}/votes/new`)
 }
 
 const createPost = () => {
-  alert('Create new post')
+  router.push(`/group/${groupId}/posts/new`)
 }
 
 const addMember = () => {
-  alert('Add new member')
+  // Add member logic
+}
+
+const openVote = (voteId) => {
+  router.push(`/group/${groupId}/votes/${voteId}`)
+}
+
+const goToSettings = () => {
+  router.push(`/group/${groupId}/settings`)
+}
+
+const goToDashboard = () => {
+  router.push('/dashboard')
 }
 </script>
 

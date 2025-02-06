@@ -7,6 +7,12 @@
   </div>
 </template>
 
+<script setup>
+definePageMeta({
+  layout: 'profile-layout'
+})
+</script>
+
 <script>
 export default {
   name: 'Profile'

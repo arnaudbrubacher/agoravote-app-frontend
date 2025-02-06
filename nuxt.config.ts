@@ -1,18 +1,29 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  compatibilityDate: '2024-11-01',
-  devtools: { enabled: true },
-  modules: ['@nuxtjs/tailwindcss'],
-  css: [
-    '~/assets/css/global.css'
+  modules: [
+    '@nuxtjs/tailwindcss',
+    '@nuxtjs/color-mode',
+    'shadcn-nuxt',
+    'nuxt-icon'  // Add this line
   ],
-  build: {
-    transpile: ['@shadcn/ui'],
-    postcss: {
-      plugins: {
-        '@tailwindcss/postcss7-compat': {},
-        autoprefixer: {},
-      },
-    },
+
+  colorMode: {
+    classSuffix: ''
   },
+
+  shadcn: {
+    prefix: 'Ui',
+    componentDir: './components/ui'
+  },
+
+  app: {
+    layoutTransition: {
+      name: 'layout',
+      mode: 'out-in'
+    }
+  },
+
+  pages: true,
+
+  compatibilityDate: '2025-02-05'
 })

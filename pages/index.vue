@@ -1,19 +1,14 @@
 <template>
-  <div class="home-container">
-    <h1>Welcome to Agora Vote</h1>
-    <p>Your trusted platform for secure and transparent voting.</p>
-    <button @click="startVoting" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Start Voting</button>
+  <div class="flex flex-col items-center justify-center space-y-6 text-center">
+    <h1 class="text-4xl font-bold tracking-tighter">Welcome to Agora Vote</h1>
+    <p class="text-lg text-muted-foreground">Your trusted platform for secure and transparent voting.</p>
   </div>
 </template>
 
-<script>
-export default {
-  methods: {
-    startVoting() {
-      this.$router.push('/auth');
-    }
-  }
-}
+<script setup>
+definePageMeta({
+  layout: 'landingpage'
+})
 </script>
 
 <style scoped>
