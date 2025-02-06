@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -114,9 +114,9 @@ const route = useRoute()
 const router = useRouter()
 const groupId = route.params.id
 
-// Initialize empty group
+// Initialize with default values
 const group = ref({
-  id: route.params.id,
+  id: groupId,
   name: '',
   description: '',
   picture: null,
@@ -127,39 +127,54 @@ const group = ref({
   lastActive: ''
 })
 
-onMounted(() => {
-  // Get group data from router state
-  if (router.currentRoute.value.state?.group) {
-    group.value = router.currentRoute.value.state.group
-  } else {
-    // Fallback to sample data if no state is passed
-    group.value = {
-      id: groupId,
-      name: 'Sample Group',
-      description: 'This is a sample group description.',
-      picture: null,
-      isPrivate: false,
-      members: [
-        { id: 1, name: 'Alice', role: 'Admin' },
-        { id: 2, name: 'Bob', role: 'Member' }
-      ],
-      votes: [
-        { id: 1, title: 'Feature A', status: 'Open' },
-        { id: 2, title: 'Feature B', status: 'Closed' }
-      ],
-      posts: [
-        { id: 1, author: 'Alice', date: '2h ago', content: 'Discussion about Feature A' },
-        { id: 2, author: 'Bob', date: '1h ago', content: 'Discussion about Feature B' }
-      ],
-      lastActive: '2h ago'
+const votes = ref([])
+const posts = ref([])
+const members = ref([])
+
+onMounted(async () => {
+  try {
+    if (router.currentRoute.value.state?.group) {
+      group.value = router.currentRoute.value.state.group
+      votes.value = group.value.votes || []
+      posts.value = group.value.posts || []
+      members.value = group.value.members || []
+    } else {
+      // Fallback sample data
+      group.value = {
+        id: groupId,
+        name: 'Sample Group',
+        description: 'This is a sample group description.',
+        picture: null,
+        isPrivate: false,
+        members: [
+          { id: 1, name: 'Alice', role: 'Admin' },
+          { id: 2, name: 'Bob', role: 'Member' }
+        ],
+        votes: [
+          { id: 1, title: 'Feature A', status: 'Open' },
+          { id: 2, title: 'Feature B', status: 'Closed' }
+        ],
+        posts: [
+          { id: 1, author: 'Alice', date: '2h ago', content: 'Discussion about Feature A' },
+          { id: 2, author: 'Bob', date: '1h ago', content: 'Discussion about Feature B' }
+        ],
+        lastActive: '2h ago'
+      }
+      votes.value = group.value.votes
+      posts.value = group.value.posts
+      members.value = group.value.members
     }
+  } catch (error) {
+    console.error('Error loading group:', error)
   }
 })
 
-// Initialize sample data
-const votes = ref(group.value.votes)
-const posts = ref(group.value.posts)
-const members = ref(group.value.members)
+// Watch for changes in group data
+watch(() => group.value, (newGroup) => {
+  votes.value = newGroup.votes
+  posts.value = newGroup.posts
+  members.value = newGroup.members
+}, { deep: true })
 
 const createVote = () => {
   router.push(`/group/${groupId}/votes/new`)
@@ -174,7 +189,7 @@ const addMember = () => {
 }
 
 const openVote = (voteId) => {
-  router.push(`/group/${voteId}`)
+  router.push(`/group/${groupId}/votes/${voteId}`)
 }
 
 const goToSettings = () => {

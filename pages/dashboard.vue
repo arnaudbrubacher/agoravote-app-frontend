@@ -158,7 +158,13 @@ const createGroup = (groupData) => {
 }
 
 const openGroup = (groupId) => {
-  router.push(`/group/${groupId}`)
+  const selectedGroup = groups.value.find(g => g.id === groupId)
+  if (selectedGroup) {
+    router.push({
+      path: `/group/${groupId}`,
+      state: { group: selectedGroup }
+    })
+  }
 }
 
 const searchGroups = () => {
