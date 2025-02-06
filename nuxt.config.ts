@@ -4,7 +4,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@nuxtjs/color-mode',
     'shadcn-nuxt',
-    'nuxt-icon'  // Add this line
+    '@nuxt/icon'  // Update this line
   ],
 
   colorMode: {

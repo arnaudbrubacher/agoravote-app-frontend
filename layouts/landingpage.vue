@@ -18,7 +18,7 @@
     </main>
     <footer class="border-t">
       <div class="container mx-auto py-6 px-4 text-center text-sm text-muted-foreground">
-        <p>&copy; 2023 Agora Vote. All rights reserved.</p>
+        <p>&copy; 2025 Agora Vote. All rights reserved.</p>
       </div>
     </footer>
   </div>

@@ -100,6 +100,8 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -112,24 +114,52 @@ const route = useRoute()
 const router = useRouter()
 const groupId = route.params.id
 
+// Initialize empty group
 const group = ref({
-  name: `Group ${groupId}`
+  id: route.params.id,
+  name: '',
+  description: '',
+  picture: null,
+  isPrivate: false,
+  members: [],
+  votes: [],
+  posts: [],
+  lastActive: ''
 })
 
-const votes = ref([
-  { id: 1, title: 'Budget Approval', status: 'Active' },
-  { id: 2, title: 'Board Election', status: 'Completed' }
-])
+onMounted(() => {
+  // Get group data from router state
+  if (router.currentRoute.value.state?.group) {
+    group.value = router.currentRoute.value.state.group
+  } else {
+    // Fallback to sample data if no state is passed
+    group.value = {
+      id: groupId,
+      name: 'Sample Group',
+      description: 'This is a sample group description.',
+      picture: null,
+      isPrivate: false,
+      members: [
+        { id: 1, name: 'Alice', role: 'Admin' },
+        { id: 2, name: 'Bob', role: 'Member' }
+      ],
+      votes: [
+        { id: 1, title: 'Feature A', status: 'Open' },
+        { id: 2, title: 'Feature B', status: 'Closed' }
+      ],
+      posts: [
+        { id: 1, author: 'Alice', date: '2h ago', content: 'Discussion about Feature A' },
+        { id: 2, author: 'Bob', date: '1h ago', content: 'Discussion about Feature B' }
+      ],
+      lastActive: '2h ago'
+    }
+  }
+})
 
-const posts = ref([
-  { id: 1, author: 'John Doe', date: '2 hours ago', content: 'Meeting notes from yesterday...' },
-  { id: 2, author: 'Jane Smith', date: '1 day ago', content: 'Updates on the project...' }
-])
-
-const members = ref([
-  { id: 1, name: 'John Doe', role: 'Admin' },
-  { id: 2, name: 'Jane Smith', role: 'Member' }
-])
+// Initialize sample data
+const votes = ref(group.value.votes)
+const posts = ref(group.value.posts)
+const members = ref(group.value.members)
 
 const createVote = () => {
   router.push(`/group/${groupId}/votes/new`)
@@ -144,7 +174,7 @@ const addMember = () => {
 }
 
 const openVote = (voteId) => {
-  router.push(`/group/${groupId}/votes/${voteId}`)
+  router.push(`/group/${voteId}`)
 }
 
 const goToSettings = () => {
@@ -155,14 +185,3 @@ const goToDashboard = () => {
   router.push('/dashboard')
 }
 </script>
-
-<style scoped>
-.group-container {
-  max-width: 800px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background-color: #f9f9f9;
-}
-</style>

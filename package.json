@@ -10,9 +10,11 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@shadcn/ui": "^0.0.4",
     "@vueuse/core": "^12.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dialog": "^0.3.1",
     "lucide-vue-next": "^0.474.0",
     "nuxt": "^3.15.4",
     "radix-vue": "^1.9.13",
@@ -22,10 +24,11 @@
     "vue-router": "latest"
   },
   "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.2",
+    "@nuxt/icon": "^1.10.3",
     "@nuxtjs/color-mode": "^3.5.2",
     "@nuxtjs/tailwindcss": "^6.13.1",
     "@tailwindcss/postcss7-compat": "^2.2.17",
-    "nuxt-icon": "^1.0.0-beta.7",
     "shadcn-nuxt": "^0.11.3",
     "shadcn-vue": "^0.11.3"
   }
