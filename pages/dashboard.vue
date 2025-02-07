@@ -98,6 +98,7 @@ import Icon from '@/components/Icon.vue'
 import NewGroupDialog from '@/components/NewGroupDialog.vue'
 import GroupAdmissionForm from '@/components/GroupAdmissionForm.vue'
 import * as HeroIcons from '@heroicons/vue/outline'
+import { groups } from '@/data/groups.js'
 
 definePageMeta({
   layout: 'app-layout'
@@ -109,80 +110,17 @@ const showAdmissionForm = ref(false)
 const searchQuery = ref('')
 const selectedGroup = ref(null)
 
-const groups = ref([
-  {
-    id: 1,
-    name: 'Marketing Strategy Team',
-    description: 'Coordinate marketing campaigns and brand strategy',
-    isPrivate: false,
-    requiresPassword: false,
-    password: '',
-    documents: [],
-    picture: '#FF5733', // Color tag
-    members: [1, 2],
-    lastActive: '2023-10-01T12:00:00Z'
-  },
-  {
-    id: 2,
-    name: 'Product Development',
-    description: 'Design and implementation of new features',
-    isPrivate: false,
-    requiresPassword: false,
-    password: '',
-    documents: [],
-    picture: '#33FF57', // Color tag
-    members: [3],
-    lastActive: '2023-10-02T12:00:00Z'
-  },
-  {
-    id: 3,
-    name: 'Office Management',
-    description: 'Workplace organization and logistics',
-    isPrivate: true,
-    requiresPassword: true,
-    password: 'office123',
-    documents: [{ name: 'ID Proof' }, { name: 'Address Proof' }],
-    picture: '#3357FF', // Color tag
-    members: [1],
-    lastActive: '2023-10-03T12:00:00Z'
-  },
-  {
-    id: 4,
-    name: 'Sales Team',
-    description: 'Sales strategies and discussions',
-    isPrivate: false,
-    requiresPassword: false,
-    password: '',
-    documents: [],
-    picture: '#FF33A1', // Color tag
-    members: [4, 5],
-    lastActive: '2023-10-04T12:00:00Z'
-  },
-  {
-    id: 5,
-    name: 'HR Team',
-    description: 'Human resources and employee relations',
-    isPrivate: true,
-    requiresPassword: true,
-    password: 'hrteam123',
-    documents: [{ name: 'Resume' }, { name: 'Cover Letter' }],
-    picture: '#A133FF', // Color tag
-    members: [6, 7],
-    lastActive: '2023-10-05T12:00:00Z'
-  }
-])
-
 const userId = 1 // Example user ID
 
 const userGroups = computed(() => {
-  return groups.value.filter(group => group.members.includes(userId))
+  return groups.filter(group => group.members.includes(userId))
 })
 
 const filteredGroups = computed(() => {
   if (!searchQuery.value) {
     return []
   }
-  return groups.value.filter(group => 
+  return groups.filter(group => 
     group.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     group.description.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
@@ -191,7 +129,7 @@ const filteredGroups = computed(() => {
 const createGroup = (groupData) => {
   // Create new group object
   const newGroup = {
-    id: groups.value.length + 1, // Generate unique ID
+    id: groups.length + 1, // Generate unique ID
     name: groupData.name,
     description: groupData.description || '',
     picture: groupData.picture || null,
@@ -206,7 +144,7 @@ const createGroup = (groupData) => {
   }
 
   // Add to start of groups array
-  groups.value.unshift(newGroup)
+  groups.unshift(newGroup)
   
   // Close dialog
   showNewGroupDialog.value = false
@@ -219,7 +157,7 @@ const createGroup = (groupData) => {
 }
 
 const openGroup = (groupId) => {
-  const selectedGroup = groups.value.find(g => g.id === groupId)
+  const selectedGroup = groups.find(g => g.id === groupId)
   if (selectedGroup) {
     router.push({
       path: `/group/${groupId}`,
