@@ -3,7 +3,7 @@
     <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
       <div class="flex flex-col space-y-4">
         <header class="flex justify-between items-center">
-          <h2 class="text-lg font-semibold">Join {{ group.name }}</h2>
+          <h2 class="text-lg font-semibold">Join Group</h2>
           <Button variant="ghost" size="icon" @click="$emit('close')">
             <Icon name="heroicons:x-mark" class="h-4 w-4" />
           </Button>
@@ -25,6 +25,11 @@
             <div class="space-y-1">
               <Label class="text-sm text-muted-foreground">Privacy</Label>
               <p class="text-lg font-medium">{{ group.isPrivate ? 'Private' : 'Public' }}</p>
+            </div>
+
+            <div class="space-y-1">
+              <Label class="text-sm text-muted-foreground">Group ID</Label>
+              <p class="text-lg font-medium">{{ group.id }}</p>
             </div>
 
             <form @submit.prevent="handleSubmit" class="space-y-6">
