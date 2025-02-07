@@ -6,7 +6,16 @@
           <Icon name="heroicons:arrow-left" class="h-4 w-4" />
           <span class="ml-2">Back</span>
         </Button>
-        <h1 class="text-3xl font-bold">{{ group.name }}</h1>
+        <div>
+          <h1 class="text-3xl font-bold">{{ group.name }}</h1>
+          <div class="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
+            <span>ID: {{ group.id }}</span>
+            <div class="flex items-center">
+              <Icon name="heroicons:users" class="h-4 w-4 mr-1" />
+              <span>{{ group.members.length }} members</span>
+            </div>
+          </div>
+        </div>
       </div>
       <Button variant="outline" @click="goToSettings">Settings</Button>
     </div>
@@ -119,16 +128,55 @@
             <div>
               <CardTitle>Members</CardTitle>
             </div>
-            <Button @click="addMember">Add Member</Button>
+            <div class="flex items-center space-x-2">
+              <Button v-if="isEditingMembers" variant="outline" @click="addMember">
+                <Icon name="heroicons:plus" class="h-4 w-4 mr-2" />
+                Add Member
+              </Button>
+              <Button @click="editMembers">
+                {{ isEditingMembers ? 'Done' : 'Edit List' }}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div v-if="members.length" class="space-y-2">
-              <div v-for="member in members" :key="member.id" class="flex items-center justify-between p-2">
+            <div v-if="group.members.length" class="space-y-4">
+              <div 
+                v-for="member in group.members" 
+                :key="member.id" 
+                class="flex items-center justify-between p-4 border rounded-lg"
+              >
                 <div class="flex items-center space-x-2">
                   <span class="font-medium">{{ member.name }}</span>
                   <span class="text-sm text-muted-foreground">{{ member.role }}</span>
                 </div>
-                <Button variant="ghost" size="sm">Remove</Button>
+                <div v-if="!isEditingMembers">
+                  <Button variant="ghost" size="sm" class="border" @click="viewMember(member)">
+                    View
+                  </Button>
+                </div>
+                <div v-else class="flex items-center space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    class="border"
+                    @click="toggleRole(member)"
+                  >
+                    <Icon 
+                      :name="member.role === 'Admin' ? 'heroicons:user-minus' : 'heroicons:user-plus'" 
+                      class="h-4 w-4 mr-2" 
+                    />
+                    {{ member.role === 'Admin' ? 'Remove Admin' : 'Make Admin' }}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    class="border-red-200 hover:bg-red-100"
+                    @click="removeMember(member.id)"
+                  >
+                    <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                </div>
               </div>
             </div>
             <div v-else class="text-center py-8 text-muted-foreground">
@@ -188,18 +236,68 @@ const route = useRoute()
 const router = useRouter()
 const groupId = route.params.id
 
-// Initialize with default values
+// Initialize with example groups data
 const group = ref({
-  id: `group-${Date.now()}`, // Unique timestamp-based ID
-  name: '',
-  description: '',
+  id: 'group-1234567890',
+  name: 'Software Development Team',
+  description: 'Main group for development team coordination and decisions',
   picture: null,
   isPrivate: false,
-  members: [],
+  members: [
+    { id: 1, name: 'Alice', role: 'Admin' },
+    { id: 2, name: 'Bob', role: 'Member' },
+    { id: 3, name: 'Charlie', role: 'Member' }
+  ],
   votes: [],
   posts: [],
-  lastActive: ''
+  lastActive: new Date().toISOString()
 })
+
+// Store groups locally
+const groups = ref([
+  {
+    id: 'group-1234567890',
+    name: 'Marketing Strategy Team',
+    description: 'Coordinate marketing campaigns and brand strategy',
+    picture: null,
+    isPrivate: false,
+    members: [
+      { id: 1, name: 'Alice', role: 'Admin' },
+      { id: 2, name: 'Bob', role: 'Member' }
+    ],
+    votes: [],
+    posts: [],
+    lastActive: new Date().toISOString()
+  },
+  {
+    id: 'group-9876543210',
+    name: 'Product Development',
+    description: 'Design and implementation of new features',
+    picture: null,
+    isPrivate: false,
+    members: [
+      { id: 1, name: 'Charlie', role: 'Admin' },
+      { id: 2, name: 'Diana', role: 'Member' }
+    ],
+    votes: [],
+    posts: [],
+    lastActive: new Date().toISOString()
+  },
+  {
+    id: 'group-5555555555',
+    name: 'Office Management',
+    description: 'Workplace organization and logistics',
+    picture: null,
+    isPrivate: true,
+    members: [
+      { id: 1, name: 'Eve', role: 'Admin' },
+      { id: 2, name: 'Frank', role: 'Member' }
+    ],
+    votes: [],
+    posts: [],
+    lastActive: new Date().toISOString()
+  }
+])
 
 const votes = ref([])
 const posts = ref([])
@@ -212,8 +310,37 @@ const selectedPost = ref(null)
 const showNewPostDialog = ref(false)
 const showSettings = ref(false)
 
+// Add edit mode state
+const isEditingMembers = ref(false)
+
+const editMembers = () => {
+  isEditingMembers.value = !isEditingMembers.value
+}
+
+const removeMember = (memberId) => {
+  group.value.members = group.value.members.filter(m => m.id !== memberId)
+}
+
+const toggleRole = (member) => {
+  member.role = member.role === 'Admin' ? 'Member' : 'Admin'
+}
+
+const addMember = () => {
+  // Show dialog or form to add new member
+  // For now, add dummy member
+  group.value.members.push({
+    id: Date.now(),
+    name: 'New Member',
+    role: 'Member'
+  })
+}
+
 onMounted(async () => {
   try {
+    const currentGroup = groups.value.find(g => g.id === groupId)
+    if (currentGroup) {
+      group.value = currentGroup
+    }
     if (router.currentRoute.value.state?.group) {
       group.value = router.currentRoute.value.state.group
     } else {
@@ -425,10 +552,6 @@ const handleNewPost = (postData) => {
   showNewPostDialog.value = false
 }
 
-const addMember = () => {
-  // Add member logic
-}
-
 const openVote = (voteId) => {
   selectedVote.value = votes.value.find(v => v.id === voteId)
 }
@@ -462,4 +585,9 @@ const sortedVotes = computed(() => {
     return new Date(b.startTime) - new Date(a.startTime)
   })
 })
+
+const handleNewGroup = (newGroup) => {
+  groups.value.push(newGroup)
+  group.value = newGroup
+}
 </script>

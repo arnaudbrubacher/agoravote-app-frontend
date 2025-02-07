@@ -11,23 +11,6 @@
 
         <div class="flex-1 overflow-y-auto p-6">
           <form @submit.prevent="handleSubmit" class="space-y-6">
-            <!-- Admins Section -->
-            <div class="space-y-4">
-              <Label class="text-base font-semibold">Administrators</Label>
-              <div class="space-y-2">
-                <div v-for="member in group.members" :key="member.id" class="flex items-center justify-between">
-                  <span>{{ member.name }}</span>
-                  <Button 
-                    variant="ghost" 
-                    @click="toggleAdmin(member)"
-                    :class="{'bg-primary/10': member.role === 'Admin'}"
-                  >
-                    {{ member.role === 'Admin' ? 'Remove Admin' : 'Make Admin' }}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
             <!-- Posts Permissions -->
             <div class="space-y-4">
               <Label class="text-base font-semibold">Posts Permissions</Label>
