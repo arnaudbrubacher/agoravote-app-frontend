@@ -106,7 +106,7 @@ const selectedGroup = ref(null)
 const userId = 1 // Example user ID
 
 const userGroups = computed(() => {
-  return groups.filter(group => group.members.includes(userId))
+  return groups.filter(group => group.members.some(member => member.id === userId))
 })
 
 const filteredGroups = computed(() => {

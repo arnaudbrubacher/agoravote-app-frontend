@@ -1,3 +1,5 @@
+import { members } from './members.js';
+
 export const groups = [
   {
     id: 1,
@@ -8,7 +10,7 @@ export const groups = [
     password: '',
     documents: [],
     picture: '#FF5733', // Color tag
-    members: [1, 2],
+    members: [members[0], members[1]], // Reference members by their objects
     lastActive: '2023-10-01T12:00:00Z'
   },
   {
@@ -20,7 +22,7 @@ export const groups = [
     password: '',
     documents: [],
     picture: '#33FF57', // Color tag
-    members: [3],
+    members: [members[2]], // Reference members by their objects
     lastActive: '2023-10-02T12:00:00Z'
   },
   {
@@ -32,7 +34,7 @@ export const groups = [
     password: 'office123',
     documents: [{ name: 'ID Proof' }, { name: 'Address Proof' }],
     picture: '#3357FF', // Color tag
-    members: [1],
+    members: [members[0]], // Reference members by their objects
     lastActive: '2023-10-03T12:00:00Z'
   },
   {
@@ -44,7 +46,7 @@ export const groups = [
     password: '',
     documents: [],
     picture: '#FF33A1', // Color tag
-    members: [4, 5],
+    members: [members[3], members[4]], // Reference members by their objects
     lastActive: '2023-10-04T12:00:00Z'
   },
   {
@@ -56,7 +58,7 @@ export const groups = [
     password: 'hrteam123',
     documents: [{ name: 'Resume' }, { name: 'Cover Letter' }],
     picture: '#A133FF', // Color tag
-    members: [6, 7],
+    members: [members[5], members[6]], // Reference members by their objects
     lastActive: '2023-10-05T12:00:00Z'
   }
 ];
