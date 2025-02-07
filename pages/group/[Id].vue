@@ -21,10 +21,18 @@
     </div>
 
     <Tabs defaultValue="votes" class="w-full">
-      <TabsList>
-        <TabsTrigger value="votes">Votes</TabsTrigger>
-        <TabsTrigger value="posts">Posts</TabsTrigger>
-        <TabsTrigger value="members">Members</TabsTrigger>
+      <TabsList class="flex justify-between">
+        <div class="flex space-x-1">
+          <TabsTrigger value="votes" class="border-2 border-transparent data-[state=inactive]:border-white/20 data-[state=inactive]:text-white/70 data-[state=active]:text-white">
+            Votes
+          </TabsTrigger>
+          <TabsTrigger value="posts" class="border-2 border-transparent data-[state=inactive]:border-white/20 data-[state=inactive]:text-white/70 data-[state=active]:text-white">
+            Posts
+          </TabsTrigger>
+        </div>
+        <TabsTrigger value="members" class="border-2 border-transparent data-[state=inactive]:border-white/20 data-[state=inactive]:text-white/70 data-[state=active]:text-white">
+          Members
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="votes">
