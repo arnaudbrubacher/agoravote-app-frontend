@@ -14,12 +14,11 @@
             >
               <div class="flex items-center space-x-6">
                 <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                  <div v-if="group.picture" :style="{ backgroundColor: group.picture }" class="w-full h-full rounded-lg"></div>
-                  <Icon v-else name="heroicons:user-group" class="w-8 h-8 text-primary" />
+                  <Icon name="heroicons:user-group" class="w-8 h-8 text-primary" />
                 </div>
                 <div>
                   <h3 class="text-lg font-semibold">{{ group.name }}</h3>
-                  <p class="text-sm text-muted-foreground">ID: {{ group.id }} • {{ group.members.length }} members • Last active {{ group.lastActive }}</p>
+                  <p class="text-sm text-muted-foreground">{{ group.members.length }} members • Last active {{ group.lastActive }}</p>
                 </div>
               </div>
             </Button>
@@ -61,7 +60,6 @@
             @click="openAdmissionForm(group)"
           >
             <h3 class="text-lg font-medium">{{ group.name }}</h3>
-            <p class="text-sm text-muted-foreground">ID: {{ group.id }}</p>
           </div>
         </div>
         <div v-else-if="searchQuery" class="text-center py-8 text-muted-foreground">
@@ -110,6 +108,64 @@ const showAdmissionForm = ref(false)
 const searchQuery = ref('')
 const selectedGroup = ref(null)
 
+const groups = ref([
+  {
+    id: 1,
+    name: 'Marketing Strategy Team',
+    description: 'Coordinate marketing campaigns and brand strategy',
+    isPrivate: false,
+    requiresPassword: false,
+    password: '',
+    documents: [],
+    members: [1, 2],
+    lastActive: '2023-10-01T12:00:00Z'
+  },
+  {
+    id: 2,
+    name: 'Product Development',
+    description: 'Design and implementation of new features',
+    isPrivate: false,
+    requiresPassword: false,
+    password: '',
+    documents: [],
+    members: [3],
+    lastActive: '2023-10-02T12:00:00Z'
+  },
+  {
+    id: 3,
+    name: 'Office Management',
+    description: 'Workplace organization and logistics',
+    isPrivate: true,
+    requiresPassword: true,
+    password: 'office123',
+    documents: [{ name: 'ID Proof' }, { name: 'Address Proof' }],
+    members: [1],
+    lastActive: '2023-10-03T12:00:00Z'
+  },
+  {
+    id: 4,
+    name: 'Sales Team',
+    description: 'Sales strategies and discussions',
+    isPrivate: false,
+    requiresPassword: false,
+    password: '',
+    documents: [],
+    members: [4, 5],
+    lastActive: '2023-10-04T12:00:00Z'
+  },
+  {
+    id: 5,
+    name: 'HR Team',
+    description: 'Human resources and employee relations',
+    isPrivate: true,
+    requiresPassword: true,
+    password: 'hrteam123',
+    documents: [{ name: 'Resume' }, { name: 'Cover Letter' }],
+    members: [6, 7],
+    lastActive: '2023-10-05T12:00:00Z'
+  }
+])
+
 const userId = 1 // Example user ID
 
 const userGroups = computed(() => {
@@ -129,7 +185,7 @@ const filteredGroups = computed(() => {
 const createGroup = (groupData) => {
   // Create new group object
   const newGroup = {
-    id: groups.length + 1, // Generate unique ID
+    id: Date.now(),
     name: groupData.name,
     description: groupData.description || '',
     picture: groupData.picture || null,
