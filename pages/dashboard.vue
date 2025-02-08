@@ -156,6 +156,8 @@ const openGroup = (groupId) => {
       path: `/group/${groupId}`,
       state: { group: selectedGroup }
     })
+  } else {
+    console.error(`Group with ID ${groupId} not found`)
   }
 }
 
