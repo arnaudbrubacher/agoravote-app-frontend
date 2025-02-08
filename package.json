@@ -10,7 +10,6 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@heroicons/vue": "^1.0.6",
     "@shadcn/ui": "^0.0.4",
     "@vueuse/core": "^12.5.0",
     "class-variance-authority": "^0.7.1",

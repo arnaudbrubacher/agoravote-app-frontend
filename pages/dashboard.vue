@@ -1,16 +1,8 @@
 <template>
   <div class="space-y-6">
     <Card>
-      <CardHeader class="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Your Groups</CardTitle>
-        </div>
-        <Button 
-          variant="default"
-          @click="showNewGroupDialog = true"
-        >
-          Create New Group
-        </Button>
+      <CardHeader>
+        <CardTitle>Your Groups</CardTitle>
       </CardHeader>
       <CardContent>
         <ul class="space-y-4">
@@ -36,7 +28,22 @@
       </CardContent>
     </Card>
 
-    <Card class="flex-1">
+    <Card>
+      <CardHeader>
+        <CardTitle>Create New Group</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button 
+          class="w-full" 
+          variant="default"
+          @click="showNewGroupDialog = true"
+        >
+          Create New Group
+        </Button>
+      </CardContent>
+    </Card>
+
+    <Card>
       <CardHeader>
         <CardTitle>Find Groups</CardTitle>
       </CardHeader>
