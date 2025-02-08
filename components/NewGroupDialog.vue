@@ -5,7 +5,7 @@
         <header class="flex justify-between items-center">
           <h2 class="text-lg font-semibold">Create New Group</h2>
           <Button variant="ghost" size="icon" @click="$emit('close')">
-            <Icon name="heroicons:x-mark" class="h-4 w-4" />
+            <XIcon class="h-4 w-4" />
           </Button>
         </header>
 
@@ -21,7 +21,7 @@
                 />
               </div>
               <div v-else class="w-32 h-32 bg-muted rounded-lg flex items-center justify-center">
-                <Icon name="heroicons:user-group" class="w-16 h-16 text-muted-foreground" />
+                <UserGroupIcon class="w-16 h-16 text-muted-foreground" />
               </div>
               <Button 
                 variant="outline" 
@@ -29,7 +29,7 @@
                 class="absolute -bottom-2 -right-2"
                 @click="triggerFileInput"
               >
-                <Icon name="heroicons:pencil" class="h-4 w-4" />
+                <CameraIcon class="h-4 w-4" />
               </Button>
               <input 
                 type="file"
@@ -110,7 +110,7 @@
                   size="icon" 
                   @click="removeDocument(index)"
                 >
-                  <Icon name="heroicons:trash" class="h-4 w-4" />
+                  <TrashIcon class="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -137,7 +137,7 @@ import { ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import Icon from '@/components/Icon.vue'
+import { XIcon, UserGroupIcon, CameraIcon, TrashIcon } from '@heroicons/vue/outline'
 
 const fileInput = ref(null)
 const isSubmitting = ref(false)

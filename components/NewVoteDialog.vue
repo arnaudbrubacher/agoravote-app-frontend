@@ -54,6 +54,16 @@
             <Label for="allowWriteIn">Allow members to write in their own answer</Label>
           </div>
 
+          <div class="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isSecret"
+              v-model="form.isSecret"
+              class="h-4 w-4 rounded border-input"
+            />
+            <Label for="isSecret">Secret Vote</Label>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-2">
               <Label>Minimum Choices</Label>
@@ -115,6 +125,7 @@ const form = ref({
     { text: '' }
   ],
   allowWriteIn: false,
+  isSecret: false,
   minChoices: 1,
   maxChoices: 1,
   startTime: '',

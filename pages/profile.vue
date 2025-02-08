@@ -13,7 +13,7 @@
               />
             </div>
             <div v-else class="w-24 h-24 bg-muted rounded-full flex items-center justify-center">
-              <Icon name="heroicons:user-circle" class="w-16 h-16 text-muted-foreground" />
+              <UserCircleIcon class="w-16 h-16 text-muted-foreground" />
             </div>
             <Button 
               variant="outline" 
@@ -21,7 +21,7 @@
               class="absolute -bottom-2 -right-2"
               @click="triggerFileInput"
             >
-              <Icon name="heroicons:pencil" class="h-4 w-4" />
+              <PencilIcon class="h-4 w-4" />
             </Button>
             <input 
               type="file" 
@@ -101,6 +101,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import PostDetailsDialog from '@/components/PostDetailsDialog.vue'
 import NewPostDialog from '@/components/NewPostDialog.vue'
+import { UserCircleIcon, PencilIcon } from '@heroicons/vue/outline'
 
 definePageMeta({
   layout: 'profile-layout'

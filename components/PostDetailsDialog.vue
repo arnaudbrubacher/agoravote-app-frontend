@@ -5,7 +5,7 @@
         <header class="flex justify-between items-center p-6 border-b">
           <h2 class="text-lg font-semibold">{{ post.title }}</h2>
           <Button variant="ghost" size="icon" @click="$emit('close')">
-            <Icon name="heroicons:x-mark" class="h-4 w-4" />
+            <XIcon class="h-4 w-4" />
           </Button>
         </header>
 
@@ -18,11 +18,11 @@
               </div>
               <div class="flex items-center space-x-2">
                 <Button variant="ghost" size="sm" @click="$emit('edit', post)" class="border">
-                  <Icon name="heroicons:pencil" class="h-4 w-4 mr-2" />
+                  <PencilIcon class="h-4 w-4 mr-2" />
                   Edit
                 </Button>
                 <Button variant="ghost" size="sm" @click="$emit('delete', post)" class="border">
-                  <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
+                  <TrashIcon class="h-4 w-4 mr-2" />
                   Delete
                 </Button>
               </div>
@@ -43,6 +43,7 @@
 
 <script setup>
 import { Button } from '@/components/ui/button'
+import { XIcon, PencilIcon, TrashIcon } from '@heroicons/vue/outline'
 
 defineProps({
   post: {
