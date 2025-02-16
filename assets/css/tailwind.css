@@ -77,16 +77,14 @@
   }
 }
 
-/* Define custom classes within a @layer directive */
-@layer utilities {
-  .bg-background {
-    background-color: #f0f0f0; /* Example custom background color */
-  }
+@layer components {
   .border-border {
-    border-color: #ccc; /* Example custom border color */
+    @apply border border-gray-300 dark:border-gray-700;
+  }
+  .bg-background {
+    @apply bg-gray-100 dark:bg-gray-900;
   }
   .text-foreground {
-    color: #333; /* Example custom text color */
+    @apply text-gray-900 dark:text-gray-100;
   }
-  /* Add more custom classes as needed */
 }

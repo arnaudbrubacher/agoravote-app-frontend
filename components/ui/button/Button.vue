@@ -1,27 +1,31 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import { defineProps, withDefaults } from 'vue'
 import { cn } from '@/lib/utils'
-import { Primitive, type PrimitiveProps } from 'radix-vue'
-import { type ButtonVariants, buttonVariants } from '.'
 
-interface Props extends PrimitiveProps {
-  variant?: ButtonVariants['variant']
-  size?: ButtonVariants['size']
-  class?: HTMLAttributes['class']
+interface Props {
+  variant?: string
+  class?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  as: 'button',
+  variant: 'default',
+  class: ''
 })
 </script>
 
 <template>
-  <Primitive
-    :as="as"
-    :as-child="asChild"
-    :class="cn(buttonVariants({ variant, size }), props.class)"
-    data-v-inspector="components/ui/button/Button.vue:19:3"
+  <button
+    :class="cn(
+      'px-4 py-2 rounded',
+      props.variant === 'default' ? 'bg-button-default text-background-light hover:bg-button-hover dark:bg-button-default dark:text-background-light dark:hover:bg-button-hover' : '',
+      props.class
+    )"
+    @click="$emit('click')"
   >
     <slot />
-  </Primitive>
+  </button>
 </template>
+
+<style scoped>
+/* Add any additional styles here */
+</style>
