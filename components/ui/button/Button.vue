@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
     :as="as"
     :as-child="asChild"
     :class="cn(buttonVariants({ variant, size }), props.class)"
+    data-v-inspector="components/ui/button/Button.vue:19:3"
   >
     <slot />
   </Primitive>

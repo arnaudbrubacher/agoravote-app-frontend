@@ -76,3 +76,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Define custom classes within a @layer directive */
+@layer utilities {
+  .bg-background {
+    background-color: #f0f0f0; /* Example custom background color */
+  }
+  .border-border {
+    border-color: #ccc; /* Example custom border color */
+  }
+  .text-foreground {
+    color: #333; /* Example custom text color */
+  }
+  /* Add more custom classes as needed */
+}

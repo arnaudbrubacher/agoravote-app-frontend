@@ -1,37 +1,27 @@
 {
-  "name": "nuxt-app",
+  "name": "agoravote-app-frontend",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "dev": "nuxi dev",
+    "build": "nuxi build",
+    "start": "nuxi preview"
   },
   "dependencies": {
     "@heroicons/vue": "^1.0.6",
-    "@shadcn/ui": "^0.0.4",
-    "@vueuse/core": "^12.5.0",
+    "@nuxtjs/color-mode": "^3.0.0",
+    "@nuxtjs/tailwindcss": "^5.0.0",
+    "autoprefixer": "^10.0.0",
     "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "dialog": "^0.3.1",
-    "lucide-vue-next": "^0.474.0",
-    "nuxt": "^3.15.4",
-    "radix-vue": "^1.9.13",
-    "tailwind-merge": "^3.0.1",
-    "tailwindcss-animate": "^1.0.7",
-    "vue": "latest",
-    "vue-router": "latest"
+    "nuxt": "^3.0.0",
+    "postcss": "^8.0.0",
+    "radix-vue": "^1.9.14",
+    "tailwindcss": "^3.0.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@iconify-json/heroicons": "^1.2.2",
-    "@nuxt/icon": "^1.10.3",
-    "@nuxtjs/color-mode": "^3.5.2",
-    "@nuxtjs/tailwindcss": "^6.13.1",
-    "@tailwindcss/postcss7-compat": "^2.2.17",
-    "prisma": "^6.3.1",
-    "shadcn-nuxt": "^0.11.3",
-    "shadcn-vue": "^0.11.3"
+    "@vitejs/plugin-vue": "^1.10.2",
+    "vite": "^2.9.9"
   }
 }

@@ -70,8 +70,10 @@ definePageMeta({
   layout: 'auth-layout'
 })
 
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -88,6 +90,7 @@ const passwordError = ref(false)
 
 const handleLogin = () => {
   console.log('Login:', { email: loginEmail.value, password: loginPassword.value })
+  // Simulate successful login
   router.push('/dashboard')
 }
 
@@ -102,6 +105,11 @@ const handleSignup = () => {
     email: signupEmail.value,
     password: signupPassword.value
   })
+  // Simulate successful signup
   router.push('/dashboard')
 }
 </script>
+
+<style>
+/* Your styles here */
+</style>

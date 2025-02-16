@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Input from '@/components/ui/input/Input.vue'
 import Button from '@/components/ui/button/Button.vue'
@@ -91,6 +91,7 @@ import Icon from '@/components/Icon.vue'
 import NewGroupDialog from '@/components/NewGroupDialog.vue'
 import GroupAdmissionForm from '@/components/GroupAdmissionForm.vue'
 import * as HeroIcons from '@heroicons/vue/outline'
+import { useFetch } from '#app'
 
 definePageMeta({
   layout: 'app-layout'
@@ -102,68 +103,16 @@ const showAdmissionForm = ref(false)
 const searchQuery = ref('')
 const selectedGroup = ref(null)
 
-const groups = ref([
-  {
-    id: 1,
-    name: 'Marketing Strategy Team',
-    description: 'Coordinate marketing campaigns and brand strategy',
-    isPrivate: false,
-    requiresPassword: false,
-    password: '',
-    documents: [],
-    picture: '#FF5733', // Color tag
-    members: [1, 2],
-    lastActive: '2023-10-01T12:00:00Z'
-  },
-  {
-    id: 2,
-    name: 'Product Development',
-    description: 'Design and implementation of new features',
-    isPrivate: false,
-    requiresPassword: false,
-    password: '',
-    documents: [],
-    picture: '#33FF57', // Color tag
-    members: [3],
-    lastActive: '2023-10-02T12:00:00Z'
-  },
-  {
-    id: 3,
-    name: 'Office Management',
-    description: 'Workplace organization and logistics',
-    isPrivate: true,
-    requiresPassword: true,
-    password: 'office123',
-    documents: [{ name: 'ID Proof' }, { name: 'Address Proof' }],
-    picture: '#3357FF', // Color tag
-    members: [1],
-    lastActive: '2023-10-03T12:00:00Z'
-  },
-  {
-    id: 4,
-    name: 'Sales Team',
-    description: 'Sales strategies and discussions',
-    isPrivate: false,
-    requiresPassword: false,
-    password: '',
-    documents: [],
-    picture: '#FF33A1', // Color tag
-    members: [4, 5],
-    lastActive: '2023-10-04T12:00:00Z'
-  },
-  {
-    id: 5,
-    name: 'HR Team',
-    description: 'Human resources and employee relations',
-    isPrivate: true,
-    requiresPassword: true,
-    password: 'hrteam123',
-    documents: [{ name: 'Resume' }, { name: 'Cover Letter' }],
-    picture: '#A133FF', // Color tag
-    members: [6, 7],
-    lastActive: '2023-10-05T12:00:00Z'
+const groups = ref([])
+
+onMounted(async () => {
+  const { data, error } = await useFetch('/api/groups')
+  if (error.value) {
+    console.error('Error fetching groups:', error.value)
+  } else {
+    groups.value = data.value
   }
-])
+})
 
 const userId = 1 // Example user ID
 
@@ -181,34 +130,30 @@ const filteredGroups = computed(() => {
   )
 })
 
-const createGroup = (groupData) => {
-  // Create new group object
-  const newGroup = {
-    id: groups.value.length + 1, // Generate unique ID
-    name: groupData.name,
-    description: groupData.description || '',
-    picture: groupData.picture || null,
-    isPrivate: groupData.isPrivate,
-    requiresPassword: groupData.requiresPassword,
-    password: groupData.password || '',
-    documents: groupData.documents || [],
-    members: [], // Start empty
-    votes: [],   // Start empty
-    posts: [],   // Start empty
-    lastActive: 'Just now'
-  }
+const groupData = ref({
+  name: '',
+  description: '',
+  picture: null,
+  isPrivate: false,
+  requiresPassword: false,
+  password: ''
+})
 
-  // Add to start of groups array
-  groups.value.unshift(newGroup)
-  
-  // Close dialog
-  showNewGroupDialog.value = false
-  
-  // Navigate with state
-  router.push({
-    path: `/group/${newGroup.id}`,
-    state: { group: newGroup }
-  })
+const createGroup = async () => {
+  try {
+    const { data, error } = await useFetch('/api/groups', {
+      method: 'POST',
+      body: groupData.value
+    })
+    if (error) {
+      console.error('Error creating group:', error)
+    } else {
+      groups.value.unshift(data.value)
+      showNewGroupDialog.value = false
+    }
+  } catch (error) {
+    console.error('Error creating group:', error)
+  }
 }
 
 const openGroup = (groupId) => {
@@ -232,3 +177,7 @@ const submitAdmissionForm = (admissionData) => {
   showAdmissionForm.value = false
 }
 </script>
+
+<style>
+/* Your styles here */
+</style>

@@ -222,6 +222,12 @@
     @close="showSettings = false"
     @submit="handleSettingsSubmit"
   />
+  <div>
+    <ul>
+      <li v-for="item in data" :key="item.id">{{ item.name }}</li>
+    </ul>
+    <div v-if="error">Error: {{ error.message }}</div>
+  </div>
 </template>
 
 <script setup>
@@ -235,6 +241,13 @@ import VoteDetailsDialog from '@/components/VoteDetailsDialog.vue'
 import PostDetailsDialog from '@/components/PostDetailsDialog.vue'
 import NewPostDialog from '@/components/NewPostDialog.vue'
 import GroupSettingsDialog from '@/components/GroupSettingsDialog.vue'
+import { useFetch } from '#app'
+
+const { data, error } = await useFetch('http://localhost:8080/api/endpoint')
+
+if (error.value) {
+  console.error('Error fetching data:', error.value)
+}
 
 definePageMeta({
   layout: 'app-layout'
