@@ -4,11 +4,17 @@ import { defineNuxtConfig } from 'nuxt/config'
 export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',  // Tailwind CSS module for styling
-    '@nuxtjs/color-mode'    // Color mode module for dark/light mode
+    '@nuxtjs/color-mode',   // Color mode module for dark/light mode
+    'shadcn-nuxt'           // ShadCN module for UI components
   ],
 
   colorMode: {
     classSuffix: ''         // Configuration for color mode class suffix
+  },
+
+  shadcn: {
+    prefix: 'Ui',           // Prefix for ShadCN components
+    componentDir: './components/ui'  // Directory for ShadCN components
   },
 
   app: {
@@ -52,6 +58,19 @@ export default defineNuxtConfig({
     '~/components',
     '~/components/ui'
   ],
+
+  // Vite Configuration
+  vite: {
+    // Add your Vite configuration here if needed
+  },
+
+  // PostCSS Configuration
+  postcss: {
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {},
+    },
+  },
 
   // Build Configuration
   build: {
