@@ -13,20 +13,29 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useFetch } from '#app'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+
+const data = ref([])
+const error = ref(null)
+
+const fetchData = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/groups')
+    data.value = response.data
+  } catch (err) {
+    error.value = err
+    console.error('Error fetching data:', err)
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
 
 definePageMeta({
   layout: 'landingpage'
 })
-
-// Fetch data from the API endpoint
-const { data, error } = await useFetch('http://localhost:8080/api/endpoint')
-
-// Handle the error if any
-if (error.value) {
-  console.error('Error fetching data:', error.value)
-}
 </script>
 
 <style scoped>
