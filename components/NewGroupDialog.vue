@@ -193,7 +193,7 @@ const handleSubmit = async () => {
       lastActive: new Date().toISOString()
     }
     
-    const response = await axios.post('http://localhost:8081/groups', newGroup)
+    const response = await axios.post('http://localhost:8080/groups', newGroup)
     console.log('Group created:', response.data)
     
     form.value = {

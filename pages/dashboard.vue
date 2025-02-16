@@ -91,7 +91,7 @@ import Icon from '@/components/Icon.vue'
 import NewGroupDialog from '@/components/NewGroupDialog.vue'
 import GroupAdmissionForm from '@/components/GroupAdmissionForm.vue'
 import * as HeroIcons from '@heroicons/vue/outline'
-import { useFetch } from '#app'
+import axios from 'axios'
 
 definePageMeta({
   layout: 'app-layout'
@@ -106,11 +106,11 @@ const selectedGroup = ref(null)
 const groups = ref([])
 
 onMounted(async () => {
-  const { data, error } = await useFetch('/api/groups')
-  if (error.value) {
-    console.error('Error fetching groups:', error.value)
-  } else {
-    groups.value = data.value
+  try {
+    const response = await axios.get('http://localhost:8081/groups')
+    groups.value = response.data
+  } catch (error) {
+    console.error('Error fetching groups:', error)
   }
 })
 
@@ -141,16 +141,9 @@ const groupData = ref({
 
 const createGroup = async () => {
   try {
-    const { data, error } = await useFetch('/api/groups', {
-      method: 'POST',
-      body: groupData.value
-    })
-    if (error) {
-      console.error('Error creating group:', error)
-    } else {
-      groups.value.unshift(data.value)
-      showNewGroupDialog.value = false
-    }
+    const response = await axios.post('http://localhost:8081/groups', groupData.value)
+    groups.value.unshift(response.data)
+    showNewGroupDialog.value = false
   } catch (error) {
     console.error('Error creating group:', error)
   }
