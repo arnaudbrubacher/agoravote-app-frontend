@@ -22,15 +22,6 @@
               <p class="text-lg font-medium">{{ vote.question }}</p>
             </div>
 
-            <div class="space-y-1">
-              <Label class="text-sm text-muted-foreground">Choices</Label>
-              <ul class="space-y-2">
-                <li v-for="choice in vote.choices" :key="choice.text" class="text-base p-2 border rounded">
-                  {{ choice.text }}
-                </li>
-              </ul>
-            </div>
-
             <div v-if="vote.allowWriteIn" class="space-y-1">
               <p class="text-sm text-muted-foreground">Members can write in their own answer</p>
             </div>
