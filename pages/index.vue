@@ -21,7 +21,7 @@ definePageMeta({
 })
 
 // Fetch data from the API endpoint
-const { data, error } = await useFetch('http://localhost:8080/api/endpoint')
+const { data, error } = await useFetch('http://localhost:8081/api/endpoint')
 
 // Handle the error if any
 if (error.value) {

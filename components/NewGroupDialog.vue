@@ -134,6 +134,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -182,15 +183,19 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   try {
     const newGroup = {
-      ...form.value,
-      id: `group-${Date.now()}`, // Generate unique ID
-      members: [],
-      votes: [],
-      posts: [],
+      name: form.value.name,
+      description: form.value.description,
+      isPrivate: form.value.isPrivate,
+      picture: form.value.picture,
+      requiresPassword: form.value.requiresPassword,
+      password: form.value.password,
+      documents: form.value.documents,
       lastActive: new Date().toISOString()
     }
     
-    await emit('submit', newGroup)
+    const response = await axios.post('http://localhost:8081/groups', newGroup)
+    console.log('Group created:', response.data)
+    
     form.value = {
       name: '',
       description: '',
@@ -201,7 +206,7 @@ const handleSubmit = async () => {
       confirmPassword: '',
       documents: []
     }
-    emit('close')
+    $emit('close')
   } catch (error) {
     console.error('Failed to create group:', error)
   } finally {
@@ -209,5 +214,5 @@ const handleSubmit = async () => {
   }
 }
 
-defineEmits(['close', 'submit'])
+defineEmits(['close'])
 </script>
