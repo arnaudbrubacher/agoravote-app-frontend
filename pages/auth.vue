@@ -72,6 +72,7 @@ definePageMeta({
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -88,25 +89,36 @@ const signupPassword = ref('')
 const signupPasswordConfirm = ref('')
 const passwordError = ref(false)
 
-const handleLogin = () => {
-  console.log('Login:', { email: loginEmail.value, password: loginPassword.value })
-  // Simulate successful login
-  router.push('/dashboard')
+const handleLogin = async () => {
+  try {
+    const response = await axios.post('http://localhost:8080/login', {
+      email: loginEmail.value,
+      password: loginPassword.value
+    })
+    localStorage.setItem('token', response.data.token)
+    router.push('/dashboard')
+  } catch (error) {
+    console.error('Login failed:', error)
+  }
 }
 
-const handleSignup = () => {
+const handleSignup = async () => {
   if (signupPassword.value !== signupPasswordConfirm.value) {
     passwordError.value = true
     return
   }
   passwordError.value = false
-  console.log('Signup:', {
-    name: signupName.value,
-    email: signupEmail.value,
-    password: signupPassword.value
-  })
-  // Simulate successful signup
-  router.push('/dashboard')
+  try {
+    const response = await axios.post('http://localhost:8080/signup', {
+      name: signupName.value,
+      email: signupEmail.value,
+      password: signupPassword.value
+    })
+    localStorage.setItem('token', response.data.token)
+    router.push('/dashboard')
+  } catch (error) {
+    console.error('Signup failed:', error)
+  }
 }
 </script>
 

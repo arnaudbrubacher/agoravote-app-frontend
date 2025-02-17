@@ -108,6 +108,7 @@ const groups = ref([])
 onMounted(async () => {
   try {
     const response = await axios.get('http://localhost:8080/groups')
+    console.log('Fetched groups:', response.data) // Debugging statement
     groups.value = response.data
   } catch (error) {
     console.error('Error fetching groups:', error)
@@ -117,7 +118,9 @@ onMounted(async () => {
 const userId = 1 // Example user ID
 
 const userGroups = computed(() => {
-  return groups.value.filter(group => group.members.includes(userId))
+  const filteredGroups = groups.value.filter(group => group.members.includes(userId))
+  console.log('User groups:', filteredGroups) // Debugging statement
+  return filteredGroups
 })
 
 const filteredGroups = computed(() => {
