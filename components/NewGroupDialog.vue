@@ -206,6 +206,7 @@ const handleSubmit = async () => {
       confirmPassword: '',
       documents: []
     }
+    $emit('group-created', response.data) // Emit the event with the created group data
     $emit('close')
   } catch (error) {
     console.error('Failed to create group:', error)
@@ -214,5 +215,5 @@ const handleSubmit = async () => {
   }
 }
 
-defineEmits(['close'])
+defineEmits(['close', 'group-created'])
 </script>

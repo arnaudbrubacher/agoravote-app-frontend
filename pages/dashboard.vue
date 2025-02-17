@@ -66,7 +66,7 @@
     <NewGroupDialog 
       v-if="showNewGroupDialog"
       @close="showNewGroupDialog = false"
-      @submit="createGroup"
+      @group-created="addGroup"
     />
 
     <GroupAdmissionForm 
@@ -107,7 +107,7 @@ const groups = ref([])
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:8081/groups')
+    const response = await axios.get('http://localhost:8080/groups')
     groups.value = response.data
   } catch (error) {
     console.error('Error fetching groups:', error)
@@ -141,12 +141,16 @@ const groupData = ref({
 
 const createGroup = async () => {
   try {
-    const response = await axios.post('http://localhost:8081/groups', groupData.value)
+    const response = await axios.post('http://localhost:8080/groups', groupData.value)
     groups.value.unshift(response.data)
     showNewGroupDialog.value = false
   } catch (error) {
     console.error('Error creating group:', error)
   }
+}
+
+const addGroup = (newGroup) => {
+  groups.value.unshift(newGroup)
 }
 
 const openGroup = (groupId) => {
