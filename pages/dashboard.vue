@@ -31,9 +31,24 @@
               @change="updateProfilePicture" 
             />
           </div>
-          <div class="space-y-2 py-2">
+          <div class="flex-1 space-y-2 py-2">
             <h3 class="text-lg font-medium">{{ userName }}</h3>
             <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
+          </div>
+          <div class="flex items-center ml-auto space-x-2">
+            <Button 
+              variant="outline" 
+              @click="logout"
+            >
+              Log Out
+            </Button>
+            <Button 
+              variant="outline" 
+              @click="deleteAccount"
+              class="text-red-600"
+            >
+              Delete Account
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -208,6 +223,16 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error fetching user groups:', error)
   }
+  
+  // Fetch user data
+  try {
+    const userResponse = await axios.get('http://localhost:8080/user/profile')
+    userName.value = userResponse.data.name
+    userEmail.value = userResponse.data.email
+    profilePicture.value = userResponse.data.profilePicture
+  } catch (error) {
+    console.error('Error fetching user profile:', error)
+  }
 })
 
 const userId = 1 // Example user ID
@@ -270,55 +295,11 @@ const submitAdmissionForm = (admissionData) => {
   showAdmissionForm.value = false
 }
 
-const goToProfile = () => {
-  router.push('/profile')
-}
-
 // Profile data and methods
-const userName = ref('John Doe')
-const userEmail = ref('john.doe@example.com')
+const userName = ref('')
+const userEmail = ref('')
 const profilePicture = ref(null)
 const fileInput = ref(null)
-
-const userPosts = ref([
-  { 
-    id: 1, 
-    title: 'Project Update Meeting',
-    content: 'Meeting notes from yesterday\'s discussion about the new features.',
-    author: userName,
-    date: '2 hours ago'
-  },
-  { 
-    id: 2, 
-    title: 'Technical Documentation',
-    content: 'Updated documentation for the API endpoints.',
-    author: userName,
-    date: '1 day ago',
-    file: true,
-    fileName: 'api-docs.pdf',
-    fileUrl: '#'
-  },
-  { 
-    id: 3, 
-    title: 'Team Building Event Photos',
-    subject: 'Team Building Event',
-    content: 'Photos from our team building event last weekend. Great memories!',
-    author: userName,
-    date: '3 days ago',
-    file: true,
-    fileName: 'team-photos.zip',
-    fileUrl: '#'
-  }
-])
-
-const newPostContent = ref('')
-
-const newPost = ref({
-  subject: '',
-  content: '',
-  file: null
-})
-const postFileInput = ref(null)
 
 const triggerFileInput = () => {
   fileInput.value.click()
@@ -334,6 +315,37 @@ const updateProfilePicture = (event) => {
     reader.readAsDataURL(file)
   }
 }
+
+const logout = () => {
+  // Clear user session or token
+  localStorage.removeItem('token')
+  router.push('/auth')
+}
+
+const deleteAccount = async () => {
+  if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+    try {
+      await axios.delete(`http://localhost:8080/user/${userId}`)
+      // Clear user session or token
+      localStorage.removeItem('token')
+      router.push('/auth')
+    } catch (error) {
+      console.error('Error deleting account:', error)
+    }
+  }
+}
+
+// Posts data and methods
+const userPosts = ref([])
+
+const newPostContent = ref('')
+
+const newPost = ref({
+  subject: '',
+  content: '',
+  file: null
+})
+const postFileInput = ref(null)
 
 const triggerPostFileInput = () => {
   postFileInput.value.click()
