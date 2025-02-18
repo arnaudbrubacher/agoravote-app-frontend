@@ -193,7 +193,12 @@ const handleSubmit = async () => {
       lastActive: new Date().toISOString()
     }
     
-    const response = await axios.post('http://localhost:8080/groups', newGroup)
+    const token = localStorage.getItem('token') // Get the token from local storage
+    const response = await axios.post('http://localhost:8080/groups', newGroup, {
+      headers: {
+        Authorization: `Bearer ${token}` // Include the token in the Authorization header
+      }
+    })
     console.log('Group created:', response.data)
     
     form.value = {
