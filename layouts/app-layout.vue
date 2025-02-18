@@ -4,7 +4,6 @@
       <div class="container flex h-16 items-center px-4">
         <div class="flex w-full items-center">
           <h1 class="text-xl font-bold mx-auto">Agora Vote</h1>
-          <Button @click="goToProfile" variant="default" class="absolute right-4">Profile</Button>
         </div>
       </div>
     </header>
@@ -22,8 +21,4 @@
 <script setup>
 import { Button } from '@/components/ui/button'
 const router = useRouter()
-
-const goToProfile = () => {
-  router.push('/profile')
-}
 </script>

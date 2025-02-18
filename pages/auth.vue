@@ -67,7 +67,7 @@
 
 <script setup>
 definePageMeta({
-  layout: 'auth-layout'
+  layout: 'app-layout'
 })
 
 import { ref } from 'vue'

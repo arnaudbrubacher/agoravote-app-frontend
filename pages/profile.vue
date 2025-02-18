@@ -1,5 +1,8 @@
 <template>
   <div class="space-y-6">
+    <!-- Back Button -->
+    <Button variant="outline" @click="goBack">Back</Button>
+
     <!-- Profile Info Card -->
     <Card>
       <CardContent class="p-6">
@@ -95,6 +98,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -104,7 +108,7 @@ import NewPostDialog from '@/components/NewPostDialog.vue'
 import { UserCircleIcon, PencilIcon } from '@heroicons/vue/outline'
 
 definePageMeta({
-  layout: 'profile-layout'
+  layout: 'app-layout'
 })
 
 // User data
@@ -222,5 +226,12 @@ const deletePost = (postId) => {
     userPosts.value = userPosts.value.filter(p => p.id !== postId)
     selectedPost.value = null
   }
+}
+
+// Router
+const router = useRouter()
+
+const goBack = () => {
+  router.push('/dashboard')
 }
 </script>

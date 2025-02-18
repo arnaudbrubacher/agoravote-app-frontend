@@ -1,5 +1,14 @@
 <template>
   <div class="space-y-6">
+    <div class="flex justify-between items-center">
+      
+      <Button 
+        variant="default"
+        @click="goToProfile"
+      >
+        Profile
+      </Button>
+    </div>
     <Card>
       <CardHeader class="flex flex-row items-center justify-between">
         <div>
@@ -173,6 +182,10 @@ const submitAdmissionForm = (admissionData) => {
   // Handle the admission form submission
   console.log('Admission data submitted:', admissionData)
   showAdmissionForm.value = false
+}
+
+const goToProfile = () => {
+  router.push('/profile')
 }
 </script>
 
