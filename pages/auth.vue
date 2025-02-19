@@ -72,6 +72,7 @@ definePageMeta({
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { login } from '@/utils/auth'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -96,6 +97,7 @@ const handleLogin = async () => {
       password: loginPassword.value
     })
     localStorage.setItem('token', response.data.token)
+    localStorage.setItem('userId', response.data.userId) // Store userId
     router.push('/dashboard')
   } catch (error) {
     console.error('Login failed:', error)
@@ -115,6 +117,7 @@ const handleSignup = async () => {
       password: signupPassword.value
     })
     localStorage.setItem('token', response.data.token)
+    localStorage.setItem('userId', response.data.userId) // Store userId
     router.push('/dashboard')
   } catch (error) {
     console.error('Signup failed:', error)

@@ -323,15 +323,14 @@ const logout = () => {
 }
 
 const deleteAccount = async () => {
-  if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-    try {
-      await axios.delete(`http://localhost:8080/user/${userId}`)
-      // Clear user session or token
-      localStorage.removeItem('token')
-      router.push('/auth')
-    } catch (error) {
-      console.error('Error deleting account:', error)
-    }
+  try {
+    const userId = localStorage.getItem('userId') // Assuming userId is stored in localStorage
+    await axios.delete(`http://localhost:8080/user/${userId}`)
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    router.push('/auth')
+  } catch (error) {
+    console.error('Failed to delete account:', error)
   }
 }
 
@@ -404,6 +403,23 @@ const deletePost = (postId) => {
 const goBack = () => {
   router.push('/dashboard')
 }
+
+// Fetch user info
+const userInfo = ref({ name: '', email: '' })
+
+const fetchUserInfo = async () => {
+  try {
+    const userId = localStorage.getItem('userId') // Retrieve userId from localStorage
+    const response = await axios.get(`http://localhost:8080/user/profile/${userId}`)
+    userInfo.value = response.data.user
+  } catch (error) {
+    console.error('Failed to fetch user info:', error)
+  }
+}
+
+onMounted(() => {
+  fetchUserInfo()
+})
 </script>
 
 <style>
