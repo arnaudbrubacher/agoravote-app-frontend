@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { jwtDecode } from "jwt-decode"; // Named import
 
+
 export const login = async (email, password) => {
   try {
     const response = await axios.post('http://localhost:8080/login', {
@@ -35,7 +36,15 @@ export const fetchUserProfile = async () => {
   if (!userId) throw new Error('User ID not found in local storage')
 
   try {
-    const response = await axios.get(`http://localhost:8080/user/profile/${userId}`)
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`http://localhost:8080/user/profile/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    console.log('Request URL:', `http://localhost:8080/user/profile/${userId}`)
+    console.log('Request Headers:', { Authorization: `Bearer ${token}` })
+    console.log('Response:', response.data)
     return response.data.user
   } catch (error) {
     console.error('Failed to fetch user profile:', error)
@@ -48,7 +57,15 @@ export const deleteUserAccount = async () => {
   if (!userId) throw new Error('User ID not found in local storage')
 
   try {
-    await axios.delete(`http://localhost:8080/user/${userId}`)
+    const token = localStorage.getItem('token')
+    const response = await axios.delete(`http://localhost:8080/user/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    console.log('Request URL:', `http://localhost:8080/user/${userId}`)
+    console.log('Request Headers:', { Authorization: `Bearer ${token}` })
+    console.log('Response:', response.data)
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
   } catch (error) {
