@@ -72,8 +72,7 @@ definePageMeta({
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login } from '@/utils/auth'
-import axios from 'axios'
+import { login, signup } from '@/utils/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -92,13 +91,8 @@ const passwordError = ref(false)
 
 const handleLogin = async () => {
   try {
-    const response = await axios.post('http://localhost:8080/login', {
-      email: loginEmail.value,
-      password: loginPassword.value
-    })
-    localStorage.setItem('token', response.data.token)
-    localStorage.setItem('userId', response.data.userId) // Store userId
-    router.push('/dashboard')
+    await login(loginEmail.value, loginPassword.value)
+    router.push('/dashboard') // Redirect to the dashboard after successful login
   } catch (error) {
     console.error('Login failed:', error)
   }
@@ -111,14 +105,8 @@ const handleSignup = async () => {
   }
   passwordError.value = false
   try {
-    const response = await axios.post('http://localhost:8080/signup', {
-      name: signupName.value,
-      email: signupEmail.value,
-      password: signupPassword.value
-    })
-    localStorage.setItem('token', response.data.token)
-    localStorage.setItem('userId', response.data.userId) // Store userId
-    router.push('/dashboard')
+    await signup(signupName.value, signupEmail.value, signupPassword.value)
+    router.push('/dashboard') // Redirect to the dashboard after successful signup
   } catch (error) {
     console.error('Signup failed:', error)
   }

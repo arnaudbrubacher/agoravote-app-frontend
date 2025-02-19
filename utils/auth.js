@@ -1,6 +1,9 @@
 import axios from 'axios'
 import { jwtDecode } from "jwt-decode"; // Named import
 
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 export const login = async (email, password) => {
   try {
@@ -14,6 +17,23 @@ export const login = async (email, password) => {
     return { token, userId }
   } catch (error) {
     console.error('Login failed:', error)
+    throw error
+  }
+}
+
+export const signup = async (name, email, password) => {
+  try {
+    const response = await axios.post('http://localhost:8080/signup', {
+      name,
+      email,
+      password
+    })
+    const { token, userId } = response.data
+    localStorage.setItem('token', token)
+    localStorage.setItem('userId', userId)
+    return { token, userId }
+  } catch (error) {
+    console.error('Signup failed:', error)
     throw error
   }
 }
