@@ -1,9 +1,5 @@
 import axios from 'axios'
-import { jwtDecode } from "jwt-decode"; // Named import
-
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
+import { jwtDecode } from 'jwt-decode' // Use named import
 
 export const login = async (email, password) => {
   try {
@@ -43,7 +39,7 @@ export const getUserIdFromToken = () => {
   if (!token) return null
 
   try {
-    const decoded = jwtDecode(token)
+    const decoded = decode(token)
     return decoded.user_id
   } catch (error) {
     console.error('Failed to decode token:', error)

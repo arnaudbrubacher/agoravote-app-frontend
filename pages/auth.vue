@@ -72,7 +72,7 @@ definePageMeta({
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login, signup } from '@/utils/auth'
+import { login, signup } from '~/src/utils/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'

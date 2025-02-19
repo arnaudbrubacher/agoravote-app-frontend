@@ -59,8 +59,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '@/utils/axios' // Use the Axios instance with the interceptor
-import { decode } from 'jwt-decode' // Use named import
+import axios from '~/src/utils/axios' // Use the Axios instance with the interceptor
+import { jwtDecode } from 'jwt-decode' // Use named import
 
 const router = useRouter()
 
@@ -75,7 +75,7 @@ const fetchUserInfo = async () => {
       throw new Error('Token not found')
     }
 
-    const decoded = decode(token)
+    const decoded = jwtDecode(token)
     userName.value = decoded.name
     userEmail.value = decoded.email
 
