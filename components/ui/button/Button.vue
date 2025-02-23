@@ -1,31 +1,26 @@
 <script setup lang="ts">
-import { defineProps, withDefaults } from 'vue'
+import type { HTMLAttributes } from 'vue'
 import { cn } from '@/lib/utils'
+import { Primitive, type PrimitiveProps } from 'reka-ui'
+import { type ButtonVariants, buttonVariants } from '.'
 
-interface Props {
-  variant?: string
-  class?: string
+interface Props extends PrimitiveProps {
+  variant?: ButtonVariants['variant']
+  size?: ButtonVariants['size']
+  class?: HTMLAttributes['class']
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  variant: 'default',
-  class: ''
+  as: 'button',
 })
 </script>
 
 <template>
-  <button
-    :class="cn(
-      'px-4 py-2 rounded',
-      props.variant === 'default' ? 'bg-button-default text-background-light hover:bg-button-hover dark:bg-button-default dark:text-background-light dark:hover:bg-button-hover' : '',
-      props.class
-    )"
-    @click="$emit('click')"
+  <Primitive
+    :as="as"
+    :as-child="asChild"
+    :class="cn(buttonVariants({ variant, size }), props.class)"
   >
     <slot />
-  </button>
+  </Primitive>
 </template>
-
-<style scoped>
-/* Add any additional styles here */
-</style>
