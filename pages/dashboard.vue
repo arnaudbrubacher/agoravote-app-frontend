@@ -70,21 +70,35 @@ const profilePicture = ref(null)
 
 const fetchUserInfo = async () => {
   try {
+    // Get token and userId from localStorage
     const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Token not found')
+    const userId = localStorage.getItem('userId')
+    
+    if (!token || !userId) {
+      throw new Error('Authentication credentials not found')
     }
 
-    const decoded = jwtDecode(token)
-    userName.value = decoded.name
-    userEmail.value = decoded.email
+    // Make API call to get user profile
+    const response = await axios.get(`/user/profile/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
 
-    // Optionally, fetch additional user details from the server
-    const userId = decoded.user_id
-    const response = await axios.get(`/user/profile/${userId}`)
-    profilePicture.value = response.data.profilePicture
+    // Update user information from API response
+    userName.value = response.data.name
+    userEmail.value = response.data.email
+    profilePicture.value = response.data.profilePicture || null
+
+    console.log('User profile fetched:', response.data) // Debug log
   } catch (error) {
     console.error('Failed to fetch user info:', error)
+    if (error.response?.status === 401) {
+      // Handle unauthorized access
+      localStorage.removeItem('token')
+      localStorage.removeItem('userId')
+      router.push('/auth')
+    }
   }
 }
 
