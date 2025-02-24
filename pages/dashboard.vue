@@ -1,72 +1,87 @@
 <template>
-  <div class="space-y-6">
-    <!-- Profile Info Card -->
-    <Card>
+  <div class="container mx-auto p-6 space-y-6">
+    <!-- Profile Card -->
+    <Card class="w-full max-w-2xl mx-auto">
       <CardContent class="p-6">
         <div class="flex items-start space-x-6">
-          <div class="relative">
-            <div v-if="profilePicture" class="w-24 h-24">
-              <img 
-                :src="profilePicture" 
-                alt="Profile picture"
-                class="w-full h-full rounded-full object-cover"
-              />
-            </div>
-            <div v-else class="w-24 h-24 bg-muted rounded-full flex items-center justify-center">
-              <UserCircleIcon class="w-16 h-16 text-muted-foreground" />
-            </div>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              class="absolute -bottom-2 -right-2"
-              @click="triggerFileInput"
-            >
-              <PencilIcon class="h-4 w-4" />
-            </Button>
-            <input 
-              type="file" 
-              ref="fileInput" 
-              class="hidden" 
-              accept="image/*"
-              @change="updateProfilePicture" 
-            />
-          </div>
           <div class="flex-1 space-y-2 py-2">
-            <h3 class="text-lg font-medium">{{ userName }}</h3>
-            <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
+            <h3 class="text-lg font-medium">{{ userName || 'Loading...' }}</h3>
+            <p class="text-sm text-muted-foreground">{{ userEmail || 'Loading...' }}</p>
           </div>
           <div class="flex items-center ml-auto space-x-2">
             <Button 
               variant="outline" 
               @click="logout"
+              class="flex items-center"
             >
+              <LogOutIcon class="mr-2 h-4 w-4" />
               Log Out
             </Button>
             <Button 
-              variant="outline" 
+              variant="destructive" 
               @click="deleteAccount"
-              class="text-red-600"
+              class="flex items-center"
             >
+              <TrashIcon class="mr-2 h-4 w-4" />
               Delete Account
             </Button>
           </div>
         </div>
       </CardContent>
     </Card>
+
+    <!-- Groups Card -->
+    <Card class="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Your Groups</CardTitle>
+        <CardDescription>Groups you've created or joined</CardDescription>
+      </CardHeader>
+      <CardContent class="p-6">
+        <div class="flex items-center justify-between">
+          <div class="space-y-1">
+            <h4 class="text-sm font-medium">Total Groups</h4>
+            <p class="text-2xl font-bold">{{ groups.length }}</p>
+          </div>
+          <Button @click="openNewGroupDialog" class="flex items-center">
+            <PlusIcon class="mr-2 h-4 w-4" />
+            Create Group
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- New Group Dialog -->
+    <NewGroupDialog
+      v-if="showNewGroupDialog"
+      @close="closeNewGroupDialog"
+      @group-created="handleGroupCreated"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '~/src/utils/axios' // Use the Axios instance with the interceptor
-import { jwtDecode } from 'jwt-decode' // Use named import
+import axios from '~/src/utils/axios'
+import { LogOutIcon, TrashIcon, PlusIcon } from 'lucide-vue-next'
+// Import shadcn components
+import { Button } from '@/components/ui/button'
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent 
+} from '@/components/ui/card'
+import NewGroupDialog from '@/components/NewGroupDialog'
 
 const router = useRouter()
 
 const userName = ref('')
 const userEmail = ref('')
 const profilePicture = ref(null)
+const showNewGroupDialog = ref(false)
+const groups = ref([])
 
 const fetchUserInfo = async () => {
   try {
@@ -137,6 +152,20 @@ const deleteAccount = async () => {
   } catch (error) {
     console.error('Failed to delete account:', error)
   }
+}
+
+// Dialog handlers
+const openNewGroupDialog = () => {
+  showNewGroupDialog.value = true
+}
+
+const closeNewGroupDialog = () => {
+  showNewGroupDialog.value = false
+}
+
+const handleGroupCreated = (newGroup) => {
+  groups.value.push(newGroup)
+  closeNewGroupDialog()
 }
 </script>
 
