@@ -26,10 +26,22 @@
         </div>
       </div>
 
-      <!-- Group Info -->
+      <!-- Group Info Card -->
       <Card class="w-full">
-        <CardContent class="p-6">
-          <div class="space-y-4">
+        <div class="p-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-medium">Group Information</h3>
+            <Button 
+              variant="outline" 
+              size="sm"
+              @click="showSettingsDialog = true"
+              class="flex items-center"
+            >
+              <SettingsIcon class="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </div>
+          <div class="mt-4 space-y-4">
             <div class="flex items-center space-x-2">
               <LockIcon v-if="group.isPrivate" class="h-4 w-4" />
               <UnlockIcon v-else class="h-4 w-4" />
@@ -39,7 +51,7 @@
               Created {{ new Date(group.createdAt).toLocaleDateString() }}
             </div>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
       <!-- Group Content Tabs -->
@@ -109,7 +121,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { ArrowLeftIcon, LockIcon, UnlockIcon } from 'lucide-vue-next'
+import { ArrowLeftIcon, LockIcon, UnlockIcon, SettingsIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { 
   Card, 
@@ -132,11 +144,8 @@ const error = ref(null)
 
 const fetchGroup = async () => {
     try {
-        // Add more detailed logging
-        console.log('Route object:', route)
-        console.log('Route params:', route.params)
         const groupId = route.params.id
-        console.log('Extracted groupId:', groupId)
+        console.log('Fetching group with ID:', groupId) // Add debug log
 
         if (!groupId) {
             error.value = 'No group ID provided'
@@ -150,20 +159,9 @@ const fetchGroup = async () => {
             return
         }
 
-        // Log the full request URL and headers
-        const requestUrl = `/groups/${groupId}`
-        console.log('Making request to:', requestUrl)
-        console.log('With token:', token.substring(0, 10) + '...')
-
-        const response = await axios.get(requestUrl, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        })
-
-        console.log('Response received:', response)
-
+        console.log('Making request to:', `/groups/${groupId}`) // Add debug log
+        const response = await axios.get(`/groups/${groupId}`)
+        
         if (!response.data) {
             throw new Error('No group data received')
         }
@@ -172,8 +170,12 @@ const fetchGroup = async () => {
         loading.value = false
         
     } catch (err) {
-        console.error('Full error object:', err)
-        error.value = err.response?.data?.error || err.message || 'Failed to load group'
+        console.error('Failed to load group:', {
+            params: route.params,
+            error: err,
+            response: err.response?.data
+        })
+        error.value = err.response?.data?.error || 'Failed to load group'
         loading.value = false
     }
 }

@@ -54,32 +54,39 @@
             No groups yet. Create your first group!
           </div>
           
-          <div v-for="group in groups" :key="group.id" class="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-            <div class="flex items-center space-x-4">
-              <div v-if="group.picture" class="w-12 h-12 rounded-full overflow-hidden">
-                <img :src="group.picture" :alt="group.name" class="w-full h-full object-cover" />
-              </div>
-              <div v-else class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <UserGroupIcon class="h-6 w-6 text-muted-foreground" />
+          <div 
+            v-for="group in groups" 
+            :key="group.id" 
+            class="cursor-pointer"
+            @click="viewGroup(group.id)"
+          >
+            <div class="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+              <div class="flex items-center space-x-4">
+                <div v-if="group.picture" class="w-12 h-12 rounded-full overflow-hidden">
+                  <img :src="group.picture" :alt="group.name" class="w-full h-full object-cover" />
+                </div>
+                <div v-else class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <UserGroupIcon class="h-6 w-6 text-muted-foreground" />
+                </div>
+                
+                <div>
+                  <h4 class="font-medium">{{ group.name }}</h4>
+                  <p class="text-sm text-muted-foreground">{{ group.description }}</p>
+                </div>
               </div>
               
-              <div>
-                <h4 class="font-medium">{{ group.name }}</h4>
-                <p class="text-sm text-muted-foreground">{{ group.description }}</p>
+              <div class="flex items-center space-x-2">
+                <Button variant="outline" size="sm" @click="viewGroup(group.id)">
+                  View
+                </Button>
+                <Button 
+                  v-if="group.isPrivate" 
+                  variant="secondary" 
+                  size="sm"
+                >
+                  Private
+                </Button>
               </div>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-              <Button variant="outline" size="sm" @click="viewGroup(group.id)">
-                View
-              </Button>
-              <Button 
-                v-if="group.isPrivate" 
-                variant="secondary" 
-                size="sm"
-              >
-                Private
-              </Button>
             </div>
           </div>
         </div>
@@ -177,14 +184,10 @@ const fetchGroups = async () => {
 }
 
 const viewGroup = (groupId) => {
-    if (!groupId) {
-        console.error('No group ID provided')
-        return
-    }
     console.log('Navigating to group:', groupId)
     router.push({
         path: `/group/${groupId}`,
-        state: { group: groups.value.find(g => g.id === groupId) }
+        params: { id: groupId }
     })
 }
 
