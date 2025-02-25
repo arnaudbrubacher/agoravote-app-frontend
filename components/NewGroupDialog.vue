@@ -121,7 +121,7 @@
             <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
             <Button 
               type="submit" 
-              :disabled="isSubmitting || !form.name.trim() || (form.requiresPassword && form.password !== form.confirmPassword)"
+              :disabled="isButtonDisabled"
             >
               {{ isSubmitting ? 'Creating...' : 'Create Group' }}
             </Button>
@@ -133,12 +133,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { XIcon, UserGroupIcon, CameraIcon, TrashIcon } from '@heroicons/vue/outline'
+
+// Move defineEmits to the top and assign it to a variable
+const emit = defineEmits(['close', 'group-created'])
 
 const fileInput = ref(null)
 const isSubmitting = ref(false)
@@ -177,30 +180,50 @@ const removeDocument = (index) => {
   form.value.documents.splice(index, 1)
 }
 
+const isButtonDisabled = computed(() => {
+  if (isSubmitting.value) return true
+  if (!form.value.name.trim()) return true
+  if (form.value.requiresPassword) {
+    return !form.value.password || form.value.password !== form.value.confirmPassword
+  }
+  return false
+})
+
 const handleSubmit = async () => {
   if (!form.value.name.trim()) return
   
   isSubmitting.value = true
   try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
     const newGroup = {
       name: form.value.name,
       description: form.value.description,
       isPrivate: form.value.isPrivate,
       picture: form.value.picture,
       requiresPassword: form.value.requiresPassword,
-      password: form.value.password,
+      password: form.value.requiresPassword ? form.value.password : null,
       documents: form.value.documents,
       lastActive: new Date().toISOString()
     }
-    
-    const token = localStorage.getItem('token') // Get the token from local storage
+
     const response = await axios.post('http://localhost:8080/groups', newGroup, {
       headers: {
-        Authorization: `Bearer ${token}` // Include the token in the Authorization header
-      }
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      withCredentials: true  // Add this line
     })
+
     console.log('Group created:', response.data)
+    // Replace $emit with emit
+    emit('group-created', response.data)
+    emit('close')
     
+    // Reset form
     form.value = {
       name: '',
       description: '',
@@ -211,14 +234,13 @@ const handleSubmit = async () => {
       confirmPassword: '',
       documents: []
     }
-    $emit('group-created', response.data) // Emit the event with the created group data
-    $emit('close')
   } catch (error) {
     console.error('Failed to create group:', error)
+    // Show error to user
+    alert(error.response?.data?.error || error.message)
   } finally {
     isSubmitting.value = false
   }
 }
 
-defineEmits(['close', 'group-created'])
 </script>
