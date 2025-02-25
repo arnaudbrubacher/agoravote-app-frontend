@@ -37,7 +37,7 @@
         <CardDescription>Groups you've created or joined</CardDescription>
       </CardHeader>
       <CardContent class="p-6">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-6">
           <div class="space-y-1">
             <h4 class="text-sm font-medium">Total Groups</h4>
             <p class="text-2xl font-bold">{{ groups.length }}</p>
@@ -46,6 +46,42 @@
             <PlusIcon class="mr-2 h-4 w-4" />
             Create Group
           </Button>
+        </div>
+
+        <!-- Add this new section for the groups list -->
+        <div class="space-y-4">
+          <div v-if="groups.length === 0" class="text-center py-6 text-muted-foreground">
+            No groups yet. Create your first group!
+          </div>
+          
+          <div v-for="group in groups" :key="group.id" class="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+            <div class="flex items-center space-x-4">
+              <div v-if="group.picture" class="w-12 h-12 rounded-full overflow-hidden">
+                <img :src="group.picture" :alt="group.name" class="w-full h-full object-cover" />
+              </div>
+              <div v-else class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <UserGroupIcon class="h-6 w-6 text-muted-foreground" />
+              </div>
+              
+              <div>
+                <h4 class="font-medium">{{ group.name }}</h4>
+                <p class="text-sm text-muted-foreground">{{ group.description }}</p>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <Button variant="outline" size="sm" @click="viewGroup(group.id)">
+                View
+              </Button>
+              <Button 
+                v-if="group.isPrivate" 
+                variant="secondary" 
+                size="sm"
+              >
+                Private
+              </Button>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -64,7 +100,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
 import { LogOutIcon, TrashIcon, PlusIcon } from 'lucide-vue-next'
-// Import shadcn components
+import { UserGroupIcon } from '@heroicons/vue/outline'  // Keep only this import
 import { Button } from '@/components/ui/button'
 import { 
   Card, 
@@ -117,8 +153,33 @@ const fetchUserInfo = async () => {
   }
 }
 
+const fetchGroups = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await axios.get('/groups', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    groups.value = response.data
+    console.log('Groups fetched:', response.data)
+  } catch (error) {
+    console.error('Failed to fetch groups:', error)
+  }
+}
+
+const viewGroup = (groupId) => {
+  router.push(`/groups/${groupId}`)
+}
+
 onMounted(() => {
   fetchUserInfo()
+  fetchGroups()
 })
 
 const triggerFileInput = () => {
@@ -163,8 +224,8 @@ const closeNewGroupDialog = () => {
   showNewGroupDialog.value = false
 }
 
-const handleGroupCreated = (newGroup) => {
-  groups.value.push(newGroup)
+const handleGroupCreated = async (newGroup) => {
+  await fetchGroups() // Refresh the entire list
   closeNewGroupDialog()
 }
 </script>
