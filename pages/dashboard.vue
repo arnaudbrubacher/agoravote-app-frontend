@@ -177,13 +177,14 @@ const fetchGroups = async () => {
 }
 
 const viewGroup = (groupId) => {
-    if (!groupId) return
-    
+    if (!groupId) {
+        console.error('No group ID provided')
+        return
+    }
+    console.log('Navigating to group:', groupId)
     router.push({
         path: `/group/${groupId}`,
-        state: { 
-            group: groups.value.find(g => g.id === groupId)
-        }
+        state: { group: groups.value.find(g => g.id === groupId) }
     })
 }
 
