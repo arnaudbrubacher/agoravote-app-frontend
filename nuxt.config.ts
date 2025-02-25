@@ -6,6 +6,8 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',  // Tailwind CSS module for styling
     '@nuxtjs/color-mode',   // Color mode module for dark/light mode
     'shadcn-nuxt'           // ShadCN module for UI components
+    // Remove or comment out the @nuxtjs/axios module
+    // '@nuxtjs/axios'
   ],
 
   colorMode: {
@@ -78,6 +80,11 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
+
+  // Remove the axios configuration
+  // axios: {
+  //   baseURL: 'http://localhost:8080'
+  // },
 
   // Build Configuration
   build: {
