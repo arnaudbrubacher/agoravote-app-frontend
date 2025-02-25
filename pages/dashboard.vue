@@ -174,7 +174,14 @@ const fetchGroups = async () => {
 }
 
 const viewGroup = (groupId) => {
-  router.push(`/groups/${groupId}`)
+    if (!groupId) return
+    
+    router.push({
+        path: `/group/${groupId}`,
+        state: { 
+            group: groups.value.find(g => g.id === groupId)
+        }
+    })
 }
 
 onMounted(() => {

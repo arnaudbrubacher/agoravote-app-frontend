@@ -24,9 +24,16 @@ export default defineNuxtConfig({
     }
   },
 
-  // pages: true,              // Enable automatic page routing
+  pages: true,              // Enable automatic page routing
 
   compatibilityDate: '2025-02-05',  // Compatibility date for Nuxt features
+
+  routes: {
+    '/group/:id': {
+      name: 'group-details',
+      component: '~/pages/group/[id].vue'
+    }
+  },
 
   // Global page headers
   head: {
