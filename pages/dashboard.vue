@@ -154,23 +154,26 @@ const fetchUserInfo = async () => {
 }
 
 const fetchGroups = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('No authentication token found')
+    try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+            throw new Error('No authentication token found')
+        }
+
+        const response = await axios.get('/user/groups', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+
+        groups.value = response.data
+        console.log('User groups fetched:', response.data)
+    } catch (error) {
+        console.error('Failed to fetch user groups:', error)
+        if (error.response?.status === 401) {
+            router.push('/auth')
+        }
     }
-
-    const response = await axios.get('/groups', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-
-    groups.value = response.data
-    console.log('Groups fetched:', response.data)
-  } catch (error) {
-    console.error('Failed to fetch groups:', error)
-  }
 }
 
 const viewGroup = (groupId) => {
