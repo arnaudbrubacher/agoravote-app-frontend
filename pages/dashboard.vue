@@ -348,9 +348,15 @@ const searchGroups = async () => {
   
   try {
     searchLoading.value = true
-    const response = await axios.get(`/groups/search?query=${encodeURIComponent(searchQuery.value)}`)
-    searchResults.value = response.data
-    console.log('Search results:', response.data)
+    // Adjust this endpoint and parameters to match your Golang API
+    const response = await axios.get(`/api/groups/search`, {
+      params: {
+        query: searchQuery.value,
+        public_only: true
+      }
+    })
+    searchResults.value = response.data.groups || response.data || []
+    console.log('Search results:', searchResults.value)
   } catch (error) {
     console.error('Failed to search groups:', error)
     searchResults.value = []
@@ -367,14 +373,16 @@ const userInGroup = (groupId) => {
 // Join a group
 const joinGroup = async (groupId) => {
   try {
-    await axios.post(`/groups/${groupId}/join`)
+    // Make API call to join the group
+    await axios.post(`/api/groups/${groupId}/join`)
+    
     // Refresh user groups after joining
     await fetchGroups()
-    // Show success message or notification
+    
+    // Show success message
     alert('Successfully joined the group!')
   } catch (error) {
     console.error('Failed to join group:', error)
-    // Show error message
     alert('Failed to join group: ' + (error.response?.data?.message || 'Unknown error'))
   }
 }
