@@ -184,6 +184,7 @@ const fetchGroups = async () => {
 
 const viewGroup = (groupId) => {
     console.log('Navigating to group:', groupId)
+    // Fix: Only use path, not path + params
     router.push(`/group/${groupId}`)
 }
 
