@@ -31,15 +31,28 @@
         <div class="p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-medium">Group Information</h3>
-            <Button 
-              variant="outline" 
-              size="sm"
-              @click="showSettingsDialog = true"
-              class="flex items-center"
-            >
-              <SettingsIcon class="h-4 w-4 mr-2" />
-              Settings
-            </Button>
+            <div class="flex space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                @click="showSettingsDialog = true"
+                class="flex items-center"
+              >
+                <SettingsIcon class="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+              <!-- Add Delete Button - only show for admin -->
+              <Button 
+                v-if="isAdmin"
+                variant="destructive" 
+                size="sm"
+                @click="confirmDeleteGroup"
+                class="flex items-center"
+              >
+                <TrashIcon class="h-4 w-4 mr-2" />
+                Delete Group
+              </Button>
+            </div>
           </div>
           <div class="mt-4 space-y-4">
             <div class="flex items-center space-x-2">
@@ -118,10 +131,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { ArrowLeftIcon, LockIcon, UnlockIcon, SettingsIcon } from 'lucide-vue-next'
+import { ArrowLeftIcon, LockIcon, UnlockIcon, SettingsIcon, TrashIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { 
   Card, 
@@ -141,6 +154,54 @@ const router = useRouter()
 const group = ref(null)
 const loading = ref(true)
 const error = ref(null)
+
+// Add computed property to check if current user is admin
+const userId = ref(localStorage.getItem('userId'))
+const isAdmin = computed(() => {
+  console.log('Admin check:', {
+    userId: userId.value,
+    groupAdminId: group.value?.admin_id,
+    isMatch: group.value?.admin_id === userId.value
+  })
+  return group.value && group.value.admin_id === userId.value
+})
+
+// Add delete group function
+const confirmDeleteGroup = async () => {
+  if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+    return
+  }
+  
+  try {
+    loading.value = true
+    const groupId = route.params.id
+    const token = localStorage.getItem('token')
+    
+    console.log('Deleting group:', {
+      groupId,
+      hasToken: !!token
+    })
+    
+    await axios({
+      method: 'DELETE',
+      url: `/groups/${groupId}`,
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    console.log('Group deleted successfully')
+    router.push('/dashboard')
+  } catch (err) {
+    console.error('Delete failed:', {
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message
+    })
+    error.value = err.response?.data?.error || 'Failed to delete group'
+    loading.value = false
+  }
+}
 
 const fetchGroup = async () => {
     try {
