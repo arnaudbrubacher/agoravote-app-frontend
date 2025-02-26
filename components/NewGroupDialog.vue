@@ -2,127 +2,131 @@
   <div class="fixed inset-0 bg-background/80 backdrop-blur-sm">
     <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
       <div class="flex flex-col space-y-4">
-        <header class="flex justify-between items-center">
+        <div class="flex justify-between items-center">
           <h2 class="text-lg font-semibold">Create New Group</h2>
           <Button variant="ghost" size="icon" @click="$emit('close')">
             <XIcon class="h-4 w-4" />
           </Button>
-        </header>
-
+        </div>
+        
         <form @submit.prevent="handleSubmit" class="space-y-6">
           <!-- Group Picture -->
-          <div class="flex flex-col items-center space-y-2">
+          <div class="flex justify-center mb-8">
             <div class="relative">
-              <div v-if="form.picture" class="w-32 h-32">
-                <img 
-                  :src="form.picture" 
-                  alt="Group picture"
-                  class="w-full h-full rounded-lg object-cover"
-                />
+              <div v-if="!form.picture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
+                <UserGroupIcon class="h-16 w-16 text-gray-400" />
               </div>
-              <div v-else class="w-32 h-32 bg-muted rounded-lg flex items-center justify-center">
-                <UserGroupIcon class="w-16 h-16 text-muted-foreground" />
-              </div>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                class="absolute -bottom-2 -right-2"
+              <img 
+                v-else
+                :src="form.picture" 
+                alt="Group Picture"
+                class="w-28 h-28 rounded-full object-cover border"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
                 @click="triggerFileInput"
               >
                 <CameraIcon class="h-4 w-4" />
               </Button>
               <input 
-                type="file"
-                ref="fileInput"
+                type="file" 
+                ref="fileInput" 
                 class="hidden"
-                accept="image/*"
-                @change="handlePictureUpload"
+                accept="image/*" 
+                @change="handlePictureUpload" 
               />
             </div>
-            <span class="text-sm text-muted-foreground">Group Picture</span>
           </div>
-
+          
           <!-- Group Name -->
           <div class="space-y-2">
-            <Label for="name">Group Name</Label>
-            <Input id="name" v-model="form.name" required />
+            <Label for="group-name">Group Name</Label>
+            <Input 
+              id="group-name"
+              v-model="form.name" 
+              placeholder="Enter group name"
+              required
+            />
           </div>
-
+          
           <!-- Group Description -->
           <div class="space-y-2">
-            <Label for="description">Description</Label>
-            <Input id="description" v-model="form.description" />
+            <Label for="group-description">Description</Label>
+            <textarea
+              id="group-description"
+              v-model="form.description"
+              class="w-full px-3 py-2 border rounded-md h-24"
+              placeholder="Enter group description"
+            ></textarea>
           </div>
-
-          <!-- Group Privacy -->
+          
+          <!-- Privacy Settings -->
           <div class="space-y-2">
             <Label>Privacy</Label>
-            <div class="flex space-x-2">
-              <Button 
-                type="button"
-                :variant="form.isPrivate ? 'default' : 'outline'"
-                @click="form.isPrivate = true"
-              >
-                Private
-              </Button>
-              <Button 
-                type="button"
-                :variant="!form.isPrivate ? 'default' : 'outline'"
-                @click="form.isPrivate = false"
-              >
-                Public
-              </Button>
+            <div class="flex space-x-4">
+              <label class="flex items-center space-x-2">
+                <input 
+                  type="radio" 
+                  v-model="form.isPrivate" 
+                  :value="true"
+                />
+                <span>Private Group</span>
+              </label>
+              <label class="flex items-center space-x-2">
+                <input 
+                  type="radio" 
+                  v-model="form.isPrivate" 
+                  :value="false"
+                />
+                <span>Public Group</span>
+              </label>
             </div>
           </div>
-
-          <!-- Group Password -->
-          <div class="space-y-2">
-            <Label>
-              <input type="checkbox" v-model="form.requiresPassword" />
-              Admission requires a password
-            </Label>
-            <Input 
-              type="password" 
-              v-model="form.password" 
-              placeholder="Enter password" 
-              :disabled="!form.requiresPassword"
-            />
-            <Input 
-              type="password" 
-              v-model="form.confirmPassword" 
-              placeholder="Confirm password" 
-              :disabled="!form.requiresPassword"
-            />
-          </div>
-
+          
           <!-- Documents Required -->
           <div class="space-y-4">
             <div class="space-y-2">
-              <Label>Documents Required for Admission</Label>
+              <Label>Documents Required from Users to Join</Label>
+              <p class="text-sm text-muted-foreground">
+                Members must submit these documents to join your group
+              </p>
             </div>
-            <Button variant="outline" @click="addDocument">Add Document</Button>
+            
+            <Button 
+              type="button"
+              variant="outline" 
+              @click="addDocument"
+              class="flex items-center"
+            >
+              <PlusIcon class="h-4 w-4 mr-1" />
+              Add Required Document
+            </Button>
             
             <div v-if="form.documents.length" class="space-y-2">
               <div v-for="(doc, index) in form.documents" :key="index" class="flex items-center space-x-2">
-                <Input v-model="doc.name" placeholder="Document name" />
+                <Input 
+                  v-model="doc.name" 
+                  placeholder="Document name (e.g. ID Card, Student Card)" 
+                />
                 <Button 
+                  type="button"
                   variant="destructive" 
                   size="icon" 
                   @click="removeDocument(index)"
+                  title="Remove this document requirement"
                 >
                   <TrashIcon class="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </div>
-
-          <!-- Form Actions -->
+          
           <div class="flex justify-end space-x-2">
             <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
-            <Button 
-              type="submit" 
-              :disabled="isButtonDisabled"
-            >
+            <Button type="submit" :disabled="isSubmitting">
               {{ isSubmitting ? 'Creating...' : 'Create Group' }}
             </Button>
           </div>
@@ -134,13 +138,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import axios from '~/src/utils/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { XIcon, UserGroupIcon, CameraIcon, TrashIcon } from '@heroicons/vue/outline'
+import { XIcon, UserGroupIcon, CameraIcon, TrashIcon, PlusIcon } from '@heroicons/vue/outline'
 
-// Move defineEmits to the top and assign it to a variable
 const emit = defineEmits(['close', 'group-created'])
 
 const fileInput = ref(null)
@@ -180,67 +183,31 @@ const removeDocument = (index) => {
   form.value.documents.splice(index, 1)
 }
 
-const isButtonDisabled = computed(() => {
-  if (isSubmitting.value) return true
-  if (!form.value.name.trim()) return true
-  if (form.value.requiresPassword) {
-    return !form.value.password || form.value.password !== form.value.confirmPassword
-  }
-  return false
-})
-
 const handleSubmit = async () => {
-  if (!form.value.name.trim()) return
-  
-  isSubmitting.value = true
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('No authentication token found')
-    }
-
-    const newGroup = {
+    isSubmitting.value = true
+    
+    // Create form data to send to API
+    const groupData = {
       name: form.value.name,
       description: form.value.description,
-      isPrivate: form.value.isPrivate,
+      is_private: form.value.isPrivate,
       picture: form.value.picture,
-      requiresPassword: form.value.requiresPassword,
-      password: form.value.requiresPassword ? form.value.password : null,
-      documents: form.value.documents,
-      lastActive: new Date().toISOString()
+      documents: form.value.documents
     }
-
-    const response = await axios.post('http://localhost:8080/groups', newGroup, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      withCredentials: true  // Add this line
-    })
-
-    console.log('Group created:', response.data)
-    // Replace $emit with emit
-    emit('group-created', response.data)
-    emit('close')
     
-    // Reset form
-    form.value = {
-      name: '',
-      description: '',
-      isPrivate: true,
-      picture: null,
-      requiresPassword: false,
-      password: '',
-      confirmPassword: '',
-      documents: []
-    }
+    // Make API call to create group
+    const response = await axios.post('/groups', groupData)
+    
+    // Emit success event with new group
+    emit('group-created', response.data)
+    
+    console.log('Group created:', response.data)
   } catch (error) {
     console.error('Failed to create group:', error)
-    // Show error to user
-    alert(error.response?.data?.error || error.message)
+    // Handle error (could add error state and display)
   } finally {
     isSubmitting.value = false
   }
 }
-
 </script>
