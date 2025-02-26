@@ -161,34 +161,30 @@ const fetchUserInfo = async () => {
 }
 
 const fetchGroups = async () => {
-    try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-            throw new Error('No authentication token found')
-        }
-
-        const response = await axios.get('/user/groups', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-
-        groups.value = response.data
-        console.log('User groups fetched:', response.data)
-    } catch (error) {
-        console.error('Failed to fetch user groups:', error)
-        if (error.response?.status === 401) {
-            router.push('/auth')
-        }
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/auth')
+      return
     }
+    
+    // Change this endpoint to get user-specific groups
+    const response = await axios.get('/user/groups')
+    console.log('User groups response:', response.data)
+    groups.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch user groups:', error)
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userId')
+      router.push('/auth')
+    }
+  }
 }
 
 const viewGroup = (groupId) => {
     console.log('Navigating to group:', groupId)
-    router.push({
-        path: `/group/${groupId}`,
-        params: { id: groupId }
-    })
+    router.push(`/group/${groupId}`)
 }
 
 onMounted(() => {

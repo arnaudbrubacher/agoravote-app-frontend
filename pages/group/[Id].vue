@@ -31,15 +31,26 @@
         <div class="p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-medium">Group Information</h3>
-            <Button 
-              variant="outline" 
-              size="sm"
-              @click="showSettingsDialog = true"
-              class="flex items-center"
-            >
-              <SettingsIcon class="h-4 w-4 mr-2" />
-              Settings
-            </Button>
+            <div class="flex items-center space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                @click="showSettingsDialog = true"
+                class="flex items-center"
+              >
+                <SettingsIcon class="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                @click="handleDeleteGroup"
+                class="flex items-center"
+              >
+                <TrashIcon class="h-4 w-4 mr-2" />
+                Delete Group
+              </Button>
+            </div>
           </div>
           <div class="mt-4 space-y-4">
             <div class="flex items-center space-x-2">
@@ -121,7 +132,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { ArrowLeftIcon, LockIcon, UnlockIcon, SettingsIcon } from 'lucide-vue-next'
+import { ArrowLeftIcon, LockIcon, UnlockIcon, SettingsIcon, TrashIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { 
   Card, 
@@ -142,10 +153,32 @@ const group = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
+const handleDeleteGroup = async () => {
+  if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+    return
+  }
+
+  try {
+    const token = localStorage.getItem('token')
+    const groupId = route.params.id
+    
+    await axios.delete(`/groups/${groupId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    router.push('/dashboard')
+  } catch (error) {
+    console.error('Failed to delete group:', error)
+    error.value = error.response?.data?.error || 'Failed to delete group'
+  }
+}
+
 const fetchGroup = async () => {
     try {
         const groupId = route.params.id
-        console.log('Fetching group with ID:', groupId) // Add debug log
+        console.log('Fetching group with ID:', groupId, 'Route params:', route.params)
 
         if (!groupId) {
             error.value = 'No group ID provided'
@@ -159,7 +192,7 @@ const fetchGroup = async () => {
             return
         }
 
-        console.log('Making request to:', `/groups/${groupId}`) // Add debug log
+        console.log('Making request to:', `/groups/${groupId}`)
         const response = await axios.get(`/groups/${groupId}`)
         
         if (!response.data) {
@@ -172,8 +205,9 @@ const fetchGroup = async () => {
     } catch (err) {
         console.error('Failed to load group:', {
             params: route.params,
-            error: err,
-            response: err.response?.data
+            errorMsg: err.message,
+            status: err.response?.status,
+            responseData: err.response?.data
         })
         error.value = err.response?.data?.error || 'Failed to load group'
         loading.value = false
