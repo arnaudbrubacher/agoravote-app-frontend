@@ -271,7 +271,7 @@ const handleImageChange = (event) => {
 
 const confirmDelete = () => {
   if (confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
-    emit('delete')
+    emit('delete')  // Use the emit function returned by defineEmits()
   }
 }
 
