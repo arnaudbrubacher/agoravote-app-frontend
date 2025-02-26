@@ -12,27 +12,25 @@
 
     <!-- Group Content -->
     <div v-else-if="group" class="space-y-6">
-      <!-- Group Header -->
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <Button variant="ghost" @click="router.push('/dashboard')" class="p-2 border">
-            <ArrowLeftIcon class="h-4 w-4" />
-            <span class="ml-2">Back</span>
-          </Button>
-          <div>
-            <h1 class="text-3xl font-bold">{{ group.name }}</h1>
-            <p class="text-muted-foreground">{{ group.description }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Group Info Card -->
+      <!-- Group Header with Info -->
       <Card class="w-full">
         <div class="p-6">
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-medium">Group Information</h3>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-4">
+              <Button variant="ghost" @click="router.push('/dashboard')" class="p-2 border">
+                <ArrowLeftIcon class="h-4 w-4" />
+                <span class="ml-2">Back</span>
+              </Button>
+              <div>
+                <h1 class="text-3xl font-bold">{{ group.name }}</h1>
+                <p class="text-muted-foreground">{{ group.description }}</p>
+              </div>
+            </div>
+            
             <div class="flex space-x-2">
+              <!-- Settings button only shown if user is admin -->
               <Button 
+                v-if="isAdmin"
                 variant="outline" 
                 size="sm"
                 @click="showSettingsDialog = true"
@@ -41,27 +39,6 @@
                 <SettingsIcon class="h-4 w-4 mr-2" />
                 Settings
               </Button>
-              <!-- Add Delete Button - only show for admin -->
-              <Button 
-                v-if="isAdmin"
-                variant="destructive" 
-                size="sm"
-                @click="confirmDeleteGroup"
-                class="flex items-center"
-              >
-                <TrashIcon class="h-4 w-4 mr-2" />
-                Delete Group
-              </Button>
-            </div>
-          </div>
-          <div class="mt-4 space-y-4">
-            <div class="flex items-center space-x-2">
-              <LockIcon v-if="group.isPrivate" class="h-4 w-4" />
-              <UnlockIcon v-else class="h-4 w-4" />
-              <span>{{ group.isPrivate ? 'Private Group' : 'Public Group' }}</span>
-            </div>
-            <div class="text-sm text-muted-foreground">
-              Created {{ new Date(group.createdAt).toLocaleDateString() }}
             </div>
           </div>
         </div>
@@ -127,6 +104,15 @@
         </TabsContent>
       </Tabs>
     </div>
+    
+    <!-- Group Settings Dialog -->
+    <GroupSettingsDialog 
+      v-if="showSettingsDialog && group" 
+      :group="group" 
+      @close="showSettingsDialog = false"
+      @submit="updateGroupSettings"
+      @delete="confirmDeleteGroup"
+    />
   </div>
 </template>
 
@@ -148,6 +134,32 @@ import {
   TabsTrigger,
   TabsContent
 } from '@/components/ui/tabs'
+import GroupSettingsDialog from '@/components/GroupSettingsDialog.vue'
+
+// Add this format date helper function
+const formatDate = (dateString) => {
+  if (!dateString) return 'Unknown date'
+  
+  try {
+    const date = new Date(dateString)
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid date'
+    }
+    
+    // Format options
+    const options = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }
+    
+    return date.toLocaleDateString(undefined, options)
+  } catch (err) {
+    console.error('Error formatting date:', dateString, err)
+    return 'Invalid date'
+  }
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -200,6 +212,32 @@ const confirmDeleteGroup = async () => {
     })
     error.value = err.response?.data?.error || 'Failed to delete group'
     loading.value = false
+  }
+}
+
+// Add ref for dialog visibility
+const showSettingsDialog = ref(false)
+
+// Add settings update handler
+const updateGroupSettings = async (data) => {
+  try {
+    const groupId = route.params.id
+    
+    await axios.put(`/groups/${groupId}`, {
+      settings: data.settings,
+      is_private: data.is_private
+    })
+    
+    // Update local group data with new settings
+    if (group.value) {
+      group.value.settings = data.settings
+      group.value.is_private = data.is_private
+    }
+    
+    showSettingsDialog.value = false
+  } catch (err) {
+    console.error('Failed to update group settings:', err)
+    // You could show an error toast here
   }
 }
 
