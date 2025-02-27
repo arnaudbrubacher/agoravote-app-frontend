@@ -56,6 +56,7 @@
             To add multiple members at once, use the "Upload CSV" button on the members tab.
             The CSV file should have columns for email and role.
           </p>
+          <span class="text-sm text-muted-foreground">{{ member.isAdmin ? 'Admin' : 'Member' }}</span>
         </div>
       </div>
     </div>

@@ -140,7 +140,7 @@
                   class="flex items-center justify-between p-4 border rounded-lg">
                   <div class="flex items-center space-x-2">
                     <span class="font-medium">{{ member.name }}</span>
-                    <span class="text-sm text-muted-foreground">{{ member.role }}</span>
+                    <span class="text-sm text-muted-foreground">{{ member.isAdmin ? 'Admin' : 'Member' }}</span>
                   </div>
                 </div>
               </div>

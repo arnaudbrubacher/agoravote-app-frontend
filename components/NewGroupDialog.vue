@@ -187,14 +187,22 @@ const handleSubmit = async () => {
   try {
     isSubmitting.value = true
     
+    // Convert documents to the format expected by the backend
+    const requiredDocuments = form.value.documents.map(doc => ({
+      name: doc.name,
+      required: true
+    }))
+    
     // Create form data to send to API
     const groupData = {
       name: form.value.name,
       description: form.value.description,
       is_private: form.value.isPrivate,
       picture: form.value.picture,
-      documents: form.value.documents
+      required_documents: requiredDocuments // Use the correct field name
     }
+    
+    console.log('Sending group data:', JSON.stringify(groupData))
     
     // Make API call to create group
     const response = await axios.post('/groups', groupData)
