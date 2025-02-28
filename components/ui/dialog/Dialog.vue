@@ -1,6 +1,6 @@
 <!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/ui/dialog/Dialog.vue -->
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   open: {
@@ -21,10 +21,8 @@ watch(() => props.open, (newVal) => {
 })
 
 // Clean up on unmount
-onMounted(() => {
-  return () => {
-    document.body.classList.remove('overflow-hidden')
-  }
+onUnmounted(() => {
+  document.body.classList.remove('overflow-hidden')
 })
 </script>
 

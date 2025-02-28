@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent @close="$emit('update:open', false)" class="sm:max-w-[425px]">
+    <DialogContent class="w-full max-w-3xl">
       <DialogHeader>
         <DialogTitle>User Settings</DialogTitle>
         <DialogDescription>
@@ -8,7 +8,7 @@
         </DialogDescription>
       </DialogHeader>
       
-      <div class="grid gap-4 py-4">
+      <div class="grid gap-4 p-6 pt-0">
         <!-- Profile Picture Section -->
         <div class="grid gap-2">
           <Label for="picture">Profile Picture</Label>
@@ -62,30 +62,37 @@
           </div>
         </div>
         
-        <!-- Account Danger Zone -->
-        <div class="border-t pt-4 mt-4">
-          <h4 class="text-sm font-medium text-destructive mb-2">Danger Zone</h4>
-          <Button 
-            variant="destructive" 
-            class="w-full" 
-            @click="confirmDeleteAccount"
-          >
-            <TrashIcon class="mr-2 h-4 w-4" />
-            Delete Account
-          </Button>
-        </div>
+        <!-- Log Out Button -->
+        <Button 
+          variant="outline" 
+          class="w-full mt-4" 
+          @click="logout"
+        >
+          <LogOutIcon class="mr-2 h-4 w-4" />
+          Log Out
+        </Button>
+        
+        <!-- Delete Account Button -->
+        <Button 
+          variant="destructive" 
+          class="w-full mt-4" 
+          @click="confirmDeleteAccount"
+        >
+          <TrashIcon class="mr-2 h-4 w-4" />
+          Delete Account
+        </Button>
       </div>
       
-      <DialogFooter>
+      <DialogFooter class="px-6 pb-6">
         <Button variant="outline" @click="$emit('update:open', false)">Cancel</Button>
         <Button type="submit" @click="saveSettings">Save Changes</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
 
-  <!-- Password Change Dialog -->
+  <!-- Password Change Dialog - Separate from main dialog -->
   <Dialog :open="showPasswordChange" @update:open="showPasswordChange = $event">
-    <DialogContent @close="showPasswordChange = false" class="sm:max-w-[425px]">
+    <DialogContent class="w-full max-w-3xl">
       <DialogHeader>
         <DialogTitle>Change Password</DialogTitle>
         <DialogDescription>
@@ -125,7 +132,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { TrashIcon } from 'lucide-vue-next'
+import { TrashIcon, LogOutIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -333,5 +340,12 @@ const deleteAccount = async () => {
     console.error('Failed to delete account:', error)
     alert('Failed to delete account: ' + (error.response?.data?.error || 'Unknown error'))
   }
+}
+
+// Log out user
+const logout = () => {
+  // Clear user session or token
+  localStorage.removeItem('token')
+  router.push('/auth')
 }
 </script>

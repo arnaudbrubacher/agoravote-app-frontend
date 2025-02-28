@@ -1,148 +1,154 @@
 <template>
-  <div class="fixed inset-0 bg-background/80 backdrop-blur-sm">
-    <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
-      <div class="flex flex-col space-y-4">
-        <div class="flex justify-between items-center">
-          <h2 class="text-lg font-semibold">Create New Group</h2>
-          <Button variant="ghost" size="icon" @click="$emit('close')">
-            <XIcon class="h-4 w-4" />
-          </Button>
-        </div>
-        
-        <form @submit.prevent="handleSubmit" class="space-y-6">
-          <!-- Group Picture -->
-          <div class="flex justify-center mb-8">
-            <div class="relative">
-              <div v-if="!form.picture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
-                <UserGroupIcon class="h-16 w-16 text-gray-400" />
-              </div>
-              <img 
-                v-else
-                :src="form.picture" 
-                alt="Group Picture"
-                class="w-28 h-28 rounded-full object-cover border"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
-                @click="triggerFileInput"
-              >
-                <CameraIcon class="h-4 w-4" />
-              </Button>
-              <input 
-                type="file" 
-                ref="fileInput" 
-                class="hidden"
-                accept="image/*" 
-                @change="handlePictureUpload" 
-              />
+  <Dialog :open="true" @update:open="$emit('close')">
+    <DialogContent class="w-full max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>Create New Group</DialogTitle>
+        <DialogDescription>
+          Set up a new group for users to join and collaborate.
+        </DialogDescription>
+      </DialogHeader>
+
+      <form @submit.prevent="handleSubmit" class="space-y-6 p-6 pt-0">
+        <!-- Group Picture -->
+        <div class="flex justify-center mb-8">
+          <div class="relative">
+            <div v-if="!form.picture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
+              <UserGroupIcon class="h-16 w-16 text-gray-400" />
             </div>
-          </div>
-          
-          <!-- Group Name -->
-          <div class="space-y-2">
-            <Label for="group-name">Group Name</Label>
-            <Input 
-              id="group-name"
-              v-model="form.name" 
-              placeholder="Enter group name"
-              required
+            <img 
+              v-else
+              :src="form.picture" 
+              alt="Group Picture"
+              class="w-28 h-28 rounded-full object-cover border"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
+              @click="triggerFileInput"
+            >
+              <CameraIcon class="h-4 w-4" />
+            </Button>
+            <input 
+              type="file" 
+              ref="fileInput" 
+              class="hidden"
+              accept="image/*" 
+              @change="handlePictureUpload" 
             />
           </div>
-          
-          <!-- Group Description -->
+        </div>
+        
+        <!-- Group Name -->
+        <div class="space-y-2">
+          <Label for="group-name">Group Name</Label>
+          <Input 
+            id="group-name"
+            v-model="form.name" 
+            placeholder="Enter group name"
+            required
+          />
+        </div>
+        
+        <!-- Group Description -->
+        <div class="space-y-2">
+          <Label for="group-description">Description</Label>
+          <textarea
+            id="group-description"
+            v-model="form.description"
+            class="w-full px-3 py-2 border rounded-md h-24"
+            placeholder="Enter group description"
+          ></textarea>
+        </div>
+        
+        <!-- Privacy Settings -->
+        <div class="space-y-2">
+          <Label>Privacy</Label>
+          <div class="flex space-x-4">
+            <label class="flex items-center space-x-2">
+              <input 
+                type="radio" 
+                v-model="form.isPrivate" 
+                :value="true"
+              />
+              <span>Private Group</span>
+            </label>
+            <label class="flex items-center space-x-2">
+              <input 
+                type="radio" 
+                v-model="form.isPrivate" 
+                :value="false"
+              />
+              <span>Public Group</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Documents Required -->
+        <div class="space-y-4">
           <div class="space-y-2">
-            <Label for="group-description">Description</Label>
-            <textarea
-              id="group-description"
-              v-model="form.description"
-              class="w-full px-3 py-2 border rounded-md h-24"
-              placeholder="Enter group description"
-            ></textarea>
+            <Label>Documents Required from Users to Join</Label>
+            <p class="text-sm text-muted-foreground">
+              Members must submit these documents to join your group
+            </p>
           </div>
           
-          <!-- Privacy Settings -->
-          <div class="space-y-2">
-            <Label>Privacy</Label>
-            <div class="flex space-x-4">
-              <label class="flex items-center space-x-2">
-                <input 
-                  type="radio" 
-                  v-model="form.isPrivate" 
-                  :value="true"
-                />
-                <span>Private Group</span>
-              </label>
-              <label class="flex items-center space-x-2">
-                <input 
-                  type="radio" 
-                  v-model="form.isPrivate" 
-                  :value="false"
-                />
-                <span>Public Group</span>
-              </label>
-            </div>
-          </div>
+          <Button 
+            type="button"
+            variant="outline" 
+            @click="addDocument"
+            class="flex items-center"
+          >
+            <PlusIcon class="h-4 w-4 mr-1" />
+            Add Required Document
+          </Button>
           
-          <!-- Documents Required -->
-          <div class="space-y-4">
-            <div class="space-y-2">
-              <Label>Documents Required from Users to Join</Label>
-              <p class="text-sm text-muted-foreground">
-                Members must submit these documents to join your group
-              </p>
-            </div>
-            
-            <Button 
-              type="button"
-              variant="outline" 
-              @click="addDocument"
-              class="flex items-center"
-            >
-              <PlusIcon class="h-4 w-4 mr-1" />
-              Add Required Document
-            </Button>
-            
-            <div v-if="form.documents.length" class="space-y-2">
-              <div v-for="(doc, index) in form.documents" :key="index" class="flex items-center space-x-2">
-                <Input 
-                  v-model="doc.name" 
-                  placeholder="Document name (e.g. ID Card, Student Card)" 
-                />
-                <Button 
-                  type="button"
-                  variant="destructive" 
-                  size="icon" 
-                  @click="removeDocument(index)"
-                  title="Remove this document requirement"
-                >
-                  <TrashIcon class="h-4 w-4" />
-                </Button>
-              </div>
+          <div v-if="form.documents.length" class="space-y-2">
+            <div v-for="(doc, index) in form.documents" :key="index" class="flex items-center space-x-2">
+              <Input 
+                v-model="doc.name" 
+                placeholder="Document name (e.g. ID Card, Student Card)" 
+              />
+              <Button 
+                type="button"
+                variant="destructive" 
+                size="icon" 
+                @click="removeDocument(index)"
+                title="Remove this document requirement"
+              >
+                <TrashIcon class="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          
-          <div class="flex justify-end space-x-2">
-            <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
-            <Button type="submit" :disabled="isSubmitting">
-              {{ isSubmitting ? 'Creating...' : 'Create Group' }}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+        </div>
+        
+        <DialogFooter class="pt-2">
+          <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
+          <Button type="submit" :disabled="isSubmitting">
+            {{ isSubmitting ? 'Creating...' : 'Create Group' }}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import axios from '~/src/utils/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { XIcon, UserGroupIcon, CameraIcon, TrashIcon, PlusIcon } from '@heroicons/vue/outline'
+import { PlusIcon, TrashIcon, UserGroupIcon, CameraIcon } from '@heroicons/vue/outline'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 
 const emit = defineEmits(['close', 'group-created'])
 
