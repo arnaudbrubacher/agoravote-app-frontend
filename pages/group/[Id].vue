@@ -151,7 +151,7 @@
         <TabsContent value="members">
           <Card>
             <CardHeader class="flex justify-between">
-              <CardTitle>Members</CardTitle>
+              <CardTitle>Members ({{ group.members?.length || 0 }})</CardTitle>
               <div class="flex space-x-2">
                 <!-- Import Members Button -->
                 <div class="flex items-center">
@@ -181,12 +181,73 @@
               </div>
             </CardHeader>
             <CardContent>
-              <div v-if="group.members?.length" class="space-y-4">
+              <div v-if="isLoadingMembers" class="text-center py-8">
+                <Icon name="heroicons:arrow-path" class="h-6 w-6 animate-spin inline-block" />
+                <span class="ml-2">Loading members...</span>
+              </div>
+              <div v-else-if="group.members?.length" class="space-y-4">
+                <!-- Members list -->
                 <div v-for="member in group.members" :key="member.id"
-                  class="flex items-center justify-between p-4 border rounded-lg">
+                  class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                  <div class="flex items-center space-x-3">
+                    <!-- Member Avatar -->
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span v-if="!member.avatar" class="font-medium text-primary">
+                        {{ member.name?.charAt(0).toUpperCase() }}
+                      </span>
+                      <img 
+                        v-else 
+                        :src="member.avatar" 
+                        class="w-10 h-10 rounded-full object-cover"
+                        alt="Member avatar"
+                      />
+                    </div>
+                    
+                    <!-- Member Info -->
+                    <div>
+                      <div class="flex items-center">
+                        <span class="font-medium">{{ member.name }}</span>
+                        <span v-if="member.id === currentUser?.id" class="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                          You
+                        </span>
+                      </div>
+                      <span class="text-sm text-muted-foreground">{{ member.email }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Member Role and Actions -->
                   <div class="flex items-center space-x-2">
-                    <span class="font-medium">{{ member.name }}</span>
-                    <span class="text-sm text-muted-foreground">{{ member.isAdmin ? 'Admin' : 'Member' }}</span>
+                    <span v-if="member.isAdmin" class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">
+                      Admin
+                    </span>
+                    <span v-else class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                      Member
+                    </span>
+                    
+                    <!-- Actions for admins -->
+                    <div v-if="isCurrentUserAdmin" class="ml-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Icon name="heroicons:ellipsis-vertical" class="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem v-if="!member.isAdmin" @click="promoteMember(member)">
+                            <Icon name="heroicons:user-plus" class="h-4 w-4 mr-2" />
+                            Make Admin
+                          </DropdownMenuItem>
+                          <DropdownMenuItem v-if="member.isAdmin && currentUser.id !== member.id" @click="demoteMember(member)">
+                            <Icon name="heroicons:user-minus" class="h-4 w-4 mr-2" />
+                            Remove Admin Role
+                          </DropdownMenuItem>
+                          <DropdownMenuItem v-if="currentUser.id !== member.id" @click="removeMember(member)">
+                            <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -462,17 +523,26 @@ const formatDateShort = (dateStr) => {
 const fetchGroup = async () => {
   try {
     loading.value = true
+    isLoadingMembers.value = true // Set loading state for members
     error.value = null
     
     const groupId = route.params.id
     const response = await axios.get(`/groups/${groupId}`)
     
     group.value = response.data
+    
+    // Ensure members array exists
+    if (!group.value.members) {
+      group.value.members = []
+    }
+    
+    console.log("Group data loaded:", group.value)
   } catch (err) {
     console.error('Failed to fetch group:', err)
     error.value = err.response?.data?.error || 'Failed to fetch group information'
   } finally {
     loading.value = false
+    isLoadingMembers.value = false // Clear loading state
   }
 }
 
@@ -706,6 +776,136 @@ const deleteVote = async (voteId) => {
       description: 'Failed to delete vote: ' + (err.response?.data?.error || err.message),
       type: 'error'
     });
+  }
+}
+
+// Add these imports
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu/index.js'
+
+// Add this state variable
+const isLoadingMembers = ref(false)
+
+// Computed property to check if current user is an admin
+const isCurrentUserAdmin = computed(() => {
+  if (!group.value || !currentUser.value) return false
+  const currentMember = group.value.members?.find(m => m.id === currentUser.value.id)
+  return currentMember?.isAdmin || false
+})
+
+// Member management functions
+const promoteMember = async (member) => {
+  try {
+    // Show loading toast
+    const loadingToast = toast({
+      title: 'Updating member...',
+      description: 'Please wait',
+      type: 'loading',
+      duration: 5000
+    })
+    
+    // Call API to promote member
+    await axios.put(`/groups/${groupId}/members/${member.id}`, { 
+      isAdmin: true 
+    })
+    
+    // Show success message
+    toast({
+      title: 'Success',
+      description: `${member.name} is now an admin`,
+      type: 'success'
+    })
+    
+    // Refresh group data to update members list
+    await fetchGroup()
+  } catch (err) {
+    console.error('Failed to promote member:', err)
+    
+    // Show error toast
+    toast({
+      title: 'Error',
+      description: 'Failed to promote member: ' + (err.response?.data?.error || err.message),
+      type: 'error'
+    })
+  }
+}
+
+const demoteMember = async (member) => {
+  try {
+    // Show loading toast
+    const loadingToast = toast({
+      title: 'Updating member...',
+      description: 'Please wait',
+      type: 'loading',
+      duration: 5000
+    })
+    
+    // Call API to demote member
+    await axios.put(`/groups/${groupId}/members/${member.id}`, { 
+      isAdmin: false 
+    })
+    
+    // Show success message
+    toast({
+      title: 'Success',
+      description: `${member.name} is no longer an admin`,
+      type: 'success'
+    })
+    
+    // Refresh group data to update members list
+    await fetchGroup()
+  } catch (err) {
+    console.error('Failed to demote member:', err)
+    
+    // Show error toast
+    toast({
+      title: 'Error',
+      description: 'Failed to demote member: ' + (err.response?.data?.error || err.message),
+      type: 'error'
+    })
+  }
+}
+
+const removeMember = async (member) => {
+  try {
+    // Confirm removal
+    if (!confirm(`Are you sure you want to remove ${member.name} from this group?`)) {
+      return
+    }
+    
+    // Show loading toast
+    const loadingToast = toast({
+      title: 'Removing member...',
+      description: 'Please wait',
+      type: 'loading',
+      duration: 5000
+    })
+    
+    // Call API to remove member
+    await axios.delete(`/groups/${groupId}/members/${member.id}`)
+    
+    // Show success message
+    toast({
+      title: 'Success',
+      description: `${member.name} has been removed from the group`,
+      type: 'success'
+    })
+    
+    // Refresh group data to update members list
+    await fetchGroup()
+  } catch (err) {
+    console.error('Failed to remove member:', err)
+    
+    // Show error toast
+    toast({
+      title: 'Error',
+      description: 'Failed to remove member: ' + (err.response?.data?.error || err.message),
+      type: 'error'
+    })
   }
 }
 </script>
