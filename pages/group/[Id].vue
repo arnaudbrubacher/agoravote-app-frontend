@@ -76,8 +76,43 @@
             </CardHeader>
             <CardContent>
               <!-- Votes list -->
-              <div class="text-center text-muted-foreground py-8">
+              <div v-if="isLoadingVotes" class="text-center py-8">
+                Loading votes...
+              </div>
+              <div v-else-if="votes.length === 0" class="text-center text-muted-foreground py-8">
                 No votes yet
+              </div>
+              <div v-else class="space-y-4">
+                <div 
+                  v-for="vote in votes" 
+                  :key="vote.id" 
+                  class="p-4 border rounded-lg cursor-pointer hover:bg-muted/50"
+                  @click="openVoteDetails(vote)"
+                >
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h3 class="font-semibold">{{ vote.title }}</h3>
+                      <p class="text-muted-foreground">{{ vote.question }}</p>
+                      <div class="mt-2 text-sm">
+                        <span class="flex items-center">
+                          <Icon name="heroicons:calendar" class="h-4 w-4 mr-1" />
+                          {{ formatDateShort(vote.start_time) }} - {{ formatDateShort(vote.end_time) }}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <span v-if="isVoteActive(vote)" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        Active
+                      </span>
+                      <span v-else-if="isVoteUpcoming(vote)" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Upcoming
+                      </span>
+                      <span v-else class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                        Ended
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -210,7 +245,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
 import { Icon } from '@iconify/vue'  // Make sure to import this
@@ -306,47 +341,98 @@ const handleCsvImport = async (event) => {
 // Add new handlers for the dialogs
 const createNewVote = async (data) => {
   try {
-    const groupId = route.params.id
-    const response = await axios.post(`/groups/${groupId}/votes`, data)
+    // Debug information
+    console.log("Creating vote with data:", data);
+    checkAuthToken();
     
-    console.log('Vote created successfully:', response.data)
-    showNewVoteDialog.value = false
+    // Show loading toast
+    const loadingToast = toast({
+      title: 'Creating vote...',
+      description: 'Please wait',
+      type: 'loading',
+      duration: 10000
+    });
+    
+    // Format the data for the API
+    const formattedData = {
+      title: data.title,
+      question: data.question,
+      choices: data.choices.map(choice => ({ text: choice.text })),
+      allowWriteIn: data.allowWriteIn,
+      isSecret: data.isSecret,
+      minChoices: parseInt(data.minChoices),
+      maxChoices: parseInt(data.maxChoices),
+      startTime: new Date(data.startTime).toISOString(),
+      endTime: new Date(data.endTime).toISOString()
+    };
+    
+    console.log("Formatted data:", formattedData);
+    
+    const groupId = route.params.id;
+    const response = await axios.post(`/groups/${groupId}/votes`, formattedData);
+    
+    // Close loading toast
+    toast({
+      title: 'Success',
+      description: 'Vote created successfully',
+      type: 'success'
+    });
+    
+    console.log('Vote created successfully:', response.data);
+    showNewVoteDialog.value = false;
     
     // Refresh votes list
-    await fetchGroup()
+    await fetchVotes();
   } catch (err) {
-    console.error('Failed to create vote:', err)
-    // You could show an error toast here
+    console.error('Failed to create vote:', err);
+    console.error('Error details:', err.response?.data);
+    
+    // Show error toast
+    toast({
+      title: 'Error',
+      description: 'Failed to create vote: ' + (err.response?.data?.error || err.message),
+      type: 'error'
+    });
+  }
+};
+
+// Add a fetchVotes function
+const votes = ref([])
+const isLoadingVotes = ref(true)
+
+const fetchVotes = async () => {
+  try {
+    isLoadingVotes.value = true
+    const response = await axios.get(`/groups/${groupId}/votes`)
+    votes.value = response.data.votes || []
+    console.log("Fetched votes:", votes.value)
+  } catch (error) {
+    console.error('Failed to fetch votes:', error)
+  } finally {
+    isLoadingVotes.value = false
   }
 }
 
-const createNewPost = async (data) => {
-  try {
-    console.log('Post created successfully:', data)
-    showNewPostDialog.value = false
-    
-    // Refresh posts list
-    await fetchPosts()
-  } catch (err) {
-    console.error('Failed to create post:', err)
-    // You could show an error toast here
-  }
+// Helper functions for vote status
+const isVoteActive = (vote) => {
+  const now = new Date()
+  return new Date(vote.start_time) <= now && new Date(vote.end_time) >= now
 }
 
-const addMember = async (data) => {
-  try {
-    const groupId = route.params.id
-    const response = await axios.post(`/groups/${groupId}/members`, data)
-    
-    console.log('Member added successfully:', response.data)
-    showAddMemberDialog.value = false
-    
-    // Refresh members list
-    await fetchGroup()
-  } catch (err) {
-    console.error('Failed to add member:', err)
-    // You could show an error toast here
-  }
+const isVoteUpcoming = (vote) => {
+  const now = new Date()
+  return new Date(vote.start_time) > now
+}
+
+// Format date for display
+const formatDateShort = (dateStr) => {
+  const date = new Date(dateStr)
+  return new Intl.DateTimeFormat('en-US', { 
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
+  }).format(date)
 }
 
 // Fetch group function
@@ -470,38 +556,36 @@ const deletePost = async (post) => {
 // Fetch current user if not already set
 const fetchCurrentUser = async () => {
   try {
-    if (!currentUser.value) {
-      const response = await axios.get('/users/me')
-      currentUser.value = response.data
-    }
-  } catch (err) {
-    console.error('Failed to fetch current user:', err)
-  }
-}
-
-// Call these in your onMounted
-onMounted(async () => {
-  await fetchCurrentUser()
-  await fetchPosts()
-})
-
-// Make sure to pass the current user ID to the dialog
-const getCurrentUser = async () => {
-  try {
     const response = await axios.get('/users/me')
     currentUser.value = response.data
-  } catch (error) {
-    console.error('Failed to get current user:', error)
+    console.log("Current user:", currentUser.value)
+  } catch (err) {
+    console.error('Failed to fetch current user:', err)
+    // Handle error, maybe redirect to login
+    if (err.response?.status === 401) {
+      // Redirect to login if unauthorized
+      router.push('/login')
+    }
   }
 }
 
-// Call this in your onMounted
+// Replace all onMounted calls with a single consolidated one
 onMounted(async () => {
-  await getCurrentUser()
-  // Other initialization code
-})
-
-onMounted(() => {
-    fetchGroup()
-})
+  try {
+    // Show loading state
+    loading.value = true;
+    
+    // Fetch all necessary data in parallel
+    await Promise.all([
+      fetchCurrentUser(),
+      fetchGroup(),
+      fetchPosts(),
+      fetchVotes()
+    ]);
+  } catch (error) {
+    console.error('Error initializing page:', error);
+  } finally {
+    loading.value = false;
+  }
+});
 </script>

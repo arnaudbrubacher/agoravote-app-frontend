@@ -92,12 +92,12 @@
 
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-2">
-              <Label>Start Time</Label>
-              <Input type="datetime-local" v-model="form.startTime" required />
+              <Label for="startTime">Start Time</Label>
+              <Input type="datetime-local" id="startTime" v-model="form.startTime" required />
             </div>
             <div class="space-y-2">
-              <Label>End Time</Label>
-              <Input type="datetime-local" v-model="form.endTime" required />
+              <Label for="endTime">End Time</Label>
+              <Input type="datetime-local" id="endTime" v-model="form.endTime" required />
             </div>
           </div>
 
@@ -116,6 +116,22 @@ import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Icon } from '@iconify/vue'
+
+const props = defineProps({
+  group: {
+    type: Object,
+    required: true
+  }
+})
+
+// Define emit first and store the returned function
+const emit = defineEmits(['close', 'submit'])
+
+// Set default dates - today and tomorrow
+const today = new Date()
+const tomorrow = new Date(today)
+tomorrow.setDate(tomorrow.getDate() + 1)
 
 const form = ref({
   title: '',
@@ -128,9 +144,16 @@ const form = ref({
   isSecret: false,
   minChoices: 1,
   maxChoices: 1,
-  startTime: '',
-  endTime: ''
+  startTime: formatDateForInput(today),
+  endTime: formatDateForInput(tomorrow)
 })
+
+// Function to format date for datetime-local input
+function formatDateForInput(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+}
 
 const addChoice = () => {
   form.value.choices.push({ text: '' })
@@ -149,6 +172,4 @@ watch(() => form.value.choices.length, (newLength) => {
     form.value.maxChoices = newLength
   }
 })
-
-defineEmits(['close', 'submit'])
 </script>
