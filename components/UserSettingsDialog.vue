@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent class="w-full max-w-3xl">
+    <DialogContent class="w-full max-w-lg">
       <DialogHeader>
         <DialogTitle>User Settings</DialogTitle>
         <DialogDescription>
@@ -40,6 +40,14 @@
                 accept="image/*" 
                 @change="handleProfilePictureUpload" 
               />
+            </div>
+          </div>
+
+          <!-- User ID Field (Read-only) -->
+          <div class="space-y-2">
+            <Label class="text-sm text-muted-foreground">User ID</Label>
+            <div class="px-3 py-2 text-sm font-medium bg-muted rounded">
+              {{ userData?.id || 'Not available' }}
             </div>
           </div>
 
@@ -100,22 +108,90 @@
             </div>
           </div>
 
+          <!-- Email Verified Status -->
+          <div class="space-y-2" v-if="userData?.email_verified !== undefined">
+            <Label class="text-sm text-muted-foreground">Email Verification Status</Label>
+            <div class="px-3 py-2 flex items-center">
+              <span v-if="userData.email_verified" class="text-green-600 flex items-center">
+                <CheckCircleIcon class="h-5 w-5 mr-1"/> Verified
+              </span>
+              <span v-else class="text-amber-600 flex items-center">
+                <AlertCircleIcon class="h-5 w-5 mr-1"/> Not Verified
+                <Button 
+                  variant="link" 
+                  class="text-sm ml-2" 
+                  @click="resendVerificationEmail"
+                >
+                  Resend Verification
+                </Button>
+              </span>
+            </div>
+          </div>
+
+          <!-- Registration Date -->
+          <div class="space-y-2" v-if="userData?.created_at">
+            <Label class="text-sm text-muted-foreground">Account Created</Label>
+            <div class="px-3 py-2 text-md">
+              {{ formatDate(userData.created_at) }}
+            </div>
+          </div>
+          
+          <!-- Last Login -->
+          <div class="space-y-2" v-if="userData?.last_login">
+            <Label class="text-sm text-muted-foreground">Last Login</Label>
+            <div class="px-3 py-2 text-md">
+              {{ formatDate(userData.last_login) }}
+            </div>
+          </div>
+
           <!-- Password Section -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
               <Label for="current-password" class="text-sm text-muted-foreground">Password</Label>
               <Button
                 type="button"
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8"
+                variant="outline"
+                size="sm"
                 @click="showPasswordChange = true"
               >
-                <EditIcon class="h-4 w-4" />
+                Change Password
               </Button>
             </div>
             <div class="px-3 py-2 text-lg font-medium">
               ●●●●●●●●
+            </div>
+          </div>
+
+          <!-- User Role -->
+          <div class="space-y-2" v-if="userData?.role">
+            <Label class="text-sm text-muted-foreground">Role</Label>
+            <div class="px-3 py-2 flex items-center">
+              <Badge :variant="userData.role === 'admin' ? 'default' : 'secondary'">
+                {{ userData.role.charAt(0).toUpperCase() + userData.role.slice(1) }}
+              </Badge>
+            </div>
+          </div>
+
+          <!-- Membership Stats -->
+          <div class="space-y-2" v-if="userStats">
+            <Label class="text-sm text-muted-foreground">Memberships</Label>
+            <div class="bg-muted rounded-lg p-4 space-y-2">
+              <div class="flex justify-between text-sm">
+                <span>Groups Joined:</span>
+                <span class="font-medium">{{ userStats.groupsJoined || 0 }}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span>Groups Owned:</span>
+                <span class="font-medium">{{ userStats.groupsOwned || 0 }}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span>Votes Created:</span>
+                <span class="font-medium">{{ userStats.votesCreated || 0 }}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span>Votes Participated In:</span>
+                <span class="font-medium">{{ userStats.votesParticipated || 0 }}</span>
+              </div>
             </div>
           </div>
 
@@ -150,7 +226,7 @@
 
   <!-- Password Change Dialog - Separate from main dialog -->
   <Dialog :open="showPasswordChange" @update:open="showPasswordChange = $event">
-    <DialogContent class="w-full max-w-3xl">
+    <DialogContent class="w-full max-w-lg">
       <DialogHeader>
         <DialogTitle>Change Password</DialogTitle>
         <DialogDescription>
@@ -187,13 +263,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { TrashIcon, LogOutIcon, EditIcon } from 'lucide-vue-next'
+import { TrashIcon, LogOutIcon, EditIcon, CheckCircleIcon, AlertCircleIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge' // Updated import path
 import {
   Dialog,
   DialogContent,
@@ -227,9 +304,23 @@ const newPassword = ref('')
 const confirmPassword = ref('')
 const editingName = ref(false)
 const editingEmail = ref(false)
+const userStats = ref(null)
 
 // Computed props
 const profilePicture = computed(() => props.userData?.profile_picture || null)
+
+// Format date helper function
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
+  }).format(date)
+}
 
 // Watch for props change to update form values
 if (props.userData) {
@@ -407,5 +498,50 @@ const logout = () => {
   // Clear user session or token
   localStorage.removeItem('token')
   router.push('/auth')
+}
+
+// Fetch user stats on mount
+onMounted(async () => {
+  try {
+    const userId = localStorage.getItem('userId')
+    const token = localStorage.getItem('token')
+    
+    if (!userId || !token) {
+      throw new Error('Authentication required')
+    }
+    
+    const response = await axios.get(`/users/${userId}/stats`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    userStats.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch user stats:', error)
+  }
+})
+
+// Resend verification email
+const resendVerificationEmail = async () => {
+  try {
+    const userId = localStorage.getItem('userId')
+    const token = localStorage.getItem('token')
+    
+    if (!userId || !token) {
+      throw new Error('Authentication required')
+    }
+    
+    await axios.post(`/users/${userId}/resend-verification`, {}, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    alert('Verification email resent successfully')
+  } catch (error) {
+    console.error('Failed to resend verification email:', error)
+    alert('Failed to resend verification email: ' + (error.response?.data?.error || 'Unknown error'))
+  }
 }
 </script>
