@@ -236,6 +236,12 @@ import AddMemberDialog from '@/components/AddMemberDialog.vue'
 import PostCard from '@/components/PostCard.vue'
 import PostDetailsDialog from '~/components/PostDetailsDialog.vue'
 
+// Add this import for toast messages
+import { useToast } from '@/composables/useToast'
+
+// Get toast functions
+const { toast } = useToast()
+
 // Add dialog visibility refs
 const showSettingsDialog = ref(false)
 const showNewVoteDialog = ref(false)
@@ -417,10 +423,21 @@ const editPost = (post) => {
   // You could set a state and open an edit dialog here
 }
 
+// Add this function to delete posts
 const deletePost = async (post) => {
   try {
+    // Confirm before deleting
     if (!confirm('Are you sure you want to delete this post?')) return
     
+    // Show loading state
+    const loadingToast = toast({
+      title: 'Deleting post...',
+      description: 'Please wait',
+      type: 'loading',
+      duration: 10000
+    })
+    
+    // Call API to delete the post
     await axios.delete(`/posts/${post.id}`)
     
     // Remove post from list
@@ -433,9 +450,20 @@ const deletePost = async (post) => {
     selectedPost.value = null
     
     // Show success message
-    console.log('Post deleted successfully')
+    toast({
+      title: 'Success',
+      description: 'Post deleted successfully',
+      type: 'success'
+    })
   } catch (err) {
     console.error('Failed to delete post:', err)
+    
+    // Show error message
+    toast({
+      title: 'Error',
+      description: 'Failed to delete post: ' + (err.response?.data?.error || err.message),
+      type: 'error'
+    })
   }
 }
 
@@ -455,6 +483,22 @@ const fetchCurrentUser = async () => {
 onMounted(async () => {
   await fetchCurrentUser()
   await fetchPosts()
+})
+
+// Make sure to pass the current user ID to the dialog
+const getCurrentUser = async () => {
+  try {
+    const response = await axios.get('/users/me')
+    currentUser.value = response.data
+  } catch (error) {
+    console.error('Failed to get current user:', error)
+  }
+}
+
+// Call this in your onMounted
+onMounted(async () => {
+  await getCurrentUser()
+  // Other initialization code
 })
 
 onMounted(() => {

@@ -35,7 +35,6 @@
                   size="sm" 
                   @click="$emit('edit', post)" 
                   class="border"
-                  v-if="canEdit"
                 >
                   <PencilIcon class="h-4 w-4 mr-2" />
                   Edit
@@ -45,7 +44,6 @@
                   size="sm" 
                   @click="$emit('delete', post)" 
                   class="border"
-                  v-if="canDelete"
                 >
                   <TrashIcon class="h-4 w-4 mr-2" />
                   Delete
@@ -94,7 +92,8 @@ const props = defineProps({
 // Define emits
 defineEmits(['close', 'edit', 'delete'])
 
-// Determine if current user can edit/delete the post
+// These computed properties are no longer needed if you want buttons always visible
+// But we'll keep them in case you want to use them later
 const canEdit = computed(() => {
   return props.post.user_id === props.currentUserId
 })
