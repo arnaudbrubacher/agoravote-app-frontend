@@ -128,6 +128,13 @@ const props = defineProps({
 // Define emit first and store the returned function
 const emit = defineEmits(['close', 'submit'])
 
+// Function to format date for datetime-local input
+function formatDateForInput(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+}
+
 // Set default dates - today and tomorrow
 const today = new Date()
 const tomorrow = new Date(today)
@@ -147,13 +154,6 @@ const form = ref({
   startTime: formatDateForInput(today),
   endTime: formatDateForInput(tomorrow)
 })
-
-// Function to format date for datetime-local input
-function formatDateForInput(date) {
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-}
 
 const addChoice = () => {
   form.value.choices.push({ text: '' })

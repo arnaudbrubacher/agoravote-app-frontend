@@ -339,6 +339,14 @@ const handleCsvImport = async (event) => {
 }
 
 // Add new handlers for the dialogs
+const checkAuthToken = () => {
+  const token = localStorage.getItem('token');
+  console.log("Auth token exists:", !!token);
+  if (token) {
+    console.log("Token prefix:", token.substring(0, 15) + "...");
+  }
+};
+
 const createNewVote = async (data) => {
   try {
     // Debug information
@@ -353,7 +361,7 @@ const createNewVote = async (data) => {
       duration: 10000
     });
     
-    // Format the data for the API
+    // Format the data for the API, ensuring proper ISO format for dates
     const formattedData = {
       title: data.title,
       question: data.question,
@@ -362,8 +370,8 @@ const createNewVote = async (data) => {
       isSecret: data.isSecret,
       minChoices: parseInt(data.minChoices),
       maxChoices: parseInt(data.maxChoices),
-      startTime: new Date(data.startTime).toISOString(),
-      endTime: new Date(data.endTime).toISOString()
+      startTime: new Date(data.startTime).toISOString(),  // Make sure this is ISO format
+      endTime: new Date(data.endTime).toISOString()       // Make sure this is ISO format
     };
     
     console.log("Formatted data:", formattedData);
@@ -378,7 +386,6 @@ const createNewVote = async (data) => {
       type: 'success'
     });
     
-    console.log('Vote created successfully:', response.data);
     showNewVoteDialog.value = false;
     
     // Refresh votes list
