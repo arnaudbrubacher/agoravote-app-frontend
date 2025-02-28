@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 bg-background/80 backdrop-blur-sm">
+  <div class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50">
     <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background shadow-lg duration-200 sm:rounded-lg">
       <div class="flex flex-col h-[90vh]">
         <header class="flex justify-between items-center p-6 border-b">
@@ -32,31 +32,37 @@
               <div class="flex items-center space-x-2">
                 <Button 
                   type="button"
-                  variant="outline" 
+                  variant="outline"
                   @click="triggerFileInput"
                 >
+                  <Icon name="heroicons:document-arrow-up" class="h-4 w-4 mr-2" />
                   Upload File
                 </Button>
                 <span v-if="form.file" class="text-sm">
                   {{ form.file.name }}
                 </span>
+                <input
+                  type="file"
+                  ref="fileInput"
+                  class="hidden"
+                  @change="handleFileUpload"
+                />
               </div>
-              <input
-                type="file"
-                ref="fileInput"
-                class="hidden"
-                @change="handleFileUpload"
-              />
             </div>
+            
+            <footer class="pt-6 border-t mt-auto">
+              <div class="flex justify-end space-x-2">
+                <Button variant="outline" type="button" @click="$emit('close')" :disabled="isSubmitting">Cancel</Button>
+                <Button type="submit" :disabled="isSubmitting">
+                  <span v-if="isSubmitting" class="mr-2">
+                    <Icon name="heroicons:arrow-path" class="h-4 w-4 animate-spin" />
+                  </span>
+                  Create Post
+                </Button>
+              </div>
+            </footer>
           </form>
         </div>
-
-        <footer class="p-6 border-t">
-          <div class="flex justify-end space-x-2">
-            <Button variant="outline" @click="$emit('close')">Cancel</Button>
-            <Button @click="handleSubmit">Create Post</Button>
-          </div>
-        </footer>
       </div>
     </div>
   </div>
@@ -67,8 +73,20 @@ import { ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Icon } from '@iconify/vue' // Using @iconify/vue as in your group page
+import axios from '~/src/utils/axios'
 
+const props = defineProps({
+  group: {
+    type: Object,
+    required: true
+  }
+})
+
+const emit = defineEmits(['close', 'submit'])
+const isSubmitting = ref(false)
 const fileInput = ref(null)
+
 const form = ref({
   title: '',
   content: '',
@@ -86,15 +104,43 @@ const handleFileUpload = (event) => {
   }
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!form.value.title.trim() || !form.value.content.trim()) return
   
-  $emit('submit', {
-    title: form.value.title,
-    content: form.value.content,
-    file: form.value.file
-  })
+  try {
+    isSubmitting.value = true
+    
+    // Create FormData to handle the file upload
+    const formData = new FormData()
+    formData.append('title', form.value.title)
+    formData.append('content', form.value.content)
+    formData.append('group_id', props.group.id)
+    
+    // Log FormData (for debugging)
+    for (let [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+    
+    if (form.value.file) {
+      formData.append('file', form.value.file)
+    }
+    
+    // Send request to create post
+    const response = await axios.post(`/groups/${props.group.id}/posts`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    // Emit events on success
+    emit('submit', response.data)
+    emit('close')
+    
+  } catch (error) {
+    console.error('Failed to create post:', error)
+    // Here you could add error handling/notification
+  } finally {
+    isSubmitting.value = false
+  }
 }
-
-defineEmits(['close', 'submit'])
 </script>

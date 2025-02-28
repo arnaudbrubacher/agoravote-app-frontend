@@ -8,17 +8,20 @@
       </div>
     </header>
     <main class="container mx-auto py-6 px-4">
-      <NuxtPage />
+      <slot />
     </main>
     <footer class="border-t">
       <div class="container mx-auto py-6 px-4 text-center text-sm text-muted-foreground">
         <p>&copy; 2025 Agora Vote. All rights reserved.</p>
       </div>
     </footer>
+    <!-- Add Toast component here -->
+    <Toast />
   </div>
 </template>
 
 <script setup>
 import { Button } from '@/components/ui/button'
+import Toast from '~/components/ui/toast.vue' // Update the import path if needed
 const router = useRouter()
 </script>

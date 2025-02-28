@@ -5,7 +5,8 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',  // Tailwind CSS module for styling
     '@nuxtjs/color-mode',   // Color mode module for dark/light mode
-    'shadcn-nuxt'           // ShadCN module for UI components
+    'shadcn-nuxt',          // ShadCN module for UI components
+    'nuxt-icon'             // Nuxt Icon module for icons
     // Remove or comment out the @nuxtjs/axios module
     // '@nuxtjs/axios'
   ],

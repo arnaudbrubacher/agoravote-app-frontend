@@ -94,8 +94,19 @@
             </CardHeader>
             <CardContent>
               <!-- Posts list -->
-              <div class="text-center text-muted-foreground py-8">
+              <div v-if="isLoadingPosts" class="text-center py-8">
+                Loading posts...
+              </div>
+              <div v-else-if="posts.length === 0" class="text-center text-muted-foreground py-8">
                 No posts yet
+              </div>
+              <div v-else class="space-y-4">
+                <PostCard 
+                  v-for="post in posts" 
+                  :key="post.id" 
+                  :post="post" 
+                  @click="openPostDetails(post)"
+                />
               </div>
             </CardContent>
           </Card>
@@ -186,6 +197,9 @@
       @submit="addMember"
     />
   </div>
+  
+
+ 
 </template>
 
 <script setup>
@@ -212,6 +226,7 @@ import GroupSettingsDialog from '@/components/GroupSettingsDialog.vue'
 import NewVoteDialog from '@/components/NewVoteDialog.vue'
 import NewPostDialog from '@/components/NewPostDialog.vue'
 import AddMemberDialog from '@/components/AddMemberDialog.vue'
+import PostCard from '@/components/PostCard.vue'
 
 // Add dialog visibility refs
 const showSettingsDialog = ref(false)
@@ -219,6 +234,10 @@ const showNewVoteDialog = ref(false)
 const showNewPostDialog = ref(false)
 const showAddMemberDialog = ref(false)
 const csvFileInput = ref(null)
+const showPostDialog = ref(false)
+const posts = ref([])
+const isLoading = ref(true)
+const isLoadingPosts = ref(true)
 
 // Format date helper function remains the same
 
@@ -227,6 +246,7 @@ const router = useRouter()
 const group = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const groupId = route.params.id
 
 // Admin check computed property remains the same
 
@@ -286,14 +306,11 @@ const createNewVote = async (data) => {
 
 const createNewPost = async (data) => {
   try {
-    const groupId = route.params.id
-    const response = await axios.post(`/groups/${groupId}/posts`, data)
-    
-    console.log('Post created successfully:', response.data)
+    console.log('Post created successfully:', data)
     showNewPostDialog.value = false
     
     // Refresh posts list
-    await fetchGroup()
+    await fetchPosts()
   } catch (err) {
     console.error('Failed to create post:', err)
     // You could show an error toast here
@@ -351,6 +368,31 @@ const confirmDeleteGroup = async () => {
     error.value = err.response?.data?.error || 'Failed to delete group'
     loading.value = false
   }
+}
+
+// Fetch posts when component mounts
+onMounted(async () => {
+  await fetchPosts()
+})
+
+// Fetch posts for this group
+const fetchPosts = async () => {
+  try {
+    isLoadingPosts.value = true
+    const response = await axios.get(`/groups/${groupId}/posts`)
+    posts.value = response.data.posts || response.data // Adjust based on your API response
+    console.log("Fetched posts:", posts.value)
+  } catch (error) {
+    console.error('Failed to fetch posts:', error)
+  } finally {
+    isLoadingPosts.value = false
+  }
+}
+
+// Handle new post creation
+const handlePostCreated = (newPost) => {
+  // Add new post to the list
+  posts.value.unshift(newPost)
 }
 
 onMounted(() => {
