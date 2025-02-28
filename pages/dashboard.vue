@@ -5,13 +5,12 @@
       <CardHeader class="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Your Profile</CardTitle>
-          <CardDescription>Manage your account settings and information</CardDescription>
         </div>
       </CardHeader>
       
       <CardContent class="p-6 space-y-6">
         <!-- Profile Picture Section -->
-        <div class="flex justify-center mb-8">
+        <div class="flex justify-left mb-8">
           <div class="relative">
             <div v-if="!profilePicture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,20 +42,12 @@
           </div>
         </div>
         
-        <div class="grid md:grid-cols-2 gap-6">
+        <div class="grid md:grid-cols-2 gap-">
           <div class="space-y-6">
-            <!-- User ID Field (Read-only) -->
-            <div class="space-y-2">
-              <Label class="text-sm text-muted-foreground">User ID</Label>
-              <div class="px-3 py-2 text-sm font-medium bg-muted rounded">
-                {{ userData?.id || 'Not available' }}
-              </div>
-            </div>
-
             <!-- Name Field -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label for="name" class="text-sm text-muted-foreground">Display Name</Label>
+                <Label for="name" class="text-sm text-muted-foreground">Name</Label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -135,26 +126,8 @@
                 </span>
               </div>
             </div>
-          </div>
 
-          <div class="space-y-6">
-            <!-- Registration Date -->
-            <div class="space-y-2" v-if="userData?.created_at">
-              <Label class="text-sm text-muted-foreground">Account Created</Label>
-              <div class="px-3 py-2 text-md">
-                {{ formatDate(userData.created_at) }}
-              </div>
-            </div>
-            
-            <!-- Last Login -->
-            <div class="space-y-2" v-if="userData?.last_login">
-              <Label class="text-sm text-muted-foreground">Last Login</Label>
-              <div class="px-3 py-2 text-md">
-                {{ formatDate(userData.last_login) }}
-              </div>
-            </div>
-
-            <!-- Password Section -->
+           <!-- Password Section -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <Label for="current-password" class="text-sm text-muted-foreground">Password</Label>
@@ -172,38 +145,12 @@
               </div>
             </div>
 
-            <!-- User Role -->
-            <div class="space-y-2" v-if="userData?.role">
-              <Label class="text-sm text-muted-foreground">Role</Label>
-              <div class="px-3 py-2 flex items-center">
-                <Badge :variant="userData.role === 'admin' ? 'default' : 'secondary'">
-                  {{ userData.role.charAt(0).toUpperCase() + userData.role.slice(1) }}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Membership Stats -->
-        <div class="space-y-2" v-if="userStats">
-          <Label class="text-sm text-muted-foreground">Memberships</Label>
-          <div class="bg-muted rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="text-center p-2 bg-background rounded">
-              <div class="text-xl font-bold">{{ userStats.groupsJoined || 0 }}</div>
-              <div class="text-xs text-muted-foreground">Groups Joined</div>
-            </div>
-            <div class="text-center p-2 bg-background rounded">
-              <div class="text-xl font-bold">{{ userStats.groupsOwned || 0 }}</div>
-              <div class="text-xs text-muted-foreground">Groups Owned</div>
-            </div>
-            <div class="text-center p-2 bg-background rounded">
-              <div class="text-xl font-bold">{{ userStats.votesCreated || 0 }}</div>
-              <div class="text-xs text-muted-foreground">Votes Created</div>
-            </div>
-            <div class="text-center p-2 bg-background rounded">
-              <div class="text-xl font-bold">{{ userStats.votesParticipated || 0 }}</div>
-              <div class="text-xs text-muted-foreground">Votes Participated</div>
-            </div>
+          </div>
+
+          <div class="space-y-6">
+           
+            
           </div>
         </div>
 
@@ -436,7 +383,6 @@ import { UserGroupIcon } from '@heroicons/vue/outline'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { 
   Card, 
   CardHeader, 
@@ -463,7 +409,6 @@ const profilePicture = ref(null)
 const fileInput = ref(null)
 const groups = ref([])
 const userData = ref(null)
-const userStats = ref(null)
 const editingName = ref(false)
 const editingEmail = ref(false)
 const showPasswordChange = ref(false)
@@ -723,6 +668,7 @@ const fetchUserInfo = async () => {
     profilePicture.value = response.data.profile_picture
 
     console.log('User profile fetched:', response.data)
+  
     
     // Fetch user stats
     fetchUserStats()
@@ -737,27 +683,6 @@ const fetchUserInfo = async () => {
   }
 }
 
-// Fetch user stats
-const fetchUserStats = async () => {
-  try {
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    const response = await axios.get(`/users/${userId}/stats`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    userStats.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch user stats:', error)
-  }
-}
 
 // Fetch user groups
 const fetchGroups = async () => {
