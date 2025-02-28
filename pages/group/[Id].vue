@@ -196,10 +196,17 @@
       @close="showAddMemberDialog = false"
       @submit="addMember"
     />
-  </div>
-  
 
- 
+    <!-- Post Details Dialog -->
+    <PostDetailsDialog
+      v-if="selectedPost"
+      :post="selectedPost"
+      :currentUserId="currentUser?.id"
+      @close="selectedPost = null"
+      @edit="editPost"
+      @delete="deletePost"
+    />
+  </div>
 </template>
 
 <script setup>
@@ -227,6 +234,7 @@ import NewVoteDialog from '@/components/NewVoteDialog.vue'
 import NewPostDialog from '@/components/NewPostDialog.vue'
 import AddMemberDialog from '@/components/AddMemberDialog.vue'
 import PostCard from '@/components/PostCard.vue'
+import PostDetailsDialog from '~/components/PostDetailsDialog.vue'
 
 // Add dialog visibility refs
 const showSettingsDialog = ref(false)
@@ -238,6 +246,8 @@ const showPostDialog = ref(false)
 const posts = ref([])
 const isLoading = ref(true)
 const isLoadingPosts = ref(true)
+const selectedPost = ref(null)
+const currentUser = ref(null) // You'll need to set this from your auth system
 
 // Format date helper function remains the same
 
@@ -394,6 +404,58 @@ const handlePostCreated = (newPost) => {
   // Add new post to the list
   posts.value.unshift(newPost)
 }
+
+// Add this function to open post details
+const openPostDetails = (post) => {
+  selectedPost.value = post
+}
+
+// Add these functions for post management
+const editPost = (post) => {
+  // Logic to edit post
+  console.log('Editing post:', post)
+  // You could set a state and open an edit dialog here
+}
+
+const deletePost = async (post) => {
+  try {
+    if (!confirm('Are you sure you want to delete this post?')) return
+    
+    await axios.delete(`/posts/${post.id}`)
+    
+    // Remove post from list
+    const index = posts.value.findIndex(p => p.id === post.id)
+    if (index !== -1) {
+      posts.value.splice(index, 1)
+    }
+    
+    // Close dialog
+    selectedPost.value = null
+    
+    // Show success message
+    console.log('Post deleted successfully')
+  } catch (err) {
+    console.error('Failed to delete post:', err)
+  }
+}
+
+// Fetch current user if not already set
+const fetchCurrentUser = async () => {
+  try {
+    if (!currentUser.value) {
+      const response = await axios.get('/users/me')
+      currentUser.value = response.data
+    }
+  } catch (err) {
+    console.error('Failed to fetch current user:', err)
+  }
+}
+
+// Call these in your onMounted
+onMounted(async () => {
+  await fetchCurrentUser()
+  await fetchPosts()
+})
 
 onMounted(() => {
     fetchGroup()

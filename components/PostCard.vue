@@ -1,5 +1,8 @@
 <template>
-  <div class="border rounded-lg p-4">
+  <div 
+    class="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+    @click="$emit('click', post)"
+  >
     <div class="flex items-center space-x-2 mb-2">
       <div class="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
         <img v-if="post.user?.avatar" :src="post.user.avatar" alt="User avatar" class="w-full h-full object-cover">
@@ -41,12 +44,17 @@
 </template>
 
 <script setup>
+import { Icon } from '@iconify/vue' // Make sure you add the missing import
+
 const props = defineProps({
   post: {
     type: Object,
     required: true
   }
 })
+
+// Define the click emit
+defineEmits(['click'])
 
 function formatDate(dateStr) {
   const date = new Date(dateStr)
