@@ -241,6 +241,16 @@
       @edit="editPost"
       @delete="deletePost"
     />
+
+    <!-- Vote Details Dialog -->
+    <VoteDetailsDialog
+      v-if="selectedVote"
+      :vote="selectedVote"
+      :current-user-id="currentUser?.id"
+      @close="selectedVote = null"
+      @submit-vote="handleVoteSubmit"
+      @delete="deleteVote"
+    />
   </div>
 </template>
 
@@ -271,6 +281,9 @@ import AddMemberDialog from '@/components/AddMemberDialog.vue'
 import PostCard from '@/components/PostCard.vue'
 import PostDetailsDialog from '~/components/PostDetailsDialog.vue'
 
+// Add this to your imports
+import VoteDetailsDialog from '~/components/VoteDetailsDialog.vue'
+
 // Add this import for toast messages
 import { useToast } from '@/composables/useToast'
 
@@ -289,6 +302,9 @@ const isLoading = ref(true)
 const isLoadingPosts = ref(true)
 const selectedPost = ref(null)
 const currentUser = ref(null) // You'll need to set this from your auth system
+
+// Add this with your other refs near the top of the script section
+const selectedVote = ref(null)
 
 // Format date helper function remains the same
 
@@ -409,16 +425,16 @@ const isLoadingVotes = ref(true)
 
 const fetchVotes = async () => {
   try {
-    isLoadingVotes.value = true
-    const response = await axios.get(`/groups/${groupId}/votes`)
-    votes.value = response.data.votes || []
-    console.log("Fetched votes:", votes.value)
+    isLoadingVotes.value = true;
+    const response = await axios.get(`/groups/${groupId}/votes`);
+    votes.value = response.data.votes || [];
+    console.log("Fetched votes:", votes.value);
   } catch (error) {
-    console.error('Failed to fetch votes:', error)
+    console.error('Failed to fetch votes:', error);
   } finally {
-    isLoadingVotes.value = false
+    isLoadingVotes.value = false;
   }
-}
+};
 
 // Helper functions for vote status
 const isVoteActive = (vote) => {
@@ -595,4 +611,101 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+// Add this function with your other handler functions
+const openVoteDetails = (vote) => {
+  // Add status to the vote object
+  const now = new Date();
+  const startTime = new Date(vote.start_time);
+  const endTime = new Date(vote.end_time);
+  
+  let status = 'Upcoming';
+  if (now >= startTime && now <= endTime) {
+    status = 'Open';
+  } else if (now > endTime) {
+    status = 'Closed';
+  }
+  
+  // Create a new object with the status field added
+  selectedVote.value = {
+    ...vote,
+    status
+  };
+}
+
+// Add this function with your other handler functions
+const handleVoteSubmit = async (voteData) => {
+  try {
+    // Show loading toast
+    const loadingToast = toast({
+      title: 'Submitting vote...',
+      description: 'Please wait',
+      type: 'loading',
+      duration: 10000
+    });
+    
+    // Call API to submit the vote
+    await axios.post(`/votes/${selectedVote.value.id}/cast`, voteData);
+    
+    // Show success message
+    toast({
+      title: 'Success',
+      description: 'Vote submitted successfully',
+      type: 'success'
+    });
+    
+    // Close dialog
+    selectedVote.value = null;
+    
+    // Refresh votes
+    await fetchVotes();
+  } catch (err) {
+    console.error('Failed to submit vote:', err);
+    
+    // Show error message
+    toast({
+      title: 'Error',
+      description: 'Failed to submit vote: ' + (err.response?.data?.error || err.message),
+      type: 'error'
+    });
+  }
+};
+
+// Add this function with your other handler functions
+const deleteVote = async (voteId) => {
+  try {
+    // Show loading toast
+    const loadingToast = toast({
+      title: 'Deleting vote...',
+      description: 'Please wait',
+      type: 'loading',
+      duration: 5000
+    });
+    
+    // Call API to delete the vote
+    await axios.delete(`/votes/${voteId}`);
+    
+    // Close the dialog
+    selectedVote.value = null;
+    
+    // Show success message
+    toast({
+      title: 'Success',
+      description: 'Vote deleted successfully',
+      type: 'success'
+    });
+    
+    // Refresh votes list
+    await fetchVotes();
+  } catch (err) {
+    console.error('Failed to delete vote:', err);
+    
+    // Show error toast
+    toast({
+      title: 'Error',
+      description: 'Failed to delete vote: ' + (err.response?.data?.error || err.message),
+      type: 'error'
+    });
+  }
+}
 </script>

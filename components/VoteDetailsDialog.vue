@@ -107,8 +107,21 @@
           </div>
         </div>
 
+        <!-- Update the footer section -->
         <footer class="p-6 border-t">
-          <div class="flex justify-end">
+          <div class="flex justify-between">
+            <!-- Add delete button on the left -->
+            <Button 
+              v-if="canDelete" 
+              variant="destructive" 
+              @click="confirmDelete"
+            >
+              <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
+              Delete Vote
+            </Button>
+            <div></div> <!-- Spacer when delete button isn't shown -->
+            
+            <!-- Close button on the right -->
             <Button @click="$emit('close')">Close</Button>
           </div>
         </footer>
@@ -122,14 +135,39 @@ import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Icon } from '@iconify/vue'
 
 const props = defineProps({
   vote: {
     type: Object,
     required: true
+  },
+  currentUserId: { // Add this prop to check if user can delete
+    type: String,
+    default: ''
   }
 })
 
+// Define emit once (remove the duplicate at the bottom of the file)
+const emit = defineEmits(['close', 'submit-vote', 'delete'])
+
+// Add computed property to check if user can delete
+const canDelete = computed(() => {
+  // User can delete if they're the creator or if we don't have creator info
+  return (
+    props.currentUserId === props.vote.creator_id || 
+    !props.vote.creator_id // If we don't track creator, allow delete for testing
+  )
+})
+
+// Add confirmation method
+const confirmDelete = () => {
+  if (confirm(`Are you sure you want to delete this vote: "${props.vote.title}"?`)) {
+    emit('delete', props.vote.id)
+  }
+}
+
+// Rest of your existing script
 const selectedChoices = ref([])
 const writeInAnswer = ref('')
 
@@ -174,6 +212,4 @@ const getVotePercentage = (choice) => {
   if (total === 0) return 0
   return Math.round((getVoteCount(choice) / total) * 100)
 }
-
-defineEmits(['close', 'submit-vote'])
 </script>
