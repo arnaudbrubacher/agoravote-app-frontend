@@ -4,11 +4,43 @@
     <Card class="w-full max-w-2xl mx-auto">
       <CardContent class="p-6">
         <div class="flex items-start space-x-6">
+          <!-- Profile Picture -->
+          <div class="flex-shrink-0">
+            <div v-if="profilePicture" class="w-16 h-16 rounded-full overflow-hidden border">
+              <img :src="profilePicture" alt="Profile" class="w-full h-full object-cover" />
+            </div>
+            <div v-else class="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <!-- File input remains hidden -->
+            <input 
+              type="file" 
+              ref="fileInput" 
+              class="hidden" 
+              accept="image/*"
+              @change="handleProfilePictureUpload" 
+            />
+          </div>
+          
+          <!-- User Info -->
           <div class="flex-1 space-y-2 py-2">
             <h3 class="text-lg font-medium">{{ userName || 'Loading...' }}</h3>
             <p class="text-sm text-muted-foreground">{{ userEmail || 'Loading...' }}</p>
           </div>
+          
+          <!-- Action Buttons -->
           <div class="flex items-center ml-auto space-x-2">
+            <!-- Add Settings Button -->
+            <Button 
+              variant="outline" 
+              @click="openSettings"
+              class="flex items-center"
+            >
+              <SettingsIcon class="mr-2 h-4 w-4" />
+              Settings
+            </Button>
             <Button 
               variant="outline" 
               @click="logout"
@@ -16,14 +48,6 @@
             >
               <LogOutIcon class="mr-2 h-4 w-4" />
               Log Out
-            </Button>
-            <Button 
-              variant="destructive" 
-              @click="deleteAccount"
-              class="flex items-center"
-            >
-              <TrashIcon class="mr-2 h-4 w-4" />
-              Delete Account
             </Button>
           </div>
         </div>
@@ -180,16 +204,32 @@
       @close="closeNewGroupDialog"
       @group-created="handleGroupCreated"
     />
+
+    <!-- User Settings Dialog - Now using the component -->
+    <UserSettingsDialog
+      v-model:open="showSettingsDialog"
+      :userData="userData"
+      @refresh-user-data="fetchUserInfo"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { LogOutIcon, TrashIcon, PlusIcon, SearchIcon, Loader2 as SpinnerIcon } from 'lucide-vue-next'
-import { UserGroupIcon } from '@heroicons/vue/outline'  // Keep only this import
+import { 
+  LogOutIcon, 
+  TrashIcon, 
+  PlusIcon, 
+  SearchIcon, 
+  Settings as SettingsIcon, 
+  Loader2 as SpinnerIcon 
+} from 'lucide-vue-next'
+import { UserGroupIcon } from '@heroicons/vue/outline'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { 
   Card, 
   CardHeader, 
@@ -197,16 +237,69 @@ import {
   CardDescription, 
   CardContent 
 } from '@/components/ui/card'
-import NewGroupDialog from '@/components/NewGroupDialog.vue'  // Make sure .vue extension is included
+import NewGroupDialog from '@/components/NewGroupDialog.vue'
+import UserSettingsDialog from '@/components/UserSettingsDialog.vue'
 
 const router = useRouter()
 
+// User data refs
 const userName = ref('')
 const userEmail = ref('')
 const profilePicture = ref(null)
-const showNewGroupDialog = ref(false)
+const fileInput = ref(null)
 const groups = ref([])
+const userData = ref(null) // This will hold all user data to pass to the dialog
 
+// Settings dialog ref
+const showSettingsDialog = ref(false)
+
+// New group dialog ref
+const showNewGroupDialog = ref(false)
+
+// Open settings dialog
+const openSettings = () => {
+  showSettingsDialog.value = true
+}
+
+// Handle profile picture upload
+// This is kept for direct updates to the profile picture from the dashboard
+const handleProfilePictureUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  try {
+    // Create form data
+    const formData = new FormData()
+    formData.append('profile_picture', file)
+    
+    // Get user ID from localStorage
+    const userId = localStorage.getItem('userId')
+    const token = localStorage.getItem('token')
+    
+    if (!userId || !token) {
+      throw new Error('Authentication required')
+    }
+    
+    // Upload the file
+    const response = await axios.post(`/users/${userId}/profile-picture`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    // Update the profile picture
+    profilePicture.value = response.data.url
+    
+    // Show success message
+    console.log('Profile picture updated successfully')
+  } catch (error) {
+    console.error('Failed to upload profile picture:', error)
+    alert('Failed to upload profile picture: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
+// Fetch user info
 const fetchUserInfo = async () => {
   try {
     // Get token and userId from localStorage
@@ -218,18 +311,19 @@ const fetchUserInfo = async () => {
     }
 
     // Make API call to get user profile
-    const response = await axios.get(`/user/profile/${userId}`, {
+    const response = await axios.get(`/users/me`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
     })
 
     // Update user information from API response
+    userData.value = response.data
     userName.value = response.data.name
     userEmail.value = response.data.email
-    profilePicture.value = response.data.profilePicture || null
+    profilePicture.value = response.data.profile_picture
 
-    console.log('User profile fetched:', response.data) // Debug log
+    console.log('User profile fetched:', response.data)
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     if (error.response?.status === 401) {
@@ -241,6 +335,7 @@ const fetchUserInfo = async () => {
   }
 }
 
+// Keep the rest of your existing methods
 const fetchGroups = async () => {
     try {
         const token = localStorage.getItem('token')
@@ -275,37 +370,10 @@ onMounted(() => {
   fetchGroups()
 })
 
-const triggerFileInput = () => {
-  fileInput.value.click()
-}
-
-const updateProfilePicture = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      profilePicture.value = e.target.result
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
 const logout = () => {
   // Clear user session or token
   localStorage.removeItem('token')
   router.push('/auth')
-}
-
-const deleteAccount = async () => {
-  try {
-    const userId = localStorage.getItem('userId') // Assuming userId is stored in localStorage
-    await axios.delete(`/user/${userId}`)
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    router.push('/auth')
-  } catch (error) {
-    console.error('Failed to delete account:', error)
-  }
 }
 
 // Dialog handlers
