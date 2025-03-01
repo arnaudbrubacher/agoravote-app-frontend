@@ -187,13 +187,13 @@
               </div>
               <div v-else-if="group.members?.length" class="space-y-4">
                 <!-- Members list -->
-                <div v-for="member in group.members" :key="member.id"
+                <div v-for="(member, index) in group.members" :key="member.id || index"
                   class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
                   <div class="flex items-center space-x-3">
                     <!-- Member Avatar -->
                     <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <span v-if="!member.avatar" class="font-medium text-primary">
-                        {{ member.name?.charAt(0).toUpperCase() }}
+                        {{ getMemberInitial(member) }}
                       </span>
                       <img 
                         v-else 
@@ -206,12 +206,12 @@
                     <!-- Member Info -->
                     <div>
                       <div class="flex items-center">
-                        <span class="font-medium">{{ member.name }}</span>
-                        <span v-if="member.id === currentUser?.id" class="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                        <span class="font-medium">{{ member.name || 'Unknown Member' }}</span>
+                        <span v-if="isCurrentMember(member)" class="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
                           You
                         </span>
                       </div>
-                      <span class="text-sm text-muted-foreground">{{ member.email }}</span>
+                      <span class="text-sm text-muted-foreground">{{ member.email || 'No email available' }}</span>
                     </div>
                   </div>
                   
@@ -237,11 +237,11 @@
                             <Icon name="heroicons:user-plus" class="h-4 w-4 mr-2" />
                             Make Admin
                           </DropdownMenuItem>
-                          <DropdownMenuItem v-if="member.isAdmin && currentUser.id !== member.id" @click="demoteMember(member)">
+                          <DropdownMenuItem v-if="member.isAdmin && !isCurrentMember(member)" @click="demoteMember(member)">
                             <Icon name="heroicons:user-minus" class="h-4 w-4 mr-2" />
                             Remove Admin Role
                           </DropdownMenuItem>
-                          <DropdownMenuItem v-if="currentUser.id !== member.id" @click="removeMember(member)">
+                          <DropdownMenuItem v-if="!isCurrentMember(member)" @click="removeMember(member)">
                             <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
                             Remove
                           </DropdownMenuItem>
@@ -345,9 +345,7 @@ import PostDetailsDialog from '~/components/PostDetailsDialog.vue'
 // Add this to your imports
 import VoteDetailsDialog from '~/components/VoteDetailsDialog.vue'
 
-// Remove toast import
-// import { useToast } from '@/composables/useToast'
-// const { toast } = useToast()
+
 
 // Add dialog visibility refs
 const showSettingsDialog = ref(false)
@@ -501,7 +499,7 @@ const formatDateShort = (dateStr) => {
   }).format(date)
 }
 
-// Fetch group function
+// Fetch group function with better member handling
 const fetchGroup = async () => {
   try {
     loading.value = true
@@ -509,16 +507,26 @@ const fetchGroup = async () => {
     error.value = null
     
     const groupId = route.params.id
+    
+    console.log('Fetching group data for ID:', groupId)
+    
     const response = await axios.get(`/groups/${groupId}`)
+    
+    console.log('Raw group API response:', response.data)
     
     group.value = response.data
     
-    // Ensure members array exists
-    if (!group.value.members) {
-      group.value.members = []
+    // Check if members are included in the response
+    if (!group.value.members || !Array.isArray(group.value.members) || group.value.members.length === 0) {
+      console.log('No members array in group response, fetching members separately')
+      await fetchMembers()
+    } else {
+      console.log('Members found in group response:', group.value.members)
+      // Normalize the member data that came with the group
+      group.value.members = normalizeMembers(group.value.members)
     }
     
-    console.log("Group data loaded:", group.value)
+    console.log('Processed group data:', group.value)
   } catch (err) {
     console.error('Failed to fetch group:', err)
     error.value = err.response?.data?.error || 'Failed to fetch group information'
@@ -528,6 +536,114 @@ const fetchGroup = async () => {
     isLoadingMembers.value = false // Clear loading state
   }
 }
+
+// Add a separate function to fetch members
+const fetchMembers = async () => {
+  try {
+    console.log('Fetching members separately...')
+    
+    const response = await axios.get(`/groups/${groupId}/members`)
+    
+    console.log('Raw members API response:', response.data)
+    
+    // Handle different response formats
+    let rawMembers = []
+    if (Array.isArray(response.data)) {
+      rawMembers = response.data
+    } else if (response.data.members && Array.isArray(response.data.members)) {
+      rawMembers = response.data.members
+    } else if (typeof response.data === 'object') {
+      // Try to extract members from response object
+      Object.keys(response.data).forEach(key => {
+        if (Array.isArray(response.data[key])) {
+          rawMembers = response.data[key]
+        }
+      })
+    }
+    
+    console.log('Raw members extracted:', rawMembers)
+    
+    // Normalize the member data
+    group.value.members = normalizeMembers(rawMembers)
+  } catch (err) {
+    console.error('Failed to fetch members:', err)
+    console.error('Error response:', err.response?.data)
+    // Initialize empty array if fetch fails
+    group.value.members = []
+  }
+}
+
+// Add a function to normalize member data
+const normalizeMembers = (members) => {
+  console.log('Normalizing members data:', members)
+  
+  return members.map((member, index) => {
+    // Log each member for debugging
+    console.log(`Processing member ${index}:`, member)
+    
+    // Extract data from nested objects
+    const userData = member.user || {}
+    
+    // Determine the member ID
+    const id = member.id || member.userId || member.user_id || userData.id
+    
+    // Determine the member name - check all possible properties
+    let name = 'Unknown Member'
+    if (member.name) name = member.name
+    else if (member.username) name = member.username
+    else if (userData.name) name = userData.name
+    else if (userData.username) name = userData.username
+    else if (member.firstName) {
+      name = member.firstName
+      if (member.lastName) name += ' ' + member.lastName
+    }
+    
+    // Determine email
+    const email = member.email || userData.email || ''
+    
+    // Determine avatar/profile picture
+    const avatar = member.avatar || member.profile_picture || 
+                   member.profilePicture || userData.avatar || 
+                   userData.profile_picture || userData.profilePicture
+    
+    // Determine admin status
+    const isAdmin = member.isAdmin || member.is_admin || 
+                    member.role === 'admin' || userData.role === 'admin'
+    
+    // Log the normalized member
+    const normalizedMember = {
+      id,
+      name,
+      email,
+      avatar,
+      isAdmin
+    }
+    
+    console.log(`Normalized member ${index}:`, normalizedMember)
+    
+    return normalizedMember
+  })
+}
+
+// Update the computed property for checking if current user is admin
+const isCurrentUserAdmin = computed(() => {
+  if (!group.value?.members || !currentUser.value) return false
+  
+  console.log('Checking if current user is admin. User ID:', currentUser.value.id)
+  console.log('Group members:', group.value.members)
+  
+  const currentMember = group.value.members.find(m => {
+    const match = m.id === currentUser.value.id || 
+                  m.userId === currentUser.value.id ||
+                  m.user_id === currentUser.value.id
+    if (match) console.log('Found current user in members:', m)
+    return match
+  })
+  
+  console.log('Current member object:', currentMember)
+  
+  return !!currentMember?.isAdmin
+})
 
 const confirmDeleteGroup = async () => {
   if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
@@ -749,13 +865,6 @@ import {
 // Add this state variable
 const isLoadingMembers = ref(false)
 
-// Computed property to check if current user is an admin
-const isCurrentUserAdmin = computed(() => {
-  if (!group.value || !currentUser.value) return false
-  const currentMember = group.value.members?.find(m => m.id === currentUser.value.id)
-  return currentMember?.isAdmin || false
-})
-
 // Member management functions
 const promoteMember = async (member) => {
   try {
@@ -830,6 +939,20 @@ const removeMember = async (member) => {
   } finally {
     statusMessage.value = ''
   }
+}
+
+// Add these helper functions
+const getMemberInitial = (member) => {
+  if (!member || !member.name || member.name === 'Unknown Member') return 'U'
+  return member.name.charAt(0).toUpperCase()
+}
+
+const isCurrentMember = (member) => {
+  if (!currentUser.value || !member) return false
+  
+  return member.id === currentUser.value.id || 
+         member.userId === currentUser.value.id || 
+         member.user_id === currentUser.value.id
 }
 
 </script>
