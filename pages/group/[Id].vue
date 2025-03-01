@@ -831,4 +831,5 @@ const removeMember = async (member) => {
     statusMessage.value = ''
   }
 }
+
 </script>
