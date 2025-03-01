@@ -150,9 +150,32 @@
         <!-- Members Tab -->
         <TabsContent value="members">
           <Card>
-            <CardHeader class="flex justify-between">
-              <CardTitle>Members ({{ group.members?.length || 0 }})</CardTitle>
-              <div class="flex space-x-2">
+            <CardHeader class="flex flex-col sm:flex-row justify-between gap-4">
+              <div class="flex flex-col gap-2">
+                <CardTitle>Members ({{ filteredMembers.length || 0 }})</CardTitle>
+                
+                <!-- Search bar -->
+                <div class="relative w-full sm:max-w-xs">
+                  <input
+                    v-model="memberSearchQuery"
+                    type="text"
+                    placeholder="Search members..."
+                    class="w-full pl-8 pr-4 py-2 border rounded-md"
+                  />
+                  <Icon 
+                    name="heroicons:magnifying-glass" 
+                    class="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
+                  />
+                  <button 
+                    v-if="memberSearchQuery" 
+                    @click="memberSearchQuery = ''" 
+                    class="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                  >
+                    <Icon name="heroicons:x-mark" class="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <!-- Import Members Button -->
                 <div class="flex items-center">
                   <label class="mr-2 text-sm text-muted-foreground">Import member list:</label>
@@ -186,8 +209,13 @@
                 <span class="ml-2">Loading members...</span>
               </div>
               <div v-else-if="group.members?.length" class="space-y-4">
+                <!-- No results message -->
+                <div v-if="filteredMembers.length === 0 && memberSearchQuery" class="text-center py-8 text-muted-foreground">
+                  No members matching "{{ memberSearchQuery }}"
+                </div>
+                
                 <!-- Members list -->
-                <div v-for="(member, index) in group.members" :key="member.id || index"
+                <div v-else v-for="(member, index) in filteredMembers" :key="member.id || index"
                   class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
                   <div class="flex items-center space-x-3">
                     <!-- Member Avatar -->
@@ -989,5 +1017,64 @@ const leaveGroup = async () => {
     statusMessage.value = ''
   }
 }
+
+// Add this function to your [Id].vue component
+const addMember = async (memberData) => {
+  try {
+    statusMessage.value = 'Adding member...'
+    
+    console.log('Adding member:', memberData)
+    
+    // Format the request data
+    const requestData = {
+      email: memberData.email,
+      isAdmin: memberData.role === 'admin'
+    }
+    
+    // Call API to add member
+    const response = await axios.post(`/groups/${groupId}/members`, requestData)
+    
+    // Show success message
+    alert(`Member ${memberData.email} added successfully`)
+    
+    // Close dialog
+    showAddMemberDialog.value = false
+    
+    // Refresh members list
+    await fetchGroup()
+  } catch (err) {
+    console.error('Failed to add member:', err)
+    
+    // Show error message
+    alert('Failed to add member: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = ''
+  }
+}
+
+// Add this state variable
+const memberSearchQuery = ref('')
+
+// Add this computed property
+const filteredMembers = computed(() => {
+  if (!group.value?.members) return []
+  
+  const query = memberSearchQuery.value.trim().toLowerCase()
+  if (!query) return group.value.members
+  
+  return group.value.members.filter(member => {
+    // Search in name
+    if (member.name && member.name.toLowerCase().includes(query)) return true
+    
+    // Search in email
+    if (member.email && member.email.toLowerCase().includes(query)) return true
+    
+    // Search in role
+    if (member.isAdmin && 'admin'.includes(query)) return true
+    if (!member.isAdmin && 'member'.includes(query)) return true
+    
+    return false
+  })
+})
 
 </script>

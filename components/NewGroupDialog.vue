@@ -3,9 +3,6 @@
     <DialogContent class="w-full max-w-3xl">
       <DialogHeader>
         <DialogTitle>Create New Group</DialogTitle>
-        <DialogDescription>
-          Set up a new group for users to join and collaborate.
-        </DialogDescription>
       </DialogHeader>
 
       <form @submit.prevent="handleSubmit" class="space-y-6 p-6 pt-0">
@@ -85,13 +82,33 @@
           </div>
         </div>
         
+
+        <!-- Group Password -->
+         <div class="space-y-2">
+            <Label>
+              <input type="checkbox" v-model="form.requiresPassword" />
+              Admission requires a password
+            </Label>
+            <Input 
+              type="password" 
+              v-model="form.password" 
+              placeholder="Enter password" 
+              :disabled="!form.requiresPassword"
+            />
+            <Input 
+              type="password" 
+              v-model="form.confirmPassword" 
+              placeholder="Confirm password" 
+              :disabled="!form.requiresPassword"
+            />
+          </div>
+
+
+
         <!-- Documents Required -->
         <div class="space-y-4">
           <div class="space-y-2">
             <Label>Documents Required from Users to Join</Label>
-            <p class="text-sm text-muted-foreground">
-              Members must submit these documents to join your group
-            </p>
           </div>
           
           <Button 
