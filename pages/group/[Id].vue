@@ -198,9 +198,24 @@
                 </div>
                 
                 <!-- Add Member Button -->
-                <Button @click="showAddMemberDialog = true">
-                  Add Member
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button>
+                      Add Member
+                      <Icon name="heroicons:chevron-down" class="ml-1 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem @click="showAddMemberDialog = true">
+                      <Icon name="heroicons:envelope" class="h-4 w-4 mr-2" />
+                      Add by Email
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @click="showUserSearchDialog = true">
+                      <Icon name="heroicons:magnifying-glass" class="h-4 w-4 mr-2" />
+                      Search Users
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardHeader>
             <CardContent>
@@ -341,6 +356,14 @@
       @submit-vote="handleVoteSubmit"
       @delete="deleteVote"
     />
+
+    <!-- User Search Dialog -->
+    <UserSearchDialog
+      v-if="showUserSearchDialog"
+      :groupId="groupId"
+      @close="showUserSearchDialog = false"
+      @user-added="handleUserAdded"
+    />
   </div>
 </template>
 
@@ -374,7 +397,8 @@ import PostDetailsDialog from '~/components/PostDetailsDialog.vue'
 // Add this to your imports
 import VoteDetailsDialog from '~/components/VoteDetailsDialog.vue'
 
-
+// Add this to your imports
+import UserSearchDialog from '@/components/UserSearchDialog.vue'
 
 // Add dialog visibility refs
 const showSettingsDialog = ref(false)
@@ -390,6 +414,9 @@ const selectedPost = ref(null)
 const currentUser = ref(null)
 const selectedVote = ref(null)
 const statusMessage = ref('') // For displaying status messages
+
+// Add this ref
+const showUserSearchDialog = ref(false)
 
 // Route and router
 const route = useRoute()
@@ -1077,4 +1104,11 @@ const filteredMembers = computed(() => {
   })
 })
 
+// Add this handler function for when a user is added via search
+const handleUserAdded = async (user) => {
+  console.log('User added via search:', user)
+  
+  // Refresh the group data to update the members list
+  await fetchGroup()
+}
 </script>
