@@ -178,14 +178,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue' // Add watch import here
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
 import { TrashIcon, LogOutIcon, EditIcon, CheckCircleIcon, AlertCircleIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge' // Updated import path
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -238,10 +238,25 @@ const formatDate = (dateString) => {
 }
 
 // Watch for props change to update form values
-if (props.userData) {
-  userNameEdit.value = props.userData.name || ''
-  userEmailEdit.value = props.userData.email || ''
-}
+watch(() => props.userData, (newUserData) => {
+  if (newUserData) {
+    userNameEdit.value = newUserData.name || ''
+    userEmailEdit.value = newUserData.email || ''
+    console.log('UserSettingsDialog: userData updated', newUserData.name, newUserData.email)
+  }
+}, { immediate: true })
+
+// Also watch for dialog open state changes to reset editing state
+watch(() => props.open, (isOpen) => {
+  if (isOpen && props.userData) {
+    // Reset form values when dialog is opened
+    userNameEdit.value = props.userData.name || ''
+    userEmailEdit.value = props.userData.email || ''
+    // Reset editing states
+    editingName.value = false
+    editingEmail.value = false
+  }
+})
 
 // Computed property to check if passwords match
 const passwordMismatch = computed(() => {

@@ -379,13 +379,12 @@ const fetchUserInfo = async () => {
 
     // Make API call to get user profile
     const response = await axios.get(`/users/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` }
     })
 
+    console.log('User data received:', response.data)  // Add this log
+    userData.value = response.data  // This is critical
     // Update user information from API response
-    userData.value = response.data
     userName.value = response.data.name
     userEmail.value = response.data.email
     profilePicture.value = response.data.profile_picture
