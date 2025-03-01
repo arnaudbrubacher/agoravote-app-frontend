@@ -2,60 +2,59 @@
   <div class="container mx-auto p-6 space-y-6">
     <!-- Modern Profile Card -->
     <Card class="w-full max-w-2xl mx-auto">
-      <CardHeader class="flex flex-row items-center justify-between pb-2">
-        <!-- Left side: Profile Picture and User Info -->
-        <div class="flex items-center space-x-4">
-          <div class="relative">
-            <div v-if="!profilePicture" class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+      <CardContent class="p-6">
+        <div class="space-y-6">
+          <!-- Profile Info Section - Moved from header to content -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <div class="relative">
+                <div v-if="!profilePicture" class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <img 
+                  v-else
+                  :src="profilePicture" 
+                  alt="Profile Picture"
+                  class="w-16 h-16 rounded-full object-cover border"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full shadow-sm"
+                  @click="triggerFileInput"
+                >
+                  <EditIcon class="h-3 w-3" />
+                </Button>
+                <input 
+                  type="file" 
+                  ref="fileInput" 
+                  class="hidden"
+                  accept="image/*" 
+                  @change="handleProfilePictureUpload" 
+                />
+              </div>
+              <div>
+                <CardTitle>{{ userName || 'Your Profile' }}</CardTitle>
+                <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
+              </div>
             </div>
-            <img 
-              v-else
-              :src="profilePicture" 
-              alt="Profile Picture"
-              class="w-16 h-16 rounded-full object-cover border"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full shadow-sm"
-              @click="triggerFileInput"
+            
+            <!-- Settings Button -->
+            <Button 
+              variant="outline" 
+              size="sm"
+              @click="openUserSettings"
+              class="flex items-center"
             >
-              <EditIcon class="h-3 w-3" />
+              <SettingsIcon class="h-4 w-4 mr-1" />
+              Settings
             </Button>
-            <input 
-              type="file" 
-              ref="fileInput" 
-              class="hidden"
-              accept="image/*" 
-              @change="handleProfilePictureUpload" 
-            />
           </div>
-          <div>
-            <CardTitle>{{ userName || 'Your Profile' }}</CardTitle>
-            <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
-          </div>
-        </div>
-        
-        <!-- Settings Button -->
-        <Button 
-          variant="outline" 
-          size="sm"
-          @click="openUserSettings"
-          class="flex items-center"
-        >
-          <SettingsIcon class="h-4 w-4 mr-1" />
-          Settings
-        </Button>
-      </CardHeader>
-
-      <CardContent class="p-6 pt-4">
-        <!-- Profile card content can be simplified since details are now in the settings dialog -->
-        <div class="space-y-4">
-          <!-- You can keep minimal information here -->
+          
+          <!-- Email verification status -->
           <div v-if="userData?.email_verified !== undefined" class="flex items-center pb-3">
             <div>
               <div class="flex items-center">
@@ -84,7 +83,6 @@
       <CardHeader class="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Your Groups</CardTitle>
-          <CardDescription>Groups you've created or joined</CardDescription>
         </div>
         <Button @click="openNewGroupDialog" class="flex items-center ml-auto">
           <PlusIcon class="mr-2 h-4 w-4" />
@@ -142,7 +140,6 @@
       <CardHeader class="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Find a Group</CardTitle>
-          <CardDescription>Search for public groups to join</CardDescription>
         </div>
       </CardHeader>
       <CardContent class="p-6">
@@ -220,14 +217,13 @@
       </CardContent>
     </Card>
 
-    <!-- New Group Dialog -->
+    <!-- Dialogs -->
     <NewGroupDialog
       v-if="showNewGroupDialog"
       @close="closeNewGroupDialog"
       @group-created="handleGroupCreated"
     />
 
-    <!-- User Settings Dialog -->
     <UserSettingsDialog
       :open="showUserSettings"
       :userData="userData"
