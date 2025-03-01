@@ -267,6 +267,7 @@
       @close="showSettingsDialog = false"
       @submit="updateGroupSettings"
       @delete="confirmDeleteGroup"
+      @leave="leaveGroup"
     />
 
     <!-- New Vote Dialog -->
@@ -953,6 +954,40 @@ const isCurrentMember = (member) => {
   return member.id === currentUser.value.id || 
          member.userId === currentUser.value.id || 
          member.user_id === currentUser.value.id
+}
+
+// Add this function to handle leaving the group
+const leaveGroup = async () => {
+  try {
+    statusMessage.value = 'Leaving group...'
+    
+    // Get the current user ID
+    const userId = currentUser.value?.id
+    if (!userId) {
+      alert('You must be logged in to leave a group')
+      return
+    }
+    
+    const groupId = route.params.id
+    
+    console.log(`User ${userId} is leaving group ${groupId}`)
+    
+    // Call API to remove the current user from the group
+    await axios.delete(`/groups/${groupId}/members/${userId}`)
+    
+    // Show success message
+    alert('You have left the group')
+    
+    // Redirect to dashboard
+    router.push('/dashboard')
+  } catch (err) {
+    console.error('Failed to leave group:', err)
+    
+    // Show error message
+    alert('Failed to leave group: ' + (err.response?.data?.error || err.message))
+    
+    statusMessage.value = ''
+  }
 }
 
 </script>

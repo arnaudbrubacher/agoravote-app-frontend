@@ -151,17 +151,29 @@
           </div>
         </form>
 
-        <!-- Danger Zone -->
+        <!-- Admin Actions - Removed "Danger Zone" text -->
         <div class="mt-8 pt-6 border-t border-destructive/20">
-          <h3 class="text-base font-semibold text-destructive mb-4">Danger Zone</h3>
-          <Button 
-            variant="destructive" 
-            class="w-full"
-            @click="confirmDelete"
-          >
-            <TrashIcon class="h-4 w-4 mr-2" />
-            Delete Group
-          </Button>
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Leave Group Button -->
+            <Button 
+              variant="outline" 
+              class="w-full"
+              @click="confirmLeave"
+            >
+              <LogOutIcon class="h-4 w-4 mr-2" />
+              Leave Group
+            </Button>
+            
+            <!-- Delete Group Button -->
+            <Button 
+              variant="destructive" 
+              class="w-full"
+              @click="confirmDelete"
+            >
+              <TrashIcon class="h-4 w-4 mr-2" />
+              Delete Group
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -189,7 +201,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { LockIcon, UnlockIcon, TrashIcon, EditIcon } from 'lucide-vue-next'
+import { LockIcon, UnlockIcon, TrashIcon, EditIcon, LogOutIcon } from 'lucide-vue-next'
 import { Icon } from '@iconify/vue'
 
 const props = defineProps({
@@ -251,6 +263,13 @@ const confirmDelete = () => {
   }
 }
 
+// Add new function for leaving the group
+const confirmLeave = () => {
+  if (confirm('Are you sure you want to leave this group?')) {
+    emit('leave')
+  }
+}
+
 const handleSubmit = () => {
   emit('submit', {
     name: groupData.value.name,
@@ -261,5 +280,6 @@ const handleSubmit = () => {
   })
 }
 
-const emit = defineEmits(['close', 'submit', 'delete'])
+// Update emit to include 'leave' event
+const emit = defineEmits(['close', 'submit', 'delete', 'leave'])
 </script>
