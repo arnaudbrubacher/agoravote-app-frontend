@@ -190,9 +190,11 @@ const addUser = async (user) => {
   try {
     isLoading.value = true
     
+    // Updated request format to match backend expectations
     const response = await axios.post(`/groups/${props.groupId}/members`, {
       userId: user.id,
-      email: user.email
+      email: user.email,
+      isAdmin: false // Default to regular member, change if needed
     })
     
     // Emit success event with user data
