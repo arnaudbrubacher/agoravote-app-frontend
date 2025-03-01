@@ -249,7 +249,12 @@
                     <!-- Member Info -->
                     <div>
                       <div class="flex items-center">
-                        <span class="font-medium">{{ member.name || 'Unknown Member' }}</span>
+                        <router-link 
+                          :to="`/user/${member.id}`" 
+                          class="font-medium hover:underline"
+                        >
+                          {{ member.name || 'Unknown Member' }}
+                        </router-link>
                         <span v-if="isCurrentMember(member)" class="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
                           You
                         </span>
