@@ -3,220 +3,135 @@
     <DialogContent class="w-full max-w-lg">
       <DialogHeader>
         <DialogTitle>User Settings</DialogTitle>
-        <DialogDescription>
-          Manage your account settings and preferences.
-        </DialogDescription>
+      
       </DialogHeader>
 
-      <div class="flex-1 overflow-y-auto p-6">
+      <div class="flex-1 overflow-y-auto p-6"> 
         <form @submit.prevent="saveSettings" class="space-y-6">
-          <!-- Profile Picture Section -->
-          <div class="flex justify-center mb-8">
-            <div class="relative">
-              <div v-if="!profilePicture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+          <!-- Personal Information Section -->
+          <div class="space-y-4">
+            
+            <!-- Name Field -->
+            <div class="flex items-center justify-between pb-3 border-b">
+              <div>
+                <p class="text-xs text-muted-foreground mb-1">Name</p>
+                <p class="font-medium">{{ userNameEdit }}</p>
               </div>
-              <img 
-                v-else
-                :src="profilePicture" 
-                alt="Profile Picture"
-                class="w-28 h-28 rounded-full object-cover border"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
-                @click="triggerFileInput"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-              <input 
-                type="file" 
-                ref="fileInput" 
-                class="hidden"
-                accept="image/*" 
-                @change="handleProfilePictureUpload" 
-              />
-            </div>
-          </div>
-
-          <!-- User ID Field (Read-only) -->
-          <div class="space-y-2">
-            <Label class="text-sm text-muted-foreground">User ID</Label>
-            <div class="px-3 py-2 text-sm font-medium bg-muted rounded">
-              {{ userData?.id || 'Not available' }}
-            </div>
-          </div>
-
-          <!-- Name Field -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <Label for="name" class="text-sm text-muted-foreground">Display Name</Label>
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
-                class="h-8 w-8"
+                size="sm"
                 @click="editingName = !editingName"
               >
                 <EditIcon class="h-4 w-4" />
               </Button>
             </div>
-            <div v-if="editingName">
+            <div v-if="editingName" class="pb-4">
               <Input
                 id="name"
                 v-model="userNameEdit"
-                class="w-full px-3 py-2 border rounded-md"
+                class="w-full mb-2"
                 placeholder="Enter display name"
               />
+              <div class="flex justify-end gap-2">
+                <Button variant="outline" size="sm" @click="editingName = false">Cancel</Button>
+                <Button type="button" size="sm" @click="saveUserName">Save</Button>
+              </div>
             </div>
-            <div v-else class="px-3 py-2 text-lg font-medium">
-              {{ userNameEdit }}
-            </div>
-          </div>
 
-          <!-- Email Field -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <Label for="email" class="text-sm text-muted-foreground">Email Address</Label>
+            <!-- Email Field -->
+            <div class="flex items-center justify-between pb-3 border-b">
+              <div>
+                <p class="text-xs text-muted-foreground mb-1">Email Address</p>
+                <p class="font-medium">{{ userEmailEdit }}</p>
+              </div>
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
-                class="h-8 w-8"
+                size="sm"
                 @click="editingEmail = !editingEmail"
               >
                 <EditIcon class="h-4 w-4" />
               </Button>
             </div>
-            <div v-if="editingEmail">
+            <div v-if="editingEmail" class="pb-4">
               <Input
                 id="email"
                 v-model="userEmailEdit"
-                class="w-full px-3 py-2 border rounded-md"
+                class="w-full mb-2"
                 placeholder="Enter email address"
               />
-              <p class="text-xs text-muted-foreground">
+              <p class="text-xs text-muted-foreground mb-2">
                 Changing your email will require verification
               </p>
+              <div class="flex justify-end gap-2">
+                <Button variant="outline" size="sm" @click="editingEmail = false">Cancel</Button>
+                <Button type="button" size="sm" @click="saveUserEmail">Save</Button>
+              </div>
             </div>
-            <div v-else class="px-3 py-2 text-lg font-medium">
-              {{ userEmailEdit }}
-            </div>
-          </div>
 
-          <!-- Email Verified Status -->
-          <div class="space-y-2" v-if="userData?.email_verified !== undefined">
-            <Label class="text-sm text-muted-foreground">Email Verification Status</Label>
-            <div class="px-3 py-2 flex items-center">
-              <span v-if="userData.email_verified" class="text-green-600 flex items-center">
-                <CheckCircleIcon class="h-5 w-5 mr-1"/> Verified
-              </span>
-              <span v-else class="text-amber-600 flex items-center">
-                <AlertCircleIcon class="h-5 w-5 mr-1"/> Not Verified
-                <Button 
-                  variant="link" 
-                  class="text-sm ml-2" 
-                  @click="resendVerificationEmail"
-                >
-                  Resend Verification
-                </Button>
-              </span>
+            <!-- Email Verification Status -->
+            <div v-if="userData?.email_verified !== undefined" class="flex items-center pb-3 border-b">
+              <div>
+                <p class="text-xs text-muted-foreground mb-1">Verification Status</p>
+                <div class="flex items-center">
+                  <span v-if="userData.email_verified" class="text-green-600 flex items-center">
+                    <CheckCircleIcon class="h-4 w-4 mr-1"/> Verified
+                  </span>
+                  <span v-else class="text-amber-600 flex items-center">
+                    <AlertCircleIcon class="h-4 w-4 mr-1"/> Not Verified
+                    <Button 
+                      variant="link" 
+                      class="text-xs pl-1 h-auto p-0"
+                      @click="resendVerificationEmail"
+                    >
+                      Resend Verification
+                    </Button>
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <!-- Registration Date -->
-          <div class="space-y-2" v-if="userData?.created_at">
-            <Label class="text-sm text-muted-foreground">Account Created</Label>
-            <div class="px-3 py-2 text-md">
-              {{ formatDate(userData.created_at) }}
-            </div>
-          </div>
-          
-          <!-- Last Login -->
-          <div class="space-y-2" v-if="userData?.last_login">
-            <Label class="text-sm text-muted-foreground">Last Login</Label>
-            <div class="px-3 py-2 text-md">
-              {{ formatDate(userData.last_login) }}
-            </div>
-          </div>
-
-          <!-- Password Section -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <Label for="current-password" class="text-sm text-muted-foreground">Password</Label>
+            <!-- Password Field -->
+            <div class="flex items-center justify-between pb-3 border-b">
+              <div>
+                <p class="text-xs text-muted-foreground mb-1">Password</p>
+                <p class="font-medium">●●●●●●●●</p>
+              </div>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 @click="showPasswordChange = true"
               >
-                Change Password
+                Change
               </Button>
             </div>
-            <div class="px-3 py-2 text-lg font-medium">
-              ●●●●●●●●
-            </div>
           </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex flex-col sm:flex-row gap-3 pt-4">
+            <Button 
+              variant="outline" 
+              class="flex-1 justify-center"
+              @click="logout"
+            >
+              <LogOutIcon class="mr-2 h-4 w-4" />
+              Log Out
+            </Button>
 
-          <!-- User Role -->
-          <div class="space-y-2" v-if="userData?.role">
-            <Label class="text-sm text-muted-foreground">Role</Label>
-            <div class="px-3 py-2 flex items-center">
-              <Badge :variant="userData.role === 'admin' ? 'default' : 'secondary'">
-                {{ userData.role.charAt(0).toUpperCase() + userData.role.slice(1) }}
-              </Badge>
-            </div>
+            <Button 
+              variant="destructive" 
+              class="flex-1 justify-center"
+              @click="confirmDeleteAccount"
+            >
+              <TrashIcon class="mr-2 h-4 w-4" />
+              Delete Account
+            </Button>
           </div>
-
-          <!-- Membership Stats -->
-          <div class="space-y-2" v-if="userStats">
-            <Label class="text-sm text-muted-foreground">Memberships</Label>
-            <div class="bg-muted rounded-lg p-4 space-y-2">
-              <div class="flex justify-between text-sm">
-                <span>Groups Joined:</span>
-                <span class="font-medium">{{ userStats.groupsJoined || 0 }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span>Groups Owned:</span>
-                <span class="font-medium">{{ userStats.groupsOwned || 0 }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span>Votes Created:</span>
-                <span class="font-medium">{{ userStats.votesCreated || 0 }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span>Votes Participated In:</span>
-                <span class="font-medium">{{ userStats.votesParticipated || 0 }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Log Out Button -->
-          <Button 
-            variant="outline" 
-            class="w-full mt-4" 
-            @click="logout"
-          >
-            <LogOutIcon class="mr-2 h-4 w-4" />
-            Log Out
-          </Button>
-
-          <!-- Delete Account Button -->
-          <Button 
-            variant="destructive" 
-            class="w-full mt-4" 
-            @click="confirmDeleteAccount"
-          >
-            <TrashIcon class="mr-2 h-4 w-4" />
-            Delete Account
-          </Button>
         </form>
       </div>
-
+      
       <DialogFooter class="px-6 pb-6">
         <Button variant="outline" @click="$emit('update:open', false)">Cancel</Button>
         <Button type="submit" @click="saveSettings">Save Changes</Button>
@@ -376,6 +291,80 @@ const handleProfilePictureUpload = async (event) => {
   }
 }
 
+// Save user name
+const saveUserName = async () => {
+  try {
+    const userId = localStorage.getItem('userId')
+    const token = localStorage.getItem('token')
+    
+    if (!userId || !token) {
+      throw new Error('Authentication required')
+    }
+    
+    // Make API call to update user name
+    await axios.put(`/users/${userId}`, {
+      name: userNameEdit.value
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    // Exit edit mode
+    editingName.value = false
+    
+    // Emit event to refresh parent data
+    emit('refresh-user-data')
+    
+    // Show success message
+    console.log('User name updated successfully')
+  } catch (error) {
+    console.error('Failed to update user name:', error)
+    alert('Failed to update user name: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
+// Save user email
+const saveUserEmail = async () => {
+  try {
+    const userId = localStorage.getItem('userId')
+    const token = localStorage.getItem('token')
+    
+    if (!userId || !token) {
+      throw new Error('Authentication required')
+    }
+    
+    // Check if email has changed
+    const emailChanged = userEmailEdit.value !== props.userData?.email
+    
+    if (emailChanged) {
+      // Make API call to update user email
+      await axios.put(`/users/${userId}`, {
+        email: userEmailEdit.value
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      // Show verification message
+      alert('A verification email has been sent to your new email address. Please verify to complete the change.')
+    }
+    
+    // Exit edit mode
+    editingEmail.value = false
+    
+    // Emit event to refresh parent data
+    emit('refresh-user-data')
+    
+    // Show success message
+    console.log('User email updated successfully')
+  } catch (error) {
+    console.error('Failed to update user email:', error)
+    alert('Failed to update user email: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
 // Save user settings
 const saveSettings = async () => {
   try {
@@ -497,6 +486,7 @@ const deleteAccount = async () => {
 const logout = () => {
   // Clear user session or token
   localStorage.removeItem('token')
+  localStorage.removeItem('userId')
   router.push('/auth')
 }
 

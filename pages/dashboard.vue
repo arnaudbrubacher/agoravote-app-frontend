@@ -1,19 +1,13 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
-    <!-- Enhanced Profile Card with all user information -->
+    <!-- Modern Profile Card -->
     <Card class="w-full max-w-2xl mx-auto">
-      <CardHeader class="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Your Profile</CardTitle>
-        </div>
-      </CardHeader>
-      
-      <CardContent class="p-6 space-y-6">
-        <!-- Profile Picture Section -->
-        <div class="flex justify-left mb-8">
+      <CardHeader class="flex flex-row items-center justify-between pb-2">
+        <!-- Left side: Profile Picture and User Info -->
+        <div class="flex items-center space-x-4">
           <div class="relative">
-            <div v-if="!profilePicture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div v-if="!profilePicture" class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
@@ -21,16 +15,16 @@
               v-else
               :src="profilePicture" 
               alt="Profile Picture"
-              class="w-28 h-28 rounded-full object-cover border"
+              class="w-16 h-16 rounded-full object-cover border"
             />
             <Button
               type="button"
               variant="secondary"
               size="icon"
-              class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
+              class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full shadow-sm"
               @click="triggerFileInput"
             >
-              <EditIcon class="h-4 w-4" />
+              <EditIcon class="h-3 w-3" />
             </Button>
             <input 
               type="file" 
@@ -40,85 +34,39 @@
               @change="handleProfilePictureUpload" 
             />
           </div>
+          <div>
+            <CardTitle>{{ userName || 'Your Profile' }}</CardTitle>
+            <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
+          </div>
         </div>
         
-        <div class="grid md:grid-cols-2 gap-">
-          <div class="space-y-6">
-            <!-- Name Field -->
-            <div class="space-y-2">
-              <div class="flex items-center justify-between">
-                <Label for="name" class="text-sm text-muted-foreground">Name</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  class="h-8 w-8"
-                  @click="editingName = !editingName"
-                >
-                  <EditIcon class="h-4 w-4" />
-                </Button>
-              </div>
-              <div v-if="editingName">
-                <Input
-                  id="name"
-                  v-model="userName"
-                  class="w-full px-3 py-2 border rounded-md"
-                  placeholder="Enter display name"
-                />
-                <div class="flex justify-end mt-2">
-                  <Button type="button" size="sm" @click="saveUserName">Save</Button>
-                </div>
-              </div>
-              <div v-else class="px-3 py-2 text-lg font-medium">
-                {{ userName }}
-              </div>
-            </div>
+        <!-- Settings Button -->
+        <Button 
+          variant="outline" 
+          size="sm"
+          @click="openUserSettings"
+          class="flex items-center"
+        >
+          <SettingsIcon class="h-4 w-4 mr-1" />
+          Settings
+        </Button>
+      </CardHeader>
 
-            <!-- Email Field -->
-            <div class="space-y-2">
-              <div class="flex items-center justify-between">
-                <Label for="email" class="text-sm text-muted-foreground">Email Address</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  class="h-8 w-8"
-                  @click="editingEmail = !editingEmail"
-                >
-                  <EditIcon class="h-4 w-4" />
-                </Button>
-              </div>
-              <div v-if="editingEmail">
-                <Input
-                  id="email"
-                  v-model="userEmail"
-                  class="w-full px-3 py-2 border rounded-md"
-                  placeholder="Enter email address"
-                />
-                <p class="text-xs text-muted-foreground">
-                  Changing your email will require verification
-                </p>
-                <div class="flex justify-end mt-2">
-                  <Button type="button" size="sm" @click="saveUserEmail">Save</Button>
-                </div>
-              </div>
-              <div v-else class="px-3 py-2 text-lg font-medium">
-                {{ userEmail }}
-              </div>
-            </div>
-
-            <!-- Email Verified Status -->
-            <div class="space-y-2" v-if="userData?.email_verified !== undefined">
-              <Label class="text-sm text-muted-foreground">Email Verification Status</Label>
-              <div class="px-3 py-2 flex items-center">
+      <CardContent class="p-6 pt-4">
+        <!-- Profile card content can be simplified since details are now in the settings dialog -->
+        <div class="space-y-4">
+          <!-- You can keep minimal information here -->
+          <div v-if="userData?.email_verified !== undefined" class="flex items-center pb-3">
+            <div>
+              <div class="flex items-center">
                 <span v-if="userData.email_verified" class="text-green-600 flex items-center">
-                  <CheckCircleIcon class="h-5 w-5 mr-1"/> Verified
+                  <CheckCircleIcon class="h-4 w-4 mr-1"/> Email Verified
                 </span>
                 <span v-else class="text-amber-600 flex items-center">
-                  <AlertCircleIcon class="h-5 w-5 mr-1"/> Not Verified
+                  <AlertCircleIcon class="h-4 w-4 mr-1"/> Email Not Verified
                   <Button 
                     variant="link" 
-                    class="text-sm ml-2" 
+                    class="text-xs pl-1 h-auto p-0"
                     @click="resendVerificationEmail"
                   >
                     Resend Verification
@@ -126,53 +74,7 @@
                 </span>
               </div>
             </div>
-
-           <!-- Password Section -->
-            <div class="space-y-2">
-              <div class="flex items-center justify-between">
-                <Label for="current-password" class="text-sm text-muted-foreground">Password</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  @click="showPasswordChange = true"
-                >
-                  Change Password
-                </Button>
-              </div>
-              <div class="px-3 py-2 text-lg font-medium">
-                ●●●●●●●●
-              </div>
-            </div>
-
-
           </div>
-
-          <div class="space-y-6">
-           
-            
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4">
-          <Button 
-            variant="outline" 
-            class="flex-1"
-            @click="logout"
-          >
-            <LogOutIcon class="mr-2 h-4 w-4" />
-            Log Out
-          </Button>
-
-          <Button 
-            variant="destructive" 
-            class="flex-1"
-            @click="confirmDeleteAccount"
-          >
-            <TrashIcon class="mr-2 h-4 w-4" />
-            Delete Account
-          </Button>
         </div>
       </CardContent>
     </Card>
@@ -325,42 +227,13 @@
       @group-created="handleGroupCreated"
     />
 
-    <!-- Password Change Dialog -->
-    <Dialog :open="showPasswordChange" @update:open="showPasswordChange = $event">
-      <DialogContent class="w-full max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Change Password</DialogTitle>
-          <DialogDescription>
-            Enter your current password and a new password.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div class="grid gap-4 py-4">
-          <div class="grid gap-2">
-            <Label for="current-password">Current Password</Label>
-            <Input id="current-password" type="password" v-model="currentPassword" />
-          </div>
-
-          <div class="grid gap-2">
-            <Label for="new-password">New Password</Label>
-            <Input id="new-password" type="password" v-model="newPassword" />
-          </div>
-
-          <div class="grid gap-2">
-            <Label for="confirm-password">Confirm New Password</Label>
-            <Input id="confirm-password" type="password" v-model="confirmPassword" />
-            <p v-if="passwordMismatch" class="text-xs text-destructive">
-              Passwords do not match
-            </p>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" @click="showPasswordChange = false">Cancel</Button>
-          <Button type="submit" @click="changePassword">Change Password</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <!-- User Settings Dialog -->
+    <UserSettingsDialog
+      :open="showUserSettings"
+      :userData="userData"
+      @update:open="showUserSettings = $event"
+      @refresh-user-data="fetchUserInfo"
+    />
   </div>
 </template>
 
@@ -399,6 +272,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import NewGroupDialog from '@/components/NewGroupDialog.vue'
+import UserSettingsDialog from '@/components/UserSettingsDialog.vue'
 
 const router = useRouter()
 
@@ -409,12 +283,7 @@ const profilePicture = ref(null)
 const fileInput = ref(null)
 const groups = ref([])
 const userData = ref(null)
-const editingName = ref(false)
-const editingEmail = ref(false)
-const showPasswordChange = ref(false)
-const currentPassword = ref('')
-const newPassword = ref('')
-const confirmPassword = ref('')
+const showUserSettings = ref(false)
 
 // New group dialog ref
 const showNewGroupDialog = ref(false)
@@ -431,12 +300,6 @@ const formatDate = (dateString) => {
     minute: 'numeric'
   }).format(date)
 }
-
-// Computed property to check if passwords match
-const passwordMismatch = computed(() => {
-  return newPassword.value && confirmPassword.value && 
-         newPassword.value !== confirmPassword.value
-})
 
 // Trigger file input for profile picture
 const triggerFileInput = () => {
@@ -480,74 +343,6 @@ const handleProfilePictureUpload = async (event) => {
   }
 }
 
-// Save user name
-const saveUserName = async () => {
-  try {
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    // Make API call to update user name
-    await axios.put(`/users/${userId}`, {
-      name: userName.value
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    // Exit edit mode
-    editingName.value = false
-    
-    // Show success message
-    console.log('User name updated successfully')
-  } catch (error) {
-    console.error('Failed to update user name:', error)
-    alert('Failed to update user name: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-// Save user email
-const saveUserEmail = async () => {
-  try {
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    // Check if email has changed
-    const emailChanged = userEmail.value !== userData.value?.email
-    
-    if (emailChanged) {
-      // Make API call to update user email
-      await axios.put(`/users/${userId}`, {
-        email: userEmail.value
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      // Show verification message
-      alert('A verification email has been sent to your new email address. Please verify to complete the change.')
-    }
-    
-    // Exit edit mode
-    editingEmail.value = false
-    
-    // Show success message
-    console.log('User email updated successfully')
-  } catch (error) {
-    console.error('Failed to update user email:', error)
-    alert('Failed to update user email: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
 // Resend verification email
 const resendVerificationEmail = async () => {
   try {
@@ -568,78 +363,6 @@ const resendVerificationEmail = async () => {
   } catch (error) {
     console.error('Failed to resend verification email:', error)
     alert('Failed to resend verification email: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-// Change password
-const changePassword = async () => {
-  if (newPassword.value !== confirmPassword.value) {
-    return // Don't proceed if passwords don't match
-  }
-  
-  try {
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    // Make API call to change password
-    await axios.put(`/users/${userId}/password`, {
-      current_password: currentPassword.value,
-      new_password: newPassword.value
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    // Reset form and close dialog
-    currentPassword.value = ''
-    newPassword.value = ''
-    confirmPassword.value = ''
-    showPasswordChange.value = false
-    
-    // Show success message
-    alert('Password changed successfully')
-  } catch (error) {
-    console.error('Failed to change password:', error)
-    alert('Failed to change password: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-// Confirm account deletion
-const confirmDeleteAccount = () => {
-  if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-    deleteAccount()
-  }
-}
-
-// Delete user account
-const deleteAccount = async () => {
-  try {
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    // Make API call to delete account
-    await axios.delete(`/users/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    // Clear local storage and redirect
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    router.push('/auth')
-  } catch (error) {
-    console.error('Failed to delete account:', error)
-    alert('Failed to delete account: ' + (error.response?.data?.error || 'Unknown error'))
   }
 }
 
@@ -668,10 +391,6 @@ const fetchUserInfo = async () => {
     profilePicture.value = response.data.profile_picture
 
     console.log('User profile fetched:', response.data)
-  
-    
-    // Fetch user stats
-    fetchUserStats()
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     if (error.response?.status === 401) {
@@ -683,6 +402,10 @@ const fetchUserInfo = async () => {
   }
 }
 
+// Open user settings dialog
+const openUserSettings = () => {
+  showUserSettings.value = true
+}
 
 // Fetch user groups
 const fetchGroups = async () => {
@@ -712,13 +435,6 @@ const fetchGroups = async () => {
 const viewGroup = (groupId) => {
   console.log('Navigating to group:', groupId)
   router.push(`/group/${groupId}`)
-}
-
-// Log out user
-const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('userId')
-  router.push('/auth')
 }
 
 // Dialog handlers
