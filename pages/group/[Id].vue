@@ -319,7 +319,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { Icon } from '@iconify/vue'  // Make sure to import this
+import { Icon } from '@iconify/vue'
 import { ArrowLeftIcon, LockIcon, UnlockIcon, SettingsIcon, TrashIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { 
@@ -345,11 +345,9 @@ import PostDetailsDialog from '~/components/PostDetailsDialog.vue'
 // Add this to your imports
 import VoteDetailsDialog from '~/components/VoteDetailsDialog.vue'
 
-// Add this import for toast messages
-import { useToast } from '@/composables/useToast'
-
-// Get toast functions
-const { toast } = useToast()
+// Remove toast import
+// import { useToast } from '@/composables/useToast'
+// const { toast } = useToast()
 
 // Add dialog visibility refs
 const showSettingsDialog = ref(false)
@@ -362,25 +360,17 @@ const posts = ref([])
 const isLoading = ref(true)
 const isLoadingPosts = ref(true)
 const selectedPost = ref(null)
-const currentUser = ref(null) // You'll need to set this from your auth system
-
-// Add this with your other refs near the top of the script section
+const currentUser = ref(null)
 const selectedVote = ref(null)
+const statusMessage = ref('') // For displaying status messages
 
-// Format date helper function remains the same
-
+// Route and router
 const route = useRoute()
 const router = useRouter()
 const group = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const groupId = route.params.id
-
-// Admin check computed property remains the same
-
-// Delete group function remains the same
-
-// Settings update handler remains the same
 
 // Add CSV file import handlers
 const triggerCsvFileInput = () => {
@@ -406,9 +396,11 @@ const handleCsvImport = async (event) => {
     await fetchGroup()
     
     console.log('Members imported successfully:', response.data)
+    alert('Members imported successfully') // Simple feedback
   } catch (err) {
     console.error('Failed to import members:', err)
     error.value = err.response?.data?.error || 'Failed to import members'
+    alert('Failed to import members: ' + error.value) // Simple feedback
   }
   
   // Reset the file input
@@ -430,13 +422,8 @@ const createNewVote = async (data) => {
     console.log("Creating vote with data:", data);
     checkAuthToken();
     
-    // Show loading toast
-    const loadingToast = toast({
-      title: 'Creating vote...',
-      description: 'Please wait',
-      type: 'loading',
-      duration: 10000
-    });
+    // Display loading state
+    statusMessage.value = 'Creating vote...'
     
     // Format the data for the API, ensuring proper ISO format for dates
     const formattedData = {
@@ -447,8 +434,8 @@ const createNewVote = async (data) => {
       isSecret: data.isSecret,
       minChoices: parseInt(data.minChoices),
       maxChoices: parseInt(data.maxChoices),
-      startTime: new Date(data.startTime).toISOString(),  // Make sure this is ISO format
-      endTime: new Date(data.endTime).toISOString()       // Make sure this is ISO format
+      startTime: new Date(data.startTime).toISOString(),
+      endTime: new Date(data.endTime).toISOString()
     };
     
     console.log("Formatted data:", formattedData);
@@ -456,12 +443,8 @@ const createNewVote = async (data) => {
     const groupId = route.params.id;
     const response = await axios.post(`/groups/${groupId}/votes`, formattedData);
     
-    // Close loading toast
-    toast({
-      title: 'Success',
-      description: 'Vote created successfully',
-      type: 'success'
-    });
+    // Show simple success message
+    alert('Vote created successfully')
     
     showNewVoteDialog.value = false;
     
@@ -471,12 +454,10 @@ const createNewVote = async (data) => {
     console.error('Failed to create vote:', err);
     console.error('Error details:', err.response?.data);
     
-    // Show error toast
-    toast({
-      title: 'Error',
-      description: 'Failed to create vote: ' + (err.response?.data?.error || err.message),
-      type: 'error'
-    });
+    // Show simple error message
+    alert('Failed to create vote: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = '' // Clear status
   }
 };
 
@@ -492,6 +473,7 @@ const fetchVotes = async () => {
     console.log("Fetched votes:", votes.value);
   } catch (error) {
     console.error('Failed to fetch votes:', error);
+    alert('Failed to fetch votes')
   } finally {
     isLoadingVotes.value = false;
   }
@@ -540,6 +522,7 @@ const fetchGroup = async () => {
   } catch (err) {
     console.error('Failed to fetch group:', err)
     error.value = err.response?.data?.error || 'Failed to fetch group information'
+    alert('Failed to load group: ' + error.value)
   } finally {
     loading.value = false
     isLoadingMembers.value = false // Clear loading state
@@ -547,6 +530,10 @@ const fetchGroup = async () => {
 }
 
 const confirmDeleteGroup = async () => {
+  if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+    return
+  }
+  
   try {
     loading.value = true
     const groupId = route.params.id
@@ -557,10 +544,12 @@ const confirmDeleteGroup = async () => {
     await axios.delete(`/groups/${groupId}`)
     
     console.log('Group deleted successfully')
+    alert('Group deleted successfully')
     router.push('/dashboard')
   } catch (err) {
     console.error('Delete failed:', err.response?.data || err.message)
     error.value = err.response?.data?.error || 'Failed to delete group'
+    alert('Failed to delete group: ' + error.value)
     loading.value = false
   }
 }
@@ -579,6 +568,7 @@ const fetchPosts = async () => {
     console.log("Fetched posts:", posts.value)
   } catch (error) {
     console.error('Failed to fetch posts:', error)
+    alert('Failed to fetch posts')
   } finally {
     isLoadingPosts.value = false
   }
@@ -608,13 +598,7 @@ const deletePost = async (post) => {
     // Confirm before deleting
     if (!confirm('Are you sure you want to delete this post?')) return
     
-    // Show loading state
-    const loadingToast = toast({
-      title: 'Deleting post...',
-      description: 'Please wait',
-      type: 'loading',
-      duration: 10000
-    })
+    statusMessage.value = 'Deleting post...'
     
     // Call API to delete the post
     await axios.delete(`/posts/${post.id}`)
@@ -629,20 +613,14 @@ const deletePost = async (post) => {
     selectedPost.value = null
     
     // Show success message
-    toast({
-      title: 'Success',
-      description: 'Post deleted successfully',
-      type: 'success'
-    })
+    alert('Post deleted successfully')
   } catch (err) {
     console.error('Failed to delete post:', err)
     
     // Show error message
-    toast({
-      title: 'Error',
-      description: 'Failed to delete post: ' + (err.response?.data?.error || err.message),
-      type: 'error'
-    })
+    alert('Failed to delete post: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = ''
   }
 }
 
@@ -677,6 +655,7 @@ onMounted(async () => {
     ]);
   } catch (error) {
     console.error('Error initializing page:', error);
+    alert('Failed to initialize page')
   } finally {
     loading.value = false;
   }
@@ -706,23 +685,13 @@ const openVoteDetails = (vote) => {
 // Add this function with your other handler functions
 const handleVoteSubmit = async (voteData) => {
   try {
-    // Show loading toast
-    const loadingToast = toast({
-      title: 'Submitting vote...',
-      description: 'Please wait',
-      type: 'loading',
-      duration: 10000
-    });
+    statusMessage.value = 'Submitting vote...'
     
     // Call API to submit the vote
     await axios.post(`/votes/${selectedVote.value.id}/cast`, voteData);
     
     // Show success message
-    toast({
-      title: 'Success',
-      description: 'Vote submitted successfully',
-      type: 'success'
-    });
+    alert('Vote submitted successfully')
     
     // Close dialog
     selectedVote.value = null;
@@ -733,24 +702,20 @@ const handleVoteSubmit = async (voteData) => {
     console.error('Failed to submit vote:', err);
     
     // Show error message
-    toast({
-      title: 'Error',
-      description: 'Failed to submit vote: ' + (err.response?.data?.error || err.message),
-      type: 'error'
-    });
+    alert('Failed to submit vote: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = ''
   }
 };
 
 // Add this function with your other handler functions
 const deleteVote = async (voteId) => {
   try {
-    // Show loading toast
-    const loadingToast = toast({
-      title: 'Deleting vote...',
-      description: 'Please wait',
-      type: 'loading',
-      duration: 5000
-    });
+    if (!confirm('Are you sure you want to delete this vote?')) {
+      return
+    }
+    
+    statusMessage.value = 'Deleting vote...'
     
     // Call API to delete the vote
     await axios.delete(`/votes/${voteId}`);
@@ -759,11 +724,7 @@ const deleteVote = async (voteId) => {
     selectedVote.value = null;
     
     // Show success message
-    toast({
-      title: 'Success',
-      description: 'Vote deleted successfully',
-      type: 'success'
-    });
+    alert('Vote deleted successfully')
     
     // Refresh votes list
     await fetchVotes();
@@ -771,11 +732,9 @@ const deleteVote = async (voteId) => {
     console.error('Failed to delete vote:', err);
     
     // Show error toast
-    toast({
-      title: 'Error',
-      description: 'Failed to delete vote: ' + (err.response?.data?.error || err.message),
-      type: 'error'
-    });
+    alert('Failed to delete vote: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = ''
   }
 }
 
@@ -800,13 +759,7 @@ const isCurrentUserAdmin = computed(() => {
 // Member management functions
 const promoteMember = async (member) => {
   try {
-    // Show loading toast
-    const loadingToast = toast({
-      title: 'Updating member...',
-      description: 'Please wait',
-      type: 'loading',
-      duration: 5000
-    })
+    statusMessage.value = 'Updating member...'
     
     // Call API to promote member
     await axios.put(`/groups/${groupId}/members/${member.id}`, { 
@@ -814,35 +767,23 @@ const promoteMember = async (member) => {
     })
     
     // Show success message
-    toast({
-      title: 'Success',
-      description: `${member.name} is now an admin`,
-      type: 'success'
-    })
+    alert(`${member.name} is now an admin`)
     
     // Refresh group data to update members list
     await fetchGroup()
   } catch (err) {
     console.error('Failed to promote member:', err)
     
-    // Show error toast
-    toast({
-      title: 'Error',
-      description: 'Failed to promote member: ' + (err.response?.data?.error || err.message),
-      type: 'error'
-    })
+    // Show error message
+    alert('Failed to promote member: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = ''
   }
 }
 
 const demoteMember = async (member) => {
   try {
-    // Show loading toast
-    const loadingToast = toast({
-      title: 'Updating member...',
-      description: 'Please wait',
-      type: 'loading',
-      duration: 5000
-    })
+    statusMessage.value = 'Updating member...'
     
     // Call API to demote member
     await axios.put(`/groups/${groupId}/members/${member.id}`, { 
@@ -850,23 +791,17 @@ const demoteMember = async (member) => {
     })
     
     // Show success message
-    toast({
-      title: 'Success',
-      description: `${member.name} is no longer an admin`,
-      type: 'success'
-    })
+    alert(`${member.name} is no longer an admin`)
     
     // Refresh group data to update members list
     await fetchGroup()
   } catch (err) {
     console.error('Failed to demote member:', err)
     
-    // Show error toast
-    toast({
-      title: 'Error',
-      description: 'Failed to demote member: ' + (err.response?.data?.error || err.message),
-      type: 'error'
-    })
+    // Show error message
+    alert('Failed to demote member: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = ''
   }
 }
 
@@ -877,35 +812,23 @@ const removeMember = async (member) => {
       return
     }
     
-    // Show loading toast
-    const loadingToast = toast({
-      title: 'Removing member...',
-      description: 'Please wait',
-      type: 'loading',
-      duration: 5000
-    })
+    statusMessage.value = 'Removing member...'
     
     // Call API to remove member
     await axios.delete(`/groups/${groupId}/members/${member.id}`)
     
     // Show success message
-    toast({
-      title: 'Success',
-      description: `${member.name} has been removed from the group`,
-      type: 'success'
-    })
+    alert(`${member.name} has been removed from the group`)
     
     // Refresh group data to update members list
     await fetchGroup()
   } catch (err) {
     console.error('Failed to remove member:', err)
     
-    // Show error toast
-    toast({
-      title: 'Error',
-      description: 'Failed to remove member: ' + (err.response?.data?.error || err.message),
-      type: 'error'
-    })
+    // Show error message
+    alert('Failed to remove member: ' + (err.response?.data?.error || err.message))
+  } finally {
+    statusMessage.value = ''
   }
 }
 </script>

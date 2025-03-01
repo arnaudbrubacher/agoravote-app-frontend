@@ -1,35 +1,28 @@
-<script setup>
-import { inject } from 'vue'
+<script setup lang="ts">
+import { cn } from '@/lib/utils'
+import { DropdownMenuItem, type DropdownMenuItemProps, useForwardProps } from 'reka-ui'
+import { computed, type HTMLAttributes } from 'vue'
 
-const setOpen = inject('setDropdownOpen')
+const props = defineProps<DropdownMenuItemProps & { class?: HTMLAttributes['class'], inset?: boolean }>()
 
-const handleClick = (event) => {
-  setOpen(false)
-  emit('click', event)
-}
+const delegatedProps = computed(() => {
+  const { class: _, ...delegated } = props
 
-const emit = defineEmits(['click'])
+  return delegated
+})
+
+const forwardedProps = useForwardProps(delegatedProps)
 </script>
 
 <template>
-  <button
-    class="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground w-full text-left"
-    role="menuitem"
-    @click="handleClick"
+  <DropdownMenuItem
+    v-bind="forwardedProps"
+    :class="cn(
+      'relative flex cursor-default select-none items-center rounded-sm gap-2 px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50  [&>svg]:size-4 [&>svg]:shrink-0',
+      inset && 'pl-8',
+      props.class,
+    )"
   >
     <slot />
-  </button>
+  </DropdownMenuItem>
 </template>
-
-<style scoped>
-.hover\:bg-accent:hover {
-  background-color: #f5f5f5;
-}
-.focus\:bg-accent:focus {
-  background-color: #f5f5f5;
-}
-.hover\:text-accent-foreground:hover,
-.focus\:text-accent-foreground:focus {
-  color: #000;
-}
-</style>

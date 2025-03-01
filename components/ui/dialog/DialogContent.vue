@@ -1,103 +1,50 @@
-<script setup>
-import { onMounted, onUnmounted, nextTick } from 'vue'
+<script setup lang="ts">
+import { cn } from '@/lib/utils'
+import { X } from 'lucide-vue-next'
+import {
+  DialogClose,
+  DialogContent,
+  type DialogContentEmits,
+  type DialogContentProps,
+  DialogOverlay,
+  DialogPortal,
+  useForwardPropsEmits,
+} from 'reka-ui'
+import { computed, type HTMLAttributes } from 'vue'
 
-// Focus trap implementation
-const focusableSelectors = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])'
-].join(',')
+const props = defineProps<DialogContentProps & { class?: HTMLAttributes['class'] }>()
+const emits = defineEmits<DialogContentEmits>()
 
-const props = defineProps({
-  closeOnEscape: {
-    type: Boolean,
-    default: true
-  }
+const delegatedProps = computed(() => {
+  const { class: _, ...delegated } = props
+
+  return delegated
 })
 
-const emit = defineEmits(['close'])
-
-let firstFocusableEl
-let lastFocusableEl
-let previousActiveElement = null
-
-const handleKeyDown = (e) => {
-  if (e.key === 'Escape' && props.closeOnEscape) {
-    emit('close')
-    return
-  }
-
-  if (e.key !== 'Tab') return
-
-  // Handle focus trap
-  const focusableElements = Array.from(
-    document.querySelector('.dialog-content')?.querySelectorAll(focusableSelectors) || []
-  )
-
-  firstFocusableEl = focusableElements[0]
-  lastFocusableEl = focusableElements[focusableElements.length - 1]
-
-  if (e.shiftKey) {
-    if (document.activeElement === firstFocusableEl) {
-      lastFocusableEl?.focus()
-      e.preventDefault()
-    }
-  } else {
-    if (document.activeElement === lastFocusableEl) {
-      firstFocusableEl?.focus()
-      e.preventDefault()
-    }
-  }
-}
-
-onMounted(() => {
-  previousActiveElement = document.activeElement
-  
-  nextTick(() => {
-    const focusableElements = Array.from(
-      document.querySelector('.dialog-content')?.querySelectorAll(focusableSelectors) || []
-    )
-    if (focusableElements.length) {
-      focusableElements[0].focus()
-    }
-  })
-  
-  document.addEventListener('keydown', handleKeyDown)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeyDown)
-  if (previousActiveElement) {
-    previousActiveElement.focus()
-  }
-})
+const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
 
 <template>
-  <div 
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-20"
-    role="dialog"
-    aria-modal="true"
-  >
-    <div 
-      class="dialog-content relative bg-background w-full max-w-lg rounded-lg border shadow-lg sm:max-w-md"
-      @click.stop
+  <DialogPortal>
+    <DialogOverlay
+      class="fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    />
+    <DialogContent
+      v-bind="forwarded"
+      :class="
+        cn(
+          'fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+          props.class,
+        )"
     >
-      <button
-        class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-        @click="emit('close')"
-        type="button"
-        aria-label="Close"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
       <slot />
-    </div>
-  </div>
+
+      <DialogClose
+        class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+      >
+        <X class="w-4 h-4" />
+        <span class="sr-only">Close</span>
+      </DialogClose>
+    </DialogContent>
+  </DialogPortal>
 </template>

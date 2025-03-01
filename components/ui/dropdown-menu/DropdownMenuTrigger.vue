@@ -1,26 +1,13 @@
-<script setup>
-import { inject } from 'vue'
+<script setup lang="ts">
+import { DropdownMenuTrigger, type DropdownMenuTriggerProps, useForwardProps } from 'reka-ui'
 
-const props = defineProps({
-  asChild: {
-    type: Boolean,
-    default: false
-  }
-})
+const props = defineProps<DropdownMenuTriggerProps>()
 
-const open = inject('dropdownOpen')
-const setOpen = inject('setDropdownOpen')
-
-const toggle = () => {
-  setOpen(!open.value)
-}
+const forwardedProps = useForwardProps(props)
 </script>
 
 <template>
-  <div @click="toggle">
-    <slot v-if="asChild" />
-    <button v-else type="button" class="inline-flex items-center justify-center">
-      <slot />
-    </button>
-  </div>
+  <DropdownMenuTrigger class="outline-none" v-bind="forwardedProps">
+    <slot />
+  </DropdownMenuTrigger>
 </template>

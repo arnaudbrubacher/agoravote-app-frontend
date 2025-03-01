@@ -1,6 +1,16 @@
-<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/ui/dialog/DialogHeader.vue -->
+<script setup lang="ts">
+import type { HTMLAttributes } from 'vue'
+import { cn } from '@/lib/utils'
+
+const props = defineProps<{
+  class?: HTMLAttributes['class']
+}>()
+</script>
+
 <template>
-  <div class="flex flex-col space-y-1.5 text-center sm:text-left p-6 pb-0">
+  <div
+    :class="cn('flex flex-col gap-y-1.5 text-center sm:text-left', props.class)"
+  >
     <slot />
   </div>
 </template>

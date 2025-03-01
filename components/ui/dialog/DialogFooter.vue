@@ -1,6 +1,19 @@
-<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/ui/dialog/DialogFooter.vue -->
+<script setup lang="ts">
+import type { HTMLAttributes } from 'vue'
+import { cn } from '@/lib/utils'
+
+const props = defineProps<{ class?: HTMLAttributes['class'] }>()
+</script>
+
 <template>
-  <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 p-6 pt-0">
+  <div
+    :class="
+      cn(
+        'flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-x-2',
+        props.class,
+      )
+    "
+  >
     <slot />
   </div>
 </template>

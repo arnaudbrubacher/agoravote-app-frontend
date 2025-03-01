@@ -15,13 +15,10 @@
         <p>&copy; 2025 Agora Vote. All rights reserved.</p>
       </div>
     </footer>
-    <!-- Add Toast component here -->
-    <Toast />
   </div>
 </template>
 
 <script setup>
 import { Button } from '@/components/ui/button'
-import Toast from '~/components/ui/toast.vue' // Update the import path if needed
 const router = useRouter()
 </script>

@@ -1,18 +1,14 @@
-<script setup>
-import { provide, ref, readonly } from 'vue'
+<script setup lang="ts">
+import { DropdownMenuRoot, type DropdownMenuRootEmits, type DropdownMenuRootProps, useForwardPropsEmits } from 'reka-ui'
 
-const open = ref(false)
+const props = defineProps<DropdownMenuRootProps>()
+const emits = defineEmits<DropdownMenuRootEmits>()
 
-const setOpen = (value) => {
-  open.value = value
-}
-
-provide('dropdownOpen', readonly(open))
-provide('setDropdownOpen', setOpen)
+const forwarded = useForwardPropsEmits(props, emits)
 </script>
 
 <template>
-  <div class="relative">
+  <DropdownMenuRoot v-bind="forwarded">
     <slot />
-  </div>
+  </DropdownMenuRoot>
 </template>

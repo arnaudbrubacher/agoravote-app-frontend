@@ -1,77 +1,38 @@
-<script setup>
-import { inject, onMounted, onBeforeUnmount, watch, nextTick, ref } from 'vue'
+<script setup lang="ts">
+import { cn } from '@/lib/utils'
+import {
+  DropdownMenuContent,
+  type DropdownMenuContentEmits,
+  type DropdownMenuContentProps,
+  DropdownMenuPortal,
+  useForwardPropsEmits,
+} from 'reka-ui'
+import { computed, type HTMLAttributes } from 'vue'
 
-const props = defineProps({
-  align: {
-    type: String,
-    default: 'start',
-    validator: (value) => ['start', 'end', 'center'].includes(value)
-  }
+const props = withDefaults(
+  defineProps<DropdownMenuContentProps & { class?: HTMLAttributes['class'] }>(),
+  {
+    sideOffset: 4,
+  },
+)
+const emits = defineEmits<DropdownMenuContentEmits>()
+
+const delegatedProps = computed(() => {
+  const { class: _, ...delegated } = props
+
+  return delegated
 })
 
-const open = inject('dropdownOpen')
-const setOpen = inject('setDropdownOpen')
-const contentRef = ref(null)
-
-// Close dropdown when clicking outside
-const handleOutsideClick = (event) => {
-  if (contentRef.value && !contentRef.value.contains(event.target)) {
-    setOpen(false)
-  }
-}
-
-// Close on escape key
-const handleEscapeKey = (event) => {
-  if (event.key === 'Escape') {
-    setOpen(false)
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleOutsideClick)
-  document.addEventListener('keydown', handleEscapeKey)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleOutsideClick)
-  document.removeEventListener('keydown', handleEscapeKey)
-})
-
-// Focus trap to keep focus inside dropdown when open
-watch(open, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => {
-      const focusable = contentRef.value.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-      if (focusable.length > 0) {
-        focusable[0].focus()
-      }
-    })
-  }
-})
+const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
 
 <template>
-  <div 
-    v-show="open" 
-    ref="contentRef"
-    class="absolute min-w-[8rem] z-50 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-    :class="{
-      'right-0': align === 'end',
-      'left-1/2 -translate-x-1/2': align === 'center',
-      'left-0': align === 'start'
-    }"
-  >
-    <slot />
-  </div>
+  <DropdownMenuPortal>
+    <DropdownMenuContent
+      v-bind="forwarded"
+      :class="cn('z-50 min-w-32 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2', props.class)"
+    >
+      <slot />
+    </DropdownMenuContent>
+  </DropdownMenuPortal>
 </template>
-
-<style scoped>
-.bg-popover {
-  background-color: white;
-}
-.text-popover-foreground {
-  color: #333;
-}
-</style>
