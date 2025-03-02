@@ -33,7 +33,7 @@
           <Button 
             variant="outline" 
             size="sm"
-            @click="$emit('show-settings')"
+            @click="$emit('open-settings')"
             class="flex items-center"
             :disabled="!isCurrentUserAdmin"
           >
@@ -63,5 +63,6 @@ defineProps({
   }
 })
 
-defineEmits(['show-settings', 'back-to-dashboard'])
+// Changed 'show-settings' to 'open-settings' for clarity
+defineEmits(['open-settings', 'back-to-dashboard'])
 </script>
