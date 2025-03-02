@@ -1,0 +1,148 @@
+<template>
+  <Dialog :open="true" @update:open="$emit('close')">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Create New Post</DialogTitle>
+        <DialogDescription>
+          Share something on your personal page
+        </DialogDescription>
+      </DialogHeader>
+      
+      <form @submit.prevent="handleSubmit" class="space-y-4">
+        <!-- Post Title -->
+        <div>
+          <Label for="title">Title</Label>
+          <Input 
+            id="title"
+            v-model="formData.title"
+            placeholder="Post title" 
+            required
+          />
+        </div>
+        
+        <!-- Post Content -->
+        <div>
+          <Label for="content">Content</Label>
+          <Textarea 
+            id="content"
+            v-model="formData.content"
+            placeholder="What would you like to share?"
+            class="min-h-[120px]"
+            required
+          />
+        </div>
+        
+        <!-- Privacy Option -->
+        <div class="flex items-center space-x-2">
+          <Checkbox id="isPublic" v-model:checked="formData.isPublic" />
+          <Label for="isPublic" class="cursor-pointer">Make this post public</Label>
+        </div>
+        
+        <!-- File Upload (optional) - FIXED POSITIONING -->
+        <div>
+          <Label for="file-label" class="block mb-2">Attachment (Optional)</Label>
+          <div class="border-2 border-dashed border-gray-300 rounded-md p-4">
+            <div v-if="!formData.file" class="text-center relative">
+              <!-- File upload icon and text -->
+              <Icon name="heroicons:document-arrow-up" class="h-8 w-8 mx-auto text-muted-foreground" />
+              <p class="text-sm text-muted-foreground mt-2">Click to upload or drag and drop</p>
+              
+              <!-- File input with proper positioning -->
+              <label for="file" class="cursor-pointer block absolute inset-0">
+                <span class="sr-only">Upload a file</span>
+                <input 
+                  type="file" 
+                  id="file"
+                  class="sr-only" 
+                  @change="handleFileUpload"
+                />
+              </label>
+            </div>
+            <div v-else class="flex items-center justify-between">
+              <div class="flex items-center">
+                <Icon name="heroicons:document" class="h-6 w-6 mr-2 text-primary" />
+                <span class="text-sm truncate max-w-[200px]">{{ formData.file.name }}</span>
+              </div>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                @click="formData.file = null"
+              >
+                <Icon name="heroicons:x-mark" class="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="flex justify-end space-x-2 pt-4">
+          <Button type="button" variant="outline" @click="$emit('close')">
+            Cancel
+          </Button>
+          <Button type="submit" :disabled="isSubmitting">
+            <Icon v-if="isSubmitting" name="heroicons:arrow-path" class="h-4 w-4 mr-2 animate-spin" />
+            Post
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  </Dialog>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { Icon } from '@iconify/vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog'
+
+const emit = defineEmits(['close', 'submit'])
+
+const formData = ref({
+  title: '',
+  content: '',
+  isPublic: true,
+  file: null
+})
+
+const isSubmitting = ref(false)
+
+function handleFileUpload(event) {
+  const file = event.target.files[0]
+  if (file) {
+    formData.value.file = file
+  }
+}
+
+async function handleSubmit() {
+  isSubmitting.value = true
+  
+  try {
+    const postData = new FormData()
+    postData.append('title', formData.value.title)
+    postData.append('content', formData.value.content)
+    postData.append('isPublic', formData.value.isPublic)
+    
+    if (formData.value.file) {
+      postData.append('file', formData.value.file)
+    }
+    
+    emit('submit', postData)
+  } catch (error) {
+    console.error('Error submitting form:', error)
+    alert('Failed to create post')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+</script>

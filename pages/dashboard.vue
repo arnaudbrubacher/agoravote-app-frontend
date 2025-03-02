@@ -78,6 +78,14 @@
       </CardContent>
     </Card>
 
+    <!-- Personal Posts Card -->
+    <Card class="w-full max-w-2xl mx-auto">
+      <UserPostsTab 
+        @show-new-post="showNewPostDialog = true"
+        @open-post="selectedPost = $event"
+      />
+    </Card>
+
     <!-- Groups Card -->
     <Card class="w-full max-w-2xl mx-auto">
       <CardHeader class="flex flex-row items-center justify-between">
@@ -230,6 +238,22 @@
       @update:open="showUserSettings = $event"
       @refresh-user-data="fetchUserInfo"
     />
+
+    <NewPostDialog
+      v-if="showNewPostDialog"
+      @close="showNewPostDialog = false"
+      @submit="handlePostCreated"
+    />
+
+    <PostDetailsDialog
+      v-if="selectedPost"
+      :post="selectedPost"
+      :current-user-id="userData?.id"
+      @close="selectedPost = null"
+      @edit="handlePostEdited"
+      @delete="handlePostDeleted"
+      @refresh="refreshUserPosts"
+    />
   </div>
 </template>
 
@@ -269,6 +293,10 @@ import {
 } from '@/components/ui/dialog'
 import NewGroupDialog from '@/components/NewGroupDialog.vue'
 import UserSettingsDialog from '@/components/UserSettingsDialog.vue'
+import UserPostsTab from '@/components/dashboard/UserPostsTab.vue'
+import NewPostDialog from '@/components/dashboard/NewPostDialog.vue'
+import PostDetailsDialog from '@/components/dashboard/PostDetailsDialog.vue'
+import { useUserPosts } from '@/composables/useUserPosts'
 
 const router = useRouter()
 
@@ -283,6 +311,10 @@ const showUserSettings = ref(false)
 
 // New group dialog ref
 const showNewGroupDialog = ref(false)
+
+// New post dialog ref
+const showNewPostDialog = ref(false)
+const selectedPost = ref(null)
 
 // Format date helper function
 const formatDate = (dateString) => {
@@ -511,9 +543,51 @@ const joinGroup = async (groupId) => {
   }
 }
 
+const {
+  fetchPosts: fetchUserPosts,
+  createNewPost,
+  handlePostCreated: addNewPostToList,
+  editPost,
+  deletePost
+} = useUserPosts()
+
+const handlePostCreated = async (postData) => {
+  try {
+    const newPost = await createNewPost(postData)
+    addNewPostToList(newPost)
+    showNewPostDialog.value = false
+  } catch (error) {
+    console.error('Failed to create post:', error)
+  }
+}
+
+const handlePostEdited = async (post) => {
+  try {
+    await editPost(post)
+    selectedPost.value = null
+    await fetchUserPosts() // Refresh posts
+  } catch (error) {
+    console.error('Failed to edit post:', error)
+  }
+}
+
+const handlePostDeleted = async (post) => {
+  try {
+    await deletePost(post)
+    selectedPost.value = null
+  } catch (error) {
+    console.error('Failed to delete post:', error)
+  }
+}
+
+const refreshUserPosts = () => {
+  fetchUserPosts()
+}
+
 onMounted(() => {
   fetchUserInfo()
   fetchGroups()
+  fetchUserPosts() // Add this line
 })
 </script>
 
