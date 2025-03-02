@@ -499,10 +499,16 @@ const deleteAccount = async () => {
 
 // Log out user
 const logout = () => {
-  // Clear user session or token
-  localStorage.removeItem('token')
-  localStorage.removeItem('userId')
-  router.push('/auth')
+  // Show confirmation dialog first
+  if (confirm('Are you sure you want to log out?')) {
+    // Clear user session or token
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    router.push('/auth')
+    
+    // Close the settings dialog
+    emit('update:open', false)
+  }
 }
 
 // Fetch user stats on mount

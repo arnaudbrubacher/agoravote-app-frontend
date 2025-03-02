@@ -186,11 +186,17 @@ const fetchUserProfile = async () => {
 const fetchUserPosts = async (userId) => {
   try {
     loadingPosts.value = true
-    const response = await axios.get(`/user/${userId}/posts`)
+    
+    // Use the correct endpoint without the /api prefix
+    const response = await axios.get(`/users/${userId}/posts`)
+    
     userPosts.value = response.data.posts || response.data || []
+    console.log('Fetched user posts:', userPosts.value)
   } catch (err) {
     console.error('Failed to fetch user posts:', err)
-    // Don't set error.value here to avoid replacing the main error message
+    // Add more detailed error logging
+    console.error('Error details:', err.response?.status, err.response?.data)
+    userPosts.value = [] // Set to empty array on error
   } finally {
     loadingPosts.value = false
   }
