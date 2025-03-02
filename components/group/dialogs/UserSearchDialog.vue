@@ -19,8 +19,9 @@
             class="w-full pl-10 pr-4 py-2 border rounded-md"
             @input="debouncedSearch"
           />
-          <Icon 
-            name="heroicons:magnifying-glass" 
+          <LucideIcon 
+            name="Search" 
+            size="5"
             class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" 
           />
           <div v-if="searchQuery && !isLoading" 
@@ -92,7 +93,6 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
 import { ref } from 'vue'
-import { Icon } from '@iconify/vue'
 import axios from '~/src/utils/axios'
 import {
   Dialog,

@@ -13,8 +13,9 @@
             placeholder="Search members..."
             class="w-full pl-8 pr-4 py-2 border rounded-md"
           />
-          <Icon 
-            name="heroicons:magnifying-glass" 
+          <LucideIcon 
+            name="Search" 
+            size="4"
             class="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
           />
           <button 
@@ -103,7 +104,6 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, computed } from 'vue'
-import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import {

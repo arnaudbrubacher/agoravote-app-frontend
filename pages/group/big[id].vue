@@ -162,8 +162,9 @@
                     placeholder="Search members..."
                     class="w-full pl-8 pr-4 py-2 border rounded-md"
                   />
-                  <Icon 
-                    name="heroicons:magnifying-glass" 
+                  <LucideIcon 
+                    name="Search" 
+                    size="4"
                     class="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
                   />
                   <button 
@@ -377,7 +378,6 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { Icon } from '@iconify/vue'
 import { ArrowLeftIcon, LockIcon, UnlockIcon, SettingsIcon, TrashIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { 

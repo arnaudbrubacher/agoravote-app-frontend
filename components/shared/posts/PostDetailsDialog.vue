@@ -50,7 +50,7 @@
               Cancel
             </Button>
             <Button type="submit" :disabled="isSubmitting">
-              <Icon v-if="isSubmitting" name="heroicons:arrow-path" class="h-4 w-4 mr-2 animate-spin" />
+              <LucideIcon v-if="isSubmitting" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
               Save Changes
             </Button>
           </div>
@@ -125,7 +125,6 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, computed, onMounted } from 'vue'
-import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

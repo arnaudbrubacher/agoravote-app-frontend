@@ -1,5 +1,5 @@
 let id = 0
 
-export function useId() {
+export function xUseId() {
   return `agoravote-${++id}`
 }

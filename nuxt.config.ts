@@ -5,12 +5,13 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',  // Tailwind CSS module for styling
     '@nuxtjs/color-mode',   // Color mode module for dark/light mode
-    'shadcn-nuxt',          // ShadCN module for UI components
-    'nuxt-icon'             // Nuxt Icon module for icons
-    // Remove or comment out the @nuxtjs/axios module
+    'shadcn-nuxt',           // ShadCN module for UI components
+    // Removed nuxt-icon as we're using Lucide
     // '@nuxtjs/axios'
   ],
 
+  // Fix for colorMode type error - use proper configuration format
+  // @ts-ignore - Type issues with @nuxtjs/color-mode module
   colorMode: {
     classSuffix: ''         // Configuration for color mode class suffix
   },
