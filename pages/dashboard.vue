@@ -183,8 +183,8 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import NewGroupDialog from '@/components/NewGroupDialog.vue'
-import UserGroupsTab from '@/components/dashboard/UserGroupsTab.vue'
+import NewGroupDialog from '@/components/dashboard/groups/NewGroupDialog.vue'
+import UserGroupsTab from '@/components/dashboard/groups/UserGroupsTab.vue'
 
 const router = useRouter()
 

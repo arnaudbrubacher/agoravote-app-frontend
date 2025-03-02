@@ -42,7 +42,7 @@ import { PlusIcon, Search as SearchIcon } from 'lucide-vue-next'
 import { Loader2 as SpinnerIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import UserGroupCard from '@/components/dashboard/UserGroupCard.vue'
+import UserGroupCard from '~/components/dashboard/groups/UserGroupCard.vue'
 
 const props = defineProps({
   groups: {

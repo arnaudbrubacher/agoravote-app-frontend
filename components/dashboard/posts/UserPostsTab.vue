@@ -34,7 +34,7 @@ import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import PostCard from '@/components/dashboard/UserPostCard.vue'
+import PostCard from '~/components/dashboard/posts/UserPostCard.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 
 const emit = defineEmits(['show-new-post', 'open-post'])

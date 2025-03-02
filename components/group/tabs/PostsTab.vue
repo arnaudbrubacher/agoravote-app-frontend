@@ -34,7 +34,7 @@ import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import PostCard from '@/components/group/cards/PostCard.vue'
+import PostCard from '~/components/shared/PostCard.vue'
 import { useGroupPosts } from '@/composables/useGroupPosts'
 
 const props = defineProps({

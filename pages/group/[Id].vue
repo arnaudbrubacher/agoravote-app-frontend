@@ -65,10 +65,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import LoadingError from '@/components/group/LoadingError.vue'
-import GroupHeader from '@/components/group/GroupHeader.vue'
-import GroupTabs from '@/components/group/GroupTabs.vue'
-import GroupDialogs from '@/components/group/GroupDialogs.vue'
+import LoadingError from '@/components/group/core/LoadingError.vue'
+import GroupHeader from '@/components/group/core/GroupHeader.vue'
+import GroupTabs from '@/components/group/core/GroupTabs.vue'
+import GroupDialogs from '@/components/group/core/GroupDialogs.vue'
 
 // Import composables
 import { useGroupData } from '@/composables/useGroupData'

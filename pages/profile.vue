@@ -141,9 +141,9 @@ import {
   CardContent 
 } from '@/components/ui/card'
 import UserSettingsDialog from '@/components/UserSettingsDialog.vue'
-import UserPostsTab from '@/components/dashboard/UserPostsTab.vue'
-import NewPostDialog from '@/components/dashboard/NewPostDialog.vue'
-import PostDetailsDialog from '@/components/dashboard/PostDetailsDialog.vue'
+import UserPostsTab from '@/components/dashboard/posts/UserPostsTab.vue'
+import NewPostDialog from '@/components/shared/NewPostDialog.vue'
+import PostDetailsDialog from '@/components/shared/PostDetailsDialog.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 
 const router = useRouter()
