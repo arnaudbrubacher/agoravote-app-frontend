@@ -1,10 +1,10 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
     <!-- Modern Profile Card -->
-    <Card class="w-full max-w-2xl mx-auto">
+    <Card class="w-full max-w-2xl mx-auto cursor-pointer hover:bg-accent/5 transition-colors" @click="navigateToProfile">
       <CardContent class="p-6">
         <div class="space-y-6">
-          <!-- Profile Info Section - Moved from header to content -->
+          <!-- Profile Info Section -->
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-4">
               <div class="relative">
@@ -19,39 +19,13 @@
                   alt="Profile Picture"
                   class="w-16 h-16 rounded-full object-cover border"
                 />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full shadow-sm"
-                  @click="triggerFileInput"
-                >
-                  <EditIcon class="h-3 w-3" />
-                </Button>
-                <input 
-                  type="file" 
-                  ref="fileInput" 
-                  class="hidden"
-                  accept="image/*" 
-                  @change="handleProfilePictureUpload" 
-                />
               </div>
               <div>
-                <CardTitle>{{ userName || 'Your Profile' }}</CardTitle>
+                <h2 class="text-xl font-semibold">{{ userName || 'Your Profile' }}</h2>
                 <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
+                <p class="text-xs text-blue-600 mt-1">Click to view your profile and posts</p>
               </div>
             </div>
-            
-            <!-- Settings Button -->
-            <Button 
-              variant="outline" 
-              size="sm"
-              @click="openUserSettings"
-              class="flex items-center"
-            >
-              <SettingsIcon class="h-4 w-4 mr-1" />
-              Settings
-            </Button>
           </div>
           
           <!-- Email verification status -->
@@ -66,7 +40,7 @@
                   <Button 
                     variant="link" 
                     class="text-xs pl-1 h-auto p-0"
-                    @click="resendVerificationEmail"
+                    @click.stop="resendVerificationEmail"
                   >
                     Resend Verification
                   </Button>
@@ -77,13 +51,6 @@
         </div>
       </CardContent>
     </Card>
-
-    <!-- Personal Posts Card -->
-    <UserPostsTab
-      class="w-full max-w-2xl mx-auto"
-      @show-new-post="showNewPostDialog = true"
-      @open-post="selectedPost = $event"
-    />
 
     <!-- Groups Card -->
     <UserGroupsTab
@@ -100,29 +67,6 @@
       v-if="showNewGroupDialog"
       @close="closeNewGroupDialog"
       @group-created="handleGroupCreated"
-    />
-
-    <UserSettingsDialog
-      :open="showUserSettings"
-      :userData="userData"
-      @update:open="showUserSettings = $event"
-      @refresh-user-data="fetchUserInfo"
-    />
-
-    <NewPostDialog
-      v-if="showNewPostDialog"
-      @close="showNewPostDialog = false"
-      @submit="handlePostCreated"
-    />
-
-    <PostDetailsDialog
-      v-if="selectedPost"
-      :post="selectedPost"
-      :current-user-id="userData?.id"
-      @close="selectedPost = null"
-      @edit="handlePostEdited"
-      @delete="handlePostDeleted"
-      @refresh="refreshUserPosts"
     />
 
     <!-- Find Group Dialog -->
@@ -216,29 +160,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
 import { 
-  LogOutIcon, 
-  TrashIcon, 
-  PlusIcon, 
   SearchIcon, 
-  Settings as SettingsIcon, 
   Loader2 as SpinnerIcon,
-  Edit as EditIcon,
   CheckCircle as CheckCircleIcon,
   AlertCircle as AlertCircleIcon
 } from 'lucide-vue-next'
 import { UserGroupIcon } from '@heroicons/vue/outline'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
   CardContent 
 } from '@/components/ui/card'
 import {
@@ -250,11 +184,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import NewGroupDialog from '@/components/NewGroupDialog.vue'
-import UserSettingsDialog from '@/components/UserSettingsDialog.vue'
-import UserPostsTab from '@/components/dashboard/UserPostsTab.vue'
-import NewPostDialog from '@/components/dashboard/NewPostDialog.vue'
-import PostDetailsDialog from '@/components/dashboard/PostDetailsDialog.vue'
-import { useUserPosts } from '@/composables/useUserPosts'
 import UserGroupsTab from '@/components/dashboard/UserGroupsTab.vue'
 
 const router = useRouter()
@@ -263,79 +192,28 @@ const router = useRouter()
 const userName = ref('')
 const userEmail = ref('')
 const profilePicture = ref(null)
-const fileInput = ref(null)
 const groups = ref([])
 const isLoadingGroups = ref(false)
 const userData = ref(null)
-const showUserSettings = ref(false)
 
 // New group dialog ref
 const showNewGroupDialog = ref(false)
 
-// New post dialog ref
-const showNewPostDialog = ref(false)
-const selectedPost = ref(null)
-
 // Find group dialog ref
 const showFindGroupDialog = ref(false)
 
-// Format date helper function
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric'
-  }).format(date)
-}
-
-// Trigger file input for profile picture
-const triggerFileInput = () => {
-  fileInput.value.click()
-}
-
-// Handle profile picture upload
-const handleProfilePictureUpload = async (event) => {
-  const file = event.target.files[0]
-  if (!file) return
-  
-  try {
-    // Create form data
-    const formData = new FormData()
-    formData.append('profile_picture', file)
-    
-    // Get user ID from localStorage
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    // Upload the file
-    const response = await axios.post(`/users/${userId}/profile-picture`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    // Update the profile picture
-    profilePicture.value = response.data.url || response.data.profile_picture
-    
-    // Show success message
-    console.log('Profile picture updated successfully')
-  } catch (error) {
-    console.error('Failed to upload profile picture:', error)
-    alert('Failed to upload profile picture: ' + (error.response?.data?.error || 'Unknown error'))
-  }
+// Navigate to profile page
+const navigateToProfile = () => {
+  router.push('/profile')
 }
 
 // Resend verification email
-const resendVerificationEmail = async () => {
+const resendVerificationEmail = async (event) => {
+  // Stop event propagation to prevent navigation to profile
+  if (event) {
+    event.stopPropagation()
+  }
+  
   try {
     const userId = localStorage.getItem('userId')
     const token = localStorage.getItem('token')
@@ -373,8 +251,7 @@ const fetchUserInfo = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
 
-    console.log('User data received:', response.data)  // Add this log
-    userData.value = response.data  // This is critical
+    userData.value = response.data
     // Update user information from API response
     userName.value = response.data.name
     userEmail.value = response.data.email
@@ -390,11 +267,6 @@ const fetchUserInfo = async () => {
       router.push('/auth')
     }
   }
-}
-
-// Open user settings dialog
-const openUserSettings = () => {
-  showUserSettings.value = true
 }
 
 // Fetch user groups
@@ -509,51 +381,9 @@ const joinGroup = async (groupId) => {
   }
 }
 
-const {
-  fetchPosts: fetchUserPosts,
-  createNewPost,
-  handlePostCreated: addNewPostToList,
-  editPost,
-  deletePost
-} = useUserPosts()
-
-const handlePostCreated = async (postData) => {
-  try {
-    const newPost = await createNewPost(postData)
-    addNewPostToList(newPost)
-    showNewPostDialog.value = false
-  } catch (error) {
-    console.error('Failed to create post:', error)
-  }
-}
-
-const handlePostEdited = async (post) => {
-  try {
-    await editPost(post)
-    selectedPost.value = null
-    await fetchUserPosts() // Refresh posts
-  } catch (error) {
-    console.error('Failed to edit post:', error)
-  }
-}
-
-const handlePostDeleted = async (post) => {
-  try {
-    await deletePost(post)
-    selectedPost.value = null
-  } catch (error) {
-    console.error('Failed to delete post:', error)
-  }
-}
-
-const refreshUserPosts = () => {
-  fetchUserPosts()
-}
-
 onMounted(() => {
   fetchUserInfo()
   fetchGroups()
-  fetchUserPosts() // Add this line
 })
 </script>
 
