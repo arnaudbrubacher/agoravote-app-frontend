@@ -3,10 +3,16 @@
   <Card>
     <CardHeader class="flex flex-row items-center justify-between">
       <CardTitle>Your Groups</CardTitle>
-      <Button @click="$emit('create-group')" class="flex items-center">
-        <PlusIcon class="h-4 w-4 mr-2" />
-        Create Group
-      </Button>
+      <div class="flex items-center space-x-2">
+        <Button @click="$emit('find-group')" variant="outline" class="flex items-center">
+          <SearchIcon class="h-4 w-4 mr-2" />
+          Find a Group
+        </Button>
+        <Button @click="$emit('create-group')" class="flex items-center">
+          <PlusIcon class="h-4 w-4 mr-2" />
+          Create Group
+        </Button>
+      </div>
     </CardHeader>
     <CardContent class="p-6">
       <!-- Groups list -->
@@ -32,7 +38,7 @@
 
 <script setup>
 import { ref, defineProps, defineEmits } from 'vue'
-import { PlusIcon } from 'lucide-vue-next'
+import { PlusIcon, Search as SearchIcon } from 'lucide-vue-next'
 import { Loader2 as SpinnerIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -50,5 +56,5 @@ const props = defineProps({
   }
 })
 
-defineEmits(['create-group', 'view-group'])
+defineEmits(['create-group', 'view-group', 'find-group'])
 </script> 

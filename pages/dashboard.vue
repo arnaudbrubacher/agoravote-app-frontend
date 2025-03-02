@@ -92,17 +92,50 @@
       :isLoading="isLoadingGroups"
       @create-group="openNewGroupDialog"
       @view-group="viewGroup"
+      @find-group="showFindGroupDialog = true"
     />
 
-    <!-- Find a Group Card -->
-    <Card class="w-full max-w-2xl mx-auto">
-      <CardHeader class="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Find a Group</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent class="p-6">
-        <div class="space-y-4">
+    <!-- Dialogs -->
+    <NewGroupDialog
+      v-if="showNewGroupDialog"
+      @close="closeNewGroupDialog"
+      @group-created="handleGroupCreated"
+    />
+
+    <UserSettingsDialog
+      :open="showUserSettings"
+      :userData="userData"
+      @update:open="showUserSettings = $event"
+      @refresh-user-data="fetchUserInfo"
+    />
+
+    <NewPostDialog
+      v-if="showNewPostDialog"
+      @close="showNewPostDialog = false"
+      @submit="handlePostCreated"
+    />
+
+    <PostDetailsDialog
+      v-if="selectedPost"
+      :post="selectedPost"
+      :current-user-id="userData?.id"
+      @close="selectedPost = null"
+      @edit="handlePostEdited"
+      @delete="handlePostDeleted"
+      @refresh="refreshUserPosts"
+    />
+
+    <!-- Find Group Dialog -->
+    <Dialog :open="showFindGroupDialog" @update:open="showFindGroupDialog = $event">
+      <DialogContent class="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Find a Group</DialogTitle>
+          <DialogDescription>
+            Search for public groups to join
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="space-y-4 py-4">
           <!-- Search Input -->
           <div class="relative">
             <SearchIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -121,7 +154,7 @@
             <span class="text-sm text-muted-foreground mt-2 block">Searching...</span>
           </div>
 
-          <div v-else-if="searchResults.length" class="space-y-3">
+          <div v-else-if="searchResults.length" class="space-y-3 max-h-[400px] overflow-y-auto">
             <div 
               v-for="group in searchResults" 
               :key="group.id" 
@@ -173,38 +206,12 @@
             Type to search for public groups
           </div>
         </div>
-      </CardContent>
-    </Card>
-
-    <!-- Dialogs -->
-    <NewGroupDialog
-      v-if="showNewGroupDialog"
-      @close="closeNewGroupDialog"
-      @group-created="handleGroupCreated"
-    />
-
-    <UserSettingsDialog
-      :open="showUserSettings"
-      :userData="userData"
-      @update:open="showUserSettings = $event"
-      @refresh-user-data="fetchUserInfo"
-    />
-
-    <NewPostDialog
-      v-if="showNewPostDialog"
-      @close="showNewPostDialog = false"
-      @submit="handlePostCreated"
-    />
-
-    <PostDetailsDialog
-      v-if="selectedPost"
-      :post="selectedPost"
-      :current-user-id="userData?.id"
-      @close="selectedPost = null"
-      @edit="handlePostEdited"
-      @delete="handlePostDeleted"
-      @refresh="refreshUserPosts"
-    />
+        
+        <DialogFooter>
+          <Button variant="outline" @click="showFindGroupDialog = false">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -268,6 +275,9 @@ const showNewGroupDialog = ref(false)
 // New post dialog ref
 const showNewPostDialog = ref(false)
 const selectedPost = ref(null)
+
+// Find group dialog ref
+const showFindGroupDialog = ref(false)
 
 // Format date helper function
 const formatDate = (dateString) => {
