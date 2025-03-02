@@ -32,51 +32,81 @@
               <ArrowLeftIcon class="h-4 w-4" />
               <span class="ml-2">Back</span>
             </Button>
-            <CardTitle>User Profile</CardTitle>
+            
+            <!-- User avatar and name in header -->
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center mr-3">
+                <div v-if="!user.profilePicture" class="text-lg font-bold text-primary/70">
+                  {{ getUserInitial(user) }}
+                </div>
+                <img 
+                  v-else 
+                  :src="user.profilePicture" 
+                  :alt="`${user.name}'s profile picture`"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <CardTitle>{{ user.name }}</CardTitle>
+            </div>
           </div>
         </CardHeader>
         
         <CardContent>
-          <div class="flex flex-col items-center sm:flex-row sm:items-start sm:space-x-6">
-            <!-- User avatar -->
-            <div class="w-32 h-32 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center mb-4 sm:mb-0">
-              <div v-if="!user.profilePicture" class="text-4xl font-bold text-primary/70">
-                {{ getUserInitial(user) }}
-              </div>
-              <img 
-                v-else 
-                :src="user.profilePicture" 
-                :alt="`${user.name}'s profile picture`"
-                class="w-full h-full object-cover"
-              />
+          <!-- Groups in common -->
+          <div v-if="commonGroups && commonGroups.length > 0" class="mb-6">
+            <h3 class="text-md font-medium mb-2">Groups in common:</h3>
+            <div class="flex flex-wrap gap-2">
+              <Badge 
+                v-for="group in commonGroups" 
+                :key="group.id"
+                class="cursor-pointer"
+                @click="navigateToGroup(group.id)"
+              >
+                {{ group.name }}
+              </Badge>
+            </div>
+          </div>
+          
+          <!-- User's posts -->
+          <div class="mt-6">
+            <h3 class="text-lg font-medium mb-4">Posts</h3>
+            
+            <!-- Loading posts state -->
+            <div v-if="loadingPosts" class="flex justify-center items-center py-6">
+              <Icon name="heroicons:arrow-path" class="h-6 w-6 animate-spin text-primary" />
+              <span class="ml-2">Loading posts...</span>
             </div>
             
-            <!-- User details -->
-            <div class="flex-1 text-center sm:text-left">
-              <h2 class="text-2xl font-bold">{{ user.name }}</h2>
-              <p class="text-muted-foreground mt-1">
-                {{ user.userTagline || 'No bio available' }}
-              </p>
-              
-              <div class="mt-6 space-y-4">
-                <!-- Member since -->
-                <div class="flex flex-col sm:flex-row sm:items-center text-sm">
-                  <span class="font-medium mr-2">Member since:</span>
-                  <span class="text-muted-foreground">{{ formatDate(user.createdAt) }}</span>
+            <!-- No posts state -->
+            <div v-else-if="!userPosts || userPosts.length === 0" class="text-center py-8 text-muted-foreground">
+              This user hasn't posted anything yet.
+            </div>
+            
+            <!-- Posts list -->
+            <div v-else class="space-y-4">
+              <div 
+                v-for="post in userPosts" 
+                :key="post.id"
+                class="border rounded-md p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                @click="openPostDetails(post)"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="font-medium">{{ post.title }}</h4>
+                  <span class="text-xs text-muted-foreground">
+                    {{ formatPostDate(post.created_at) }}
+                  </span>
                 </div>
+                <p class="text-sm line-clamp-2">{{ post.content }}</p>
                 
-                <!-- Groups in common -->
-                <div v-if="commonGroups && commonGroups.length > 0" class="mt-4">
-                  <h3 class="text-md font-medium mb-2">Groups in common:</h3>
-                  <div class="flex flex-wrap gap-2">
-                    <Badge 
-                      v-for="group in commonGroups" 
-                      :key="group.id"
-                      class="cursor-pointer"
-                      @click="navigateToGroup(group.id)"
-                    >
-                      {{ group.name }}
-                    </Badge>
+                <!-- Post footer with stats -->
+                <div class="flex items-center space-x-4 mt-3 pt-2 border-t text-sm text-muted-foreground">
+                  <div class="flex items-center">
+                    <Icon name="heroicons:chat-bubble-left" class="h-4 w-4 mr-1" />
+                    <span>{{ post.comment_count || 0 }}</span>
+                  </div>
+                  <div class="flex items-center">
+                    <Icon name="heroicons:heart" class="h-4 w-4 mr-1" />
+                    <span>{{ post.like_count || 0 }}</span>
                   </div>
                 </div>
               </div>
@@ -84,6 +114,14 @@
           </div>
         </CardContent>
       </Card>
+      
+      <!-- Post details dialog -->
+      <PostDetailsDialog
+        v-if="selectedPost"
+        :post="selectedPost"
+        :current-user-id="currentUserId"
+        @close="selectedPost = null"
+      />
     </div>
   </div>
 </template>
@@ -102,6 +140,7 @@ import {
   CardContent 
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import PostDetailsDialog from '@/components/group/dialogs/PostDetailsDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -109,6 +148,10 @@ const user = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const commonGroups = ref([])
+const userPosts = ref([])
+const loadingPosts = ref(false)
+const selectedPost = ref(null)
+const currentUserId = ref('') // You'll need to set this from your auth store
 
 // Fetch user profile data
 const fetchUserProfile = async () => {
@@ -127,12 +170,29 @@ const fetchUserProfile = async () => {
       commonGroups.value = response.data.commonGroups
     }
     
-    document.title = `${user.value.name} - AgoraVote Profile`
+    document.title = `${user.value.name} - AgoraVote`
+    
+    // After loading the profile, fetch the user's posts
+    await fetchUserPosts(userId)
   } catch (err) {
     console.error('Failed to fetch user profile:', err)
     error.value = err.response?.data?.error || 'Failed to load user profile'
   } finally {
     loading.value = false
+  }
+}
+
+// Fetch user's posts
+const fetchUserPosts = async (userId) => {
+  try {
+    loadingPosts.value = true
+    const response = await axios.get(`/user/${userId}/posts`)
+    userPosts.value = response.data.posts || response.data || []
+  } catch (err) {
+    console.error('Failed to fetch user posts:', err)
+    // Don't set error.value here to avoid replacing the main error message
+  } finally {
+    loadingPosts.value = false
   }
 }
 
@@ -142,21 +202,27 @@ const getUserInitial = (user) => {
   return user.name.charAt(0).toUpperCase()
 }
 
-// Format date
-const formatDate = (dateString) => {
-  if (!dateString) return 'Unknown'
+// Format date for posts
+const formatPostDate = (dateString) => {
+  if (!dateString) return ''
   
   const date = new Date(dateString)
   return new Intl.DateTimeFormat('en-US', { 
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
   }).format(date)
 }
 
 // Navigate to group page
 const navigateToGroup = (groupId) => {
   router.push(`/group/${groupId}`)
+}
+
+// Open post details
+const openPostDetails = (post) => {
+  selectedPost.value = post
 }
 
 onMounted(fetchUserProfile)
