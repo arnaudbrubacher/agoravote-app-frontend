@@ -11,7 +11,7 @@
     <!-- Group header -->
     <GroupHeader
       :group="group"
-      :is-current-user-admin="isCurrentUserAdmin"
+      :is-current-user-admin="isCurrentUserAdmin.value"
       @back-to-dashboard="navigateToDashboard"
       @open-settings="showSettingsDialog = true"
     />

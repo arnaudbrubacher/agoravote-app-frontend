@@ -14,6 +14,11 @@ export function useGroupData(groupId) {
       const response = await axios.get(`/groups/${groupId}`)
       group.value = response.data
       
+      // Add debugging to see what's coming from API
+      console.log('Group data from API:', group.value)
+      console.log('User role in group:', group.value?.currentUserRole)
+      console.log('Is admin flag:', group.value?.currentUserIsAdmin)
+      
       // Normalize member data if needed
       if (group.value.members) {
         group.value.members = normalizeMembers(group.value.members)
@@ -85,10 +90,33 @@ export function useGroupData(groupId) {
     })
   }
   
-  // Check if current user is admin
+  // Add detailed logging to see exactly what's happening with admin status
   const isCurrentUserAdmin = computed(() => {
-    if (!group.value?.currentUserRole) return false
-    return group.value.currentUserRole === 'admin'
+    // Log all relevant data
+    console.log('---- ADMIN CHECK DATA ----');
+    console.log('Group data:', group.value);
+    console.log('Current user ID:', group.value?.currentUser?.id);
+    
+    // Check all possible admin indicators
+    const adminByRole = group.value?.currentUserRole === 'admin';
+    const adminByFlag = group.value?.currentUserIsAdmin === true;
+    const adminByUserRole = group.value?.userRole === 'admin';
+    const adminInMembers = group.value?.members?.some(m => 
+      m.id === group.value?.currentUser?.id && m.isAdmin
+    );
+    
+    console.log('Admin checks:', {
+      adminByRole,
+      adminByFlag,
+      adminByUserRole, 
+      adminInMembers,
+      currentUserRole: group.value?.currentUserRole,
+      currentUserIsAdmin: group.value?.currentUserIsAdmin,
+      userRole: group.value?.userRole
+    });
+    
+    // Expand our check to catch all possible admin indicators
+    return adminByRole || adminByFlag || adminByUserRole || adminInMembers;
   })
   
   return {

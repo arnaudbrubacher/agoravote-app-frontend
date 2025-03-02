@@ -34,8 +34,9 @@
             variant="outline" 
             size="sm"
             @click="$emit('open-settings')"
-            class="flex items-center"
-            :disabled="!isCurrentUserAdmin"
+            class="flex items-center">
+            
+          <!-- :disabled="!isCurrentUserAdmin" --> 
           >
             <SettingsIcon class="h-4 w-4 mr-2" />
             Settings
