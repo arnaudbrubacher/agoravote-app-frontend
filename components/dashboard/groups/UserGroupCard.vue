@@ -1,32 +1,26 @@
-<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/dashboard/UserGroupCard.vue -->
+<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/dashboard/groups/UserGroupCard.vue -->
 <template>
   <div 
-    class="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+    class="flex items-center p-4 border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
     @click="$emit('click')"
   >
-    <div class="flex items-center space-x-4">
-      <div v-if="group.picture" class="w-12 h-12 rounded-full overflow-hidden">
-        <img :src="group.picture" :alt="group.name" class="w-full h-full object-cover" />
+    <div class="flex-shrink-0 mr-4">
+      <div v-if="!group.picture" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+        <Users class="h-6 w-6 text-gray-400" />
       </div>
-      <div v-else class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-        <UserGroupIcon class="h-6 w-6 text-muted-foreground" />
-      </div>
-      
-      <div>
-        <h4 class="font-medium">{{ group.name }}</h4>
-        <p class="text-sm text-muted-foreground">{{ group.description }}</p>
-      </div>
+      <img 
+        v-else
+        :src="group.picture" 
+        alt="Group Picture"
+        class="w-12 h-12 rounded-full object-cover border"
+      />
     </div>
-    
-    <div class="flex items-center space-x-2">
-      <Button variant="outline" size="sm" @click.stop="$emit('view')">
-        View
-      </Button>
-      <Button 
-        v-if="group.isPrivate" 
-        variant="secondary" 
-        size="sm"
-      >
+    <div class="flex-grow">
+      <h3 class="font-medium">{{ group.name }}</h3>
+      <p class="text-sm text-muted-foreground truncate">{{ group.description }}</p>
+    </div>
+    <div class="flex-shrink-0 ml-2">
+      <Button v-if="group.is_private" size="sm" variant="outline" class="text-xs">
         Private
       </Button>
     </div>
@@ -35,7 +29,7 @@
 
 <script setup>
 import { Button } from '@/components/ui/button'
-import { UserGroupIcon } from '@heroicons/vue/outline'
+import { Users } from 'lucide-vue-next'
 
 const props = defineProps({
   group: {

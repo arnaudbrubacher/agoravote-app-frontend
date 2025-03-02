@@ -41,7 +41,7 @@
               size="sm"
               @click="addChoice"
             >
-              <Icon name="heroicons:plus" class="h-4 w-4 mr-1" />
+              <LucideIcon name="Plus" size="4" class="h-4 w-4 mr-1" />
               Add Choice
             </Button>
           </div>
@@ -59,7 +59,7 @@
               @click="removeChoice(index)"
               v-if="formData.choices.length > 2"
             >
-              <Icon name="heroicons:trash" class="h-4 w-4" />
+              <LucideIcon name="Trash" size="4" class="h-4 w-4" />
             </Button>
           </div>
           
@@ -146,6 +146,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'

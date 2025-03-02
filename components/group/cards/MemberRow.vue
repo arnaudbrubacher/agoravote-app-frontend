@@ -46,20 +46,20 @@
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
-              <Icon name="heroicons:ellipsis-vertical" class="h-4 w-4" />
+              <LucideIcon name="MoreVertical" size="4" class="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem v-if="!member.isAdmin" @click="$emit('promote', member)">
-              <Icon name="heroicons:user-plus" class="h-4 w-4 mr-2" />
+              <LucideIcon name="UserPlus" size="4" class="h-4 w-4 mr-2" />
               Make Admin
             </DropdownMenuItem>
             <DropdownMenuItem v-if="member.isAdmin && !isCurrentMember(member)" @click="$emit('demote', member)">
-              <Icon name="heroicons:user-minus" class="h-4 w-4 mr-2" />
+              <LucideIcon name="UserMinus" size="4" class="h-4 w-4 mr-2" />
               Remove Admin Role
             </DropdownMenuItem>
             <DropdownMenuItem v-if="!isCurrentMember(member)" @click="$emit('remove', member)">
-              <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
+              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-2" />
               Remove
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -70,6 +70,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import {

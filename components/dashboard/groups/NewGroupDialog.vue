@@ -10,7 +10,7 @@
         <div class="flex justify-center mb-8">
           <div class="relative">
             <div v-if="!form.picture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
-              <UserGroupIcon class="h-16 w-16 text-gray-400" />
+              <Users class="h-16 w-16 text-gray-400" />
             </div>
             <img 
               v-else
@@ -25,7 +25,7 @@
               class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
               @click="triggerFileInput"
             >
-              <CameraIcon class="h-4 w-4" />
+              <Camera class="h-4 w-4" />
             </Button>
             <input 
               type="file" 
@@ -117,7 +117,7 @@
             @click="addDocument"
             class="flex items-center"
           >
-            <PlusIcon class="h-4 w-4 mr-1" />
+            <Plus class="h-4 w-4 mr-1" />
             Add Required Document
           </Button>
           
@@ -134,7 +134,7 @@
                 @click="removeDocument(index)"
                 title="Remove this document requirement"
               >
-                <TrashIcon class="h-4 w-4" />
+                <Trash class="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -157,7 +157,7 @@ import axios from '~/src/utils/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PlusIcon, TrashIcon, UserGroupIcon, CameraIcon } from '@heroicons/vue/outline'
+import { Plus, Trash, Users, Camera } from 'lucide-vue-next'
 import {
   Dialog,
   DialogContent,

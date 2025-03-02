@@ -12,7 +12,7 @@
           <!-- Group Picture -->
           <div class="flex-shrink-0">
             <div v-if="!group.picture" class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <Icon name="heroicons:user-group" class="h-8 w-8 text-muted-foreground" />
+              <LucideIcon name="Users" size="8" class="h-8 w-8 text-muted-foreground" />
             </div>
             <img 
               v-else
@@ -48,6 +48,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue'
 import { ArrowLeftIcon, SettingsIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'

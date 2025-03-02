@@ -21,11 +21,11 @@
     <div class="flex items-center justify-between mt-3 pt-2 border-t text-sm">
       <div class="flex items-center space-x-2">
         <div class="flex items-center">
-          <Icon name="heroicons:chat-bubble-left" class="h-4 w-4 mr-1" />
+          <LucideIcon name="MessageSquare" size="4" class="h-4 w-4 mr-1" />
           <span>{{ post.comments?.length || 0 }}</span>
         </div>
         <div class="flex items-center">
-          <Icon name="heroicons:heart" class="h-4 w-4 mr-1" />
+          <LucideIcon name="QuestionMark" size="4" class="h-4 w-4 mr-1" />
           <span>{{ post.likes?.length || 0 }}</span>
         </div>
       </div>
@@ -35,6 +35,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 

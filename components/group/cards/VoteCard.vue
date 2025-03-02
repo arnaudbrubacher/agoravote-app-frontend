@@ -7,7 +7,7 @@
         <p class="text-muted-foreground">{{ vote.question }}</p>
         <div class="mt-2 text-sm">
           <span class="flex items-center">
-            <Icon name="heroicons:calendar" class="h-4 w-4 mr-1" />
+            <LucideIcon name="Calendar" size="4" class="h-4 w-4 mr-1" />
             {{ formatDateShort(vote.start_time) }} - {{ formatDateShort(vote.end_time) }}
           </span>
         </div>
@@ -28,6 +28,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue'
 
 const props = defineProps({

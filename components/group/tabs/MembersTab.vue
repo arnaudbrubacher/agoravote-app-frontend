@@ -22,7 +22,7 @@
             @click="memberSearchQuery = ''" 
             class="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
           >
-            <Icon name="heroicons:x-mark" class="h-4 w-4" />
+            <LucideIcon name="X" size="4" class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -36,7 +36,7 @@
             @click="triggerCsvFileInput()"
             class="flex items-center"
           >
-            <Icon name="heroicons:document-arrow-up" class="h-4 w-4 mr-1" />
+            <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-1" />
             Upload .CSV
           </Button>
           <input
@@ -53,16 +53,16 @@
           <DropdownMenuTrigger asChild>
             <Button>
               Add Member
-              <Icon name="heroicons:chevron-down" class="ml-1 h-4 w-4" />
+              <LucideIcon name="ChevronDown" size="4" class="ml-1 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem @click="$emit('show-add-member')">
-              <Icon name="heroicons:envelope" class="h-4 w-4 mr-2" />
+              <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
               Add by Email
             </DropdownMenuItem>
             <DropdownMenuItem @click="$emit('show-user-search')">
-              <Icon name="heroicons:magnifying-glass" class="h-4 w-4 mr-2" />
+              <LucideIcon name="Search" size="4" class="h-4 w-4 mr-2" />
               Search Users
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -71,7 +71,7 @@
     </CardHeader>
     <CardContent>
       <div v-if="isLoadingMembers" class="text-center py-8">
-        <Icon name="heroicons:arrow-path" class="h-6 w-6 animate-spin inline-block" />
+        <LucideIcon name="RefreshCw" size="6" class="h-6 w-6 animate-spin inline-block" />
         <span class="ml-2">Loading members...</span>
       </div>
       <div v-else-if="group.members?.length" class="space-y-4">
@@ -101,6 +101,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'

@@ -3,14 +3,14 @@
   <div class="container mx-auto py-8 px-4">
     <!-- Loading state -->
     <div v-if="loading" class="flex justify-center items-center py-12">
-      <Icon name="heroicons:arrow-path" class="h-8 w-8 animate-spin text-primary" />
+      <LucideIcon name="RefreshCw" size="8" class="h-8 w-8 animate-spin text-primary" />
       <span class="ml-2">Loading user profile...</span>
     </div>
     
     <!-- Error state -->
     <div v-else-if="error" class="max-w-md mx-auto bg-red-50 p-6 rounded-lg border border-red-200">
       <div class="flex items-center mb-4">
-        <Icon name="heroicons:exclamation-circle" class="h-6 w-6 text-red-500 mr-2" />
+        <LucideIcon name="AlertCircle" size="6" class="h-6 w-6 text-red-500 mr-2" />
         <h2 class="text-lg font-semibold text-red-700">Error</h2>
       </div>
       <p class="text-red-600">{{ error }}</p>
@@ -28,9 +28,9 @@
       <Card class="mb-6">
         <CardHeader class="flex flex-row items-center justify-between">
           <div class="flex items-center space-x-4">
-            <Button variant="ghost" @click="router.push('/dashboard')" class="p-2 border">
-              <ArrowLeftIcon class="h-4 w-4" />
-              <span class="ml-2">Back</span>
+            <Button variant="outline" size="sm" @click="router.push('/dashboard')" class="flex items-center">
+              <ArrowLeftIcon class="h-4 w-4 mr-1" />
+              <span>Back to Dashboard</span>
             </Button>
             
             <!-- User avatar and name in header -->
@@ -73,7 +73,7 @@
             
             <!-- Loading posts state -->
             <div v-if="loadingPosts" class="flex justify-center items-center py-6">
-              <Icon name="heroicons:arrow-path" class="h-6 w-6 animate-spin text-primary" />
+              <LucideIcon name="RefreshCw" size="6" class="h-6 w-6 animate-spin text-primary" />
               <span class="ml-2">Loading posts...</span>
             </div>
             
@@ -101,11 +101,11 @@
                 <!-- Post footer with stats -->
                 <div class="flex items-center space-x-4 mt-3 pt-2 border-t text-sm text-muted-foreground">
                   <div class="flex items-center">
-                    <Icon name="heroicons:chat-bubble-left" class="h-4 w-4 mr-1" />
+                    <LucideIcon name="MessageSquare" size="4" class="h-4 w-4 mr-1" />
                     <span>{{ post.comment_count || 0 }}</span>
                   </div>
                   <div class="flex items-center">
-                    <Icon name="heroicons:heart" class="h-4 w-4 mr-1" />
+                    <LucideIcon name="QuestionMark" size="4" class="h-4 w-4 mr-1" />
                     <span>{{ post.like_count || 0 }}</span>
                   </div>
                 </div>
@@ -127,6 +127,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'

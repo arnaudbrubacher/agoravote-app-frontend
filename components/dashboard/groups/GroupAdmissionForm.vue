@@ -5,7 +5,7 @@
         <header class="flex justify-between items-center">
           <h2 class="text-lg font-semibold">Join Group</h2>
           <Button variant="ghost" size="icon" @click="$emit('close')">
-            <Icon name="heroicons:x-mark" class="h-4 w-4" />
+            <LucideIcon name="X" size="4" class="h-4 w-4" />
           </Button>
         </header>
 
@@ -76,6 +76,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, watch } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'

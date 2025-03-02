@@ -53,7 +53,7 @@
               @click="handleDelete"
               v-if="isCurrentUserAdmin"
             >
-              <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
+              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-2" />
               Delete Group
             </Button>
             
@@ -63,7 +63,7 @@
               @click="handleLeave"
               v-if="!isCurrentUserAdmin"
             >
-              <Icon name="heroicons:arrow-right-on-rectangle" class="h-4 w-4 mr-2" />
+              <LucideIcon name="LogOut" size="4" class="h-4 w-4 mr-2" />
               Leave Group
             </Button>
           </div>
@@ -84,6 +84,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, onMounted, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'

@@ -7,11 +7,11 @@
           <DialogTitle>{{ post.title }}</DialogTitle>
           <div v-if="isCurrentUsersPost" class="flex items-center space-x-2">
             <Button variant="outline" size="sm" @click="editMode = !editMode">
-              <Icon name="heroicons:pencil" class="h-4 w-4 mr-1" />
+              <LucideIcon name="Pencil" size="4" class="h-4 w-4 mr-1" />
               {{ editMode ? 'Cancel' : 'Edit' }}
             </Button>
             <Button variant="destructive" size="sm" @click="confirmDelete">
-              <Icon name="heroicons:trash" class="h-4 w-4 mr-1" />
+              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
               Delete
             </Button>
           </div>
@@ -66,7 +66,7 @@
           <!-- Post Attachment -->
           <div v-if="post.attachment" class="mt-4">
             <div class="border rounded p-2 inline-flex items-center">
-              <Icon name="heroicons:document" class="h-5 w-5 mr-2 text-blue-500" />
+              <LucideIcon name="File" size="5" class="h-5 w-5 mr-2 text-blue-500" />
               <a :href="post.attachment" target="_blank" class="text-blue-500 hover:underline text-sm">
                 {{ getAttachmentName(post.attachment) }}
               </a>
@@ -123,6 +123,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, computed, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'

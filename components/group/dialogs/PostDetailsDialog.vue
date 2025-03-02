@@ -74,7 +74,7 @@ import {
   DialogFooter,
   DialogClose
 } from '@/components/ui/dialog'
-import { PencilIcon, TrashIcon, DocumentIcon } from '@heroicons/vue/outline'
+import { Pencil, Trash, File as DocumentIcon } from 'lucide-vue-next'
 
 const props = defineProps({
   post: {

@@ -44,7 +44,7 @@
           <div class="border-2 border-dashed border-gray-300 rounded-md p-4">
             <div v-if="!formData.file" class="text-center relative">
               <!-- File upload icon and text -->
-              <Icon name="heroicons:document-arrow-up" class="h-8 w-8 mx-auto text-muted-foreground" />
+              <LucideIcon name="FileUp" size="8" class="h-8 w-8 mx-auto text-muted-foreground" />
               <p class="text-sm text-muted-foreground mt-2">Click to upload or drag and drop</p>
               
               <!-- File input with proper positioning -->
@@ -60,7 +60,7 @@
             </div>
             <div v-else class="flex items-center justify-between">
               <div class="flex items-center">
-                <Icon name="heroicons:document" class="h-6 w-6 mr-2 text-primary" />
+                <LucideIcon name="File" size="6" class="h-6 w-6 mr-2 text-primary" />
                 <span class="text-sm truncate max-w-[200px]">{{ formData.file.name }}</span>
               </div>
               <Button 
@@ -69,7 +69,7 @@
                 size="sm" 
                 @click="formData.file = null"
               >
-                <Icon name="heroicons:x-mark" class="h-4 w-4" />
+                <LucideIcon name="X" size="4" class="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -91,6 +91,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'

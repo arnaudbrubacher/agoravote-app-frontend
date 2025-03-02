@@ -1,56 +1,12 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
     <!-- Modern Profile Card -->
-    <Card class="w-full max-w-2xl mx-auto cursor-pointer hover:bg-accent/5 transition-colors" @click="navigateToProfile">
-      <CardContent class="p-6">
-        <div class="space-y-6">
-          <!-- Profile Info Section -->
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-              <div class="relative">
-                <div v-if="!profilePicture" class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <img 
-                  v-else
-                  :src="profilePicture" 
-                  alt="Profile Picture"
-                  class="w-16 h-16 rounded-full object-cover border"
-                />
-              </div>
-              <div>
-                <h2 class="text-xl font-semibold">{{ userName || 'Your Profile' }}</h2>
-                <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
-                <p class="text-xs text-blue-600 mt-1">Click to view your profile and posts</p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Email verification status -->
-          <div v-if="userData?.email_verified !== undefined" class="flex items-center pb-3">
-            <div>
-              <div class="flex items-center">
-                <span v-if="userData.email_verified" class="text-green-600 flex items-center">
-                  <CheckCircleIcon class="h-4 w-4 mr-1"/> Email Verified
-                </span>
-                <span v-else class="text-amber-600 flex items-center">
-                  <AlertCircleIcon class="h-4 w-4 mr-1"/> Email Not Verified
-                  <Button 
-                    variant="link" 
-                    class="text-xs pl-1 h-auto p-0"
-                    @click.stop="resendVerificationEmail"
-                  >
-                    Resend Verification
-                  </Button>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <UserCard 
+      v-if="userData" 
+      :user="userData" 
+      @click="navigateToUserProfile"
+      class="w-full max-w-2xl mx-auto"
+    />
 
     <!-- Groups Card -->
     <UserGroupsTab
@@ -167,9 +123,9 @@ import {
   SearchIcon, 
   Loader2 as SpinnerIcon,
   CheckCircle as CheckCircleIcon,
-  AlertCircle as AlertCircleIcon
+  AlertCircle as AlertCircleIcon,
+  Users as UserGroupIcon
 } from 'lucide-vue-next'
-import { UserGroupIcon } from '@heroicons/vue/outline'
 import { Button } from '@/components/ui/button'
 import { 
   Card, 
@@ -185,6 +141,7 @@ import {
 } from '@/components/ui/dialog'
 import NewGroupDialog from '@/components/dashboard/groups/NewGroupDialog.vue'
 import UserGroupsTab from '@/components/dashboard/groups/UserGroupsTab.vue'
+import UserCard from '@/components/shared/users/UserCard.vue'
 
 const router = useRouter()
 
@@ -202,9 +159,14 @@ const showNewGroupDialog = ref(false)
 // Find group dialog ref
 const showFindGroupDialog = ref(false)
 
-// Navigate to profile page
-const navigateToProfile = () => {
-  router.push('/profile')
+// Navigate to user profile page
+const navigateToUserProfile = () => {
+  const userId = userData.value?.id || localStorage.getItem('userId')
+  if (userId) {
+    router.push(`/user/${userId}`)
+  } else {
+    router.push('/profile')
+  }
 }
 
 // Resend verification email

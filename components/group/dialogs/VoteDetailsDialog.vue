@@ -5,7 +5,7 @@
         <header class="flex justify-between items-center p-6 border-b">
           <h2 class="text-lg font-semibold">Vote Details</h2>
           <Button variant="ghost" size="icon" @click="$emit('close')">
-            <Icon name="heroicons:x-mark" class="h-4 w-4" />
+            <LucideIcon name="X" size="4" class="h-4 w-4" />
           </Button>
         </header>
 
@@ -116,7 +116,7 @@
               variant="destructive" 
               @click="confirmDelete"
             >
-              <Icon name="heroicons:trash" class="h-4 w-4 mr-2" />
+              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-2" />
               Delete Vote
             </Button>
             <div></div> <!-- Spacer when delete button isn't shown -->
@@ -131,6 +131,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

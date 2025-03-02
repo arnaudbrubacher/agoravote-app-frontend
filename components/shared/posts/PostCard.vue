@@ -24,7 +24,7 @@
     <!-- Display attachment if exists -->
     <div v-if="post.file_url" class="mb-3">
       <a :href="post.file_url" target="_blank" class="flex items-center space-x-2 text-blue-600 hover:underline">
-        <Icon name="heroicons:document" class="h-4 w-4" />
+        <LucideIcon name="File" size="4" class="h-4 w-4" />
         <span>{{ post.file_name }}</span>
       </a>
     </div>
@@ -32,11 +32,11 @@
     <!-- Post actions -->
     <div class="flex items-center space-x-4 text-sm text-muted-foreground">
       <button class="flex items-center space-x-1 hover:text-primary">
-        <Icon name="heroicons:hand-thumb-up" class="h-4 w-4" />
+        <LucideIcon name="ThumbsUp" size="4" class="h-4 w-4" />
         <span>{{ post.like_count || 0 }}</span>
       </button>
       <button class="flex items-center space-x-1 hover:text-primary">
-        <Icon name="heroicons:chat-bubble-left-ellipsis" class="h-4 w-4" />
+        <LucideIcon name="MessageSquareMore" size="4" class="h-4 w-4" />
         <span>{{ post.comment_count || 0 }}</span>
       </button>
     </div>
@@ -44,6 +44,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue' // Make sure you add the missing import
 
 const props = defineProps({

@@ -26,10 +26,10 @@
           <div v-if="searchQuery && !isLoading" 
             class="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
             @click="clearSearch">
-            <Icon name="heroicons:x-mark" class="h-5 w-5 text-muted-foreground" />
+            <LucideIcon name="X" size="5" class="h-5 w-5 text-muted-foreground" />
           </div>
           <div v-if="isLoading" class="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <Icon name="heroicons:arrow-path" class="h-5 w-5 animate-spin" />
+            <LucideIcon name="RefreshCw" size="5" class="h-5 w-5 animate-spin" />
           </div>
         </div>
         
@@ -66,7 +66,7 @@
                 size="sm"
                 @click.stop="addUser(user)"
               >
-                <Icon name="heroicons:plus" class="h-4 w-4 mr-1" />
+                <LucideIcon name="Plus" size="4" class="h-4 w-4 mr-1" />
                 Add
               </Button>
             </div>
@@ -90,6 +90,7 @@
 </template>
 
 <script setup>
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import axios from '~/src/utils/axios'
