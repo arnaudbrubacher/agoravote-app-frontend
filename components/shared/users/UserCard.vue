@@ -1,4 +1,4 @@
-<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/dashboard/users/UserCard.vue -->
+<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/shared/users/UserCard.vue -->
 <template>
   <div 
     class="flex items-center p-4 border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
@@ -18,11 +18,6 @@
     <div class="flex-grow">
       <h3 class="font-medium">{{ user.name || 'User' }}</h3>
       <p class="text-sm text-muted-foreground truncate">{{ user.email }}</p>
-    </div>
-    <div class="flex-shrink-0 ml-2">
-      <Button size="sm" variant="outline" class="text-xs">
-        View Profile
-      </Button>
     </div>
   </div>
 </template>
