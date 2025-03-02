@@ -1,13 +1,5 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
-    <!-- Modern Profile Card -->
-    <UserCard 
-      v-if="userData" 
-      :user="userData" 
-      @click="navigateToUserProfile"
-      class="w-full max-w-2xl mx-auto"
-    />
-
     <!-- Groups Card -->
     <UserGroupsTab
       class="w-full max-w-2xl mx-auto"
@@ -116,6 +108,10 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: 'app-layout'
+})
+
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
@@ -124,7 +120,8 @@ import {
   Loader2 as SpinnerIcon,
   CheckCircle as CheckCircleIcon,
   AlertCircle as AlertCircleIcon,
-  Users as UserGroupIcon
+  Users as UserGroupIcon,
+  User
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { 
@@ -141,7 +138,6 @@ import {
 } from '@/components/ui/dialog'
 import NewGroupDialog from '@/components/dashboard/groups/NewGroupDialog.vue'
 import UserGroupsTab from '@/components/dashboard/groups/UserGroupsTab.vue'
-import UserCard from '@/components/shared/users/UserCard.vue'
 
 const router = useRouter()
 
@@ -158,6 +154,25 @@ const showNewGroupDialog = ref(false)
 
 // Find group dialog ref
 const showFindGroupDialog = ref(false)
+
+// Handle logout
+const handleLogout = async () => {
+  try {
+    // Show confirmation dialog
+    if (!confirm('Are you sure you want to log out?')) {
+      return
+    }
+    
+    // Clear local storage
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    
+    // Redirect to login page
+    router.push('/auth')
+  } catch (error) {
+    console.error('Error during logout:', error)
+  }
+}
 
 // Navigate to user profile page
 const navigateToUserProfile = () => {

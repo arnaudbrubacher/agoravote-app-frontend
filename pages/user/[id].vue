@@ -1,17 +1,23 @@
 <!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/pages/user/[id].vue -->
 <template>
   <div class="container mx-auto py-8 px-4">
-    <!-- Navigation Button -->
-    <div class="w-full max-w-2xl mx-auto">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        @click="router.push('/dashboard')" 
-        class="flex items-center mb-4"
-      >
-        <ArrowLeftIcon class="h-4 w-4 mr-1" />
-        Back to Dashboard
-      </Button>
+    <!-- Top navigation bar - now with just the user card -->
+    <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
+      <!-- User Card (centered) -->
+      <div v-if="userData" class="flex items-center justify-center">
+        <div class="flex-shrink-0 mr-2">
+          <div v-if="!userData.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <User class="h-5 w-5 text-gray-400" />
+          </div>
+          <img 
+            v-else
+            :src="userData.profile_picture" 
+            alt="User Profile Picture"
+            class="w-8 h-8 rounded-full object-cover border"
+          />
+        </div>
+        <span class="text-base font-medium">{{ userData?.name || 'User' }}</span>
+      </div>
     </div>
     
     <!-- Loading state -->
@@ -39,14 +45,6 @@
     <!-- User profile -->
     <template v-else-if="userData">
       <div class="max-w-2xl mx-auto">
-        <!-- User Profile Card -->
-        <UserProfileCard
-          :user="userData"
-          :is-current-user="false"
-          :common-groups="commonGroups"
-          @navigate-group="navigateToGroup"
-        />
-        
         <!-- User's posts -->
         <Card class="mt-6">
           <CardContent class="p-6">
@@ -73,9 +71,13 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: 'app-layout'
+})
+
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftIcon } from 'lucide-vue-next'
+import { ArrowLeftIcon, Settings as SettingsIcon, User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
@@ -113,6 +115,13 @@ const navigateToGroup = (groupId) => {
 // Open post details
 const openPostDetails = (post) => {
   selectedPost.value = post
+}
+
+// Open settings
+const openSettings = () => {
+  // You can implement settings functionality here
+  // For now, just show an alert
+  alert('Settings functionality will be implemented here')
 }
 
 onMounted(async () => {

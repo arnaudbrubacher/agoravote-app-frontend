@@ -1,16 +1,22 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
-    <!-- Navigation Button -->
-    <div class="w-full max-w-2xl mx-auto">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        @click="router.push('/dashboard')"
-        class="flex items-center mb-4"
-      >
-        <ArrowLeftIcon class="h-4 w-4 mr-2" />
-        Back to Dashboard
-      </Button>
+    <!-- Top navigation bar with user card (identical to user/[id].vue) -->
+    <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
+      <!-- User Card (centered) -->
+      <div v-if="userData" class="flex items-center justify-center">
+        <div class="flex-shrink-0 mr-2">
+          <div v-if="!userData.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <User class="h-5 w-5 text-gray-400" />
+          </div>
+          <img 
+            v-else
+            :src="userData.profile_picture" 
+            alt="User Profile Picture"
+            class="w-8 h-8 rounded-full object-cover border"
+          />
+        </div>
+        <span class="text-base font-medium">{{ userData?.name || 'User' }}</span>
+      </div>
     </div>
     
     <!-- Loading state -->
@@ -37,16 +43,8 @@
     
     <!-- User Profile -->
     <template v-else>
-      <!-- User Profile Card -->
-      <UserProfileCard
-        :user="userData"
-        :is-current-user="true"
-        class="w-full max-w-2xl mx-auto"
-        @edit-picture="triggerFileInput"
-        @open-settings="showUserSettings = true"
-        @resend-verification="resendVerificationEmail"
-      />
       
+    
       <!-- Personal Posts Card -->
       <Card class="w-full max-w-2xl mx-auto mt-6">
         <CardContent class="p-6">
@@ -98,17 +96,21 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: 'app-layout'
+})
+
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft as ArrowLeftIcon } from 'lucide-vue-next'
+import { User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
 import UserSettingsDialog from '@/components/UserSettingsDialog.vue'
-import NewPostDialog from '@/components/shared/NewPostDialog.vue'
-import PostDetailsDialog from '@/components/shared/PostDetailsDialog.vue'
-import UserProfileCard from '@/components/shared/UserProfileCard.vue'
-import UserPostsList from '@/components/shared/UserPostsList.vue'
+import NewPostDialog from '@/components/shared/posts/NewPostDialog.vue'
+import PostDetailsDialog from '@/components/shared/posts/PostDetailsDialog.vue'
+import UserProfileCard from '@/components/shared/users/UserCard.vue'
+import UserPostsList from '@/components/shared/posts/PostCard.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 

@@ -17,7 +17,6 @@
     </div>
     <div class="flex-grow">
       <h3 class="font-medium">{{ user.name || 'User' }}</h3>
-      <p class="text-sm text-muted-foreground truncate">{{ user.email }}</p>
     </div>
   </div>
 </template>
