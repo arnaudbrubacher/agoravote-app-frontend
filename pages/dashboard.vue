@@ -79,69 +79,20 @@
     </Card>
 
     <!-- Personal Posts Card -->
-    <Card class="w-full max-w-2xl mx-auto">
-      <UserPostsTab 
-        @show-new-post="showNewPostDialog = true"
-        @open-post="selectedPost = $event"
-      />
-    </Card>
+    <UserPostsTab
+      class="w-full max-w-2xl mx-auto"
+      @show-new-post="showNewPostDialog = true"
+      @open-post="selectedPost = $event"
+    />
 
     <!-- Groups Card -->
-    <Card class="w-full max-w-2xl mx-auto">
-      <CardHeader class="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Your Groups</CardTitle>
-        </div>
-        <Button @click="openNewGroupDialog" class="flex items-center ml-auto">
-          <PlusIcon class="mr-2 h-4 w-4" />
-          Create Group
-        </Button>
-      </CardHeader>
-      <CardContent class="p-6">
-        <!-- Groups list -->
-        <div class="space-y-4">
-          <div v-if="groups.length === 0" class="text-center py-6 text-muted-foreground">
-            No groups yet. Create your first group!
-          </div>
-          
-          <div 
-            v-for="group in groups" 
-            :key="group.id" 
-            class="cursor-pointer"
-            @click="viewGroup(group.id)"
-          >
-            <div class="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-              <div class="flex items-center space-x-4">
-                <div v-if="group.picture" class="w-12 h-12 rounded-full overflow-hidden">
-                  <img :src="group.picture" :alt="group.name" class="w-full h-full object-cover" />
-                </div>
-                <div v-else class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                  <UserGroupIcon class="h-6 w-6 text-muted-foreground" />
-                </div>
-                
-                <div>
-                  <h4 class="font-medium">{{ group.name }}</h4>
-                  <p class="text-sm text-muted-foreground">{{ group.description }}</p>
-                </div>
-              </div>
-              
-              <div class="flex items-center space-x-2">
-                <Button variant="outline" size="sm" @click.stop="viewGroup(group.id)">
-                  View
-                </Button>
-                <Button 
-                  v-if="group.isPrivate" 
-                  variant="secondary" 
-                  size="sm"
-                >
-                  Private
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <UserGroupsTab
+      class="w-full max-w-2xl mx-auto"
+      :groups="groups"
+      :isLoading="isLoadingGroups"
+      @create-group="openNewGroupDialog"
+      @view-group="viewGroup"
+    />
 
     <!-- Find a Group Card -->
     <Card class="w-full max-w-2xl mx-auto">
@@ -297,6 +248,7 @@ import UserPostsTab from '@/components/dashboard/UserPostsTab.vue'
 import NewPostDialog from '@/components/dashboard/NewPostDialog.vue'
 import PostDetailsDialog from '@/components/dashboard/PostDetailsDialog.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
+import UserGroupsTab from '@/components/dashboard/UserGroupsTab.vue'
 
 const router = useRouter()
 
@@ -306,6 +258,7 @@ const userEmail = ref('')
 const profilePicture = ref(null)
 const fileInput = ref(null)
 const groups = ref([])
+const isLoadingGroups = ref(false)
 const userData = ref(null)
 const showUserSettings = ref(false)
 
@@ -437,6 +390,7 @@ const openUserSettings = () => {
 // Fetch user groups
 const fetchGroups = async () => {
   try {
+    isLoadingGroups.value = true
     const token = localStorage.getItem('token')
     if (!token) {
       throw new Error('No authentication token found')
@@ -455,6 +409,8 @@ const fetchGroups = async () => {
     if (error.response?.status === 401) {
       router.push('/auth')
     }
+  } finally {
+    isLoadingGroups.value = false
   }
 }
 

@@ -1,9 +1,9 @@
 <!-- components/group/tabs/PostsTab.vue -->
 <template>
   <Card>
-    <CardHeader class="flex justify-between">
+    <CardHeader class="flex flex-row items-center justify-between">
       <CardTitle>Posts</CardTitle>
-      <Button @click="$emit('show-new-post')">
+      <Button @click="$emit('show-new-post')" class="flex items-center">
         <Icon name="heroicons:plus" class="h-4 w-4 mr-2" />
         New Post
       </Button>
@@ -15,7 +15,7 @@
         <span class="ml-2">Loading posts...</span>
       </div>
       <div v-else-if="posts.length === 0" class="text-center text-muted-foreground py-8">
-        No posts yet
+        No posts yet. Share something with your group!
       </div>
       <div v-else class="space-y-4">
         <PostCard 

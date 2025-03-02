@@ -1,9 +1,9 @@
 <!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/dashboard/UserPostsTab.vue -->
 <template>
   <Card>
-    <CardHeader class="flex justify-between">
+    <CardHeader class="flex flex-row items-center justify-between">
       <CardTitle>Your Posts</CardTitle>
-      <Button @click="$emit('show-new-post')">
+      <Button @click="$emit('show-new-post')" class="flex items-center">
         <Icon name="heroicons:plus" class="h-4 w-4 mr-2" />
         New Post
       </Button>

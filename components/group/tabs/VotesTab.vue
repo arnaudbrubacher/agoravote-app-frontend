@@ -1,9 +1,9 @@
 <!-- components/group/tabs/VotesTab.vue -->
 <template>
   <Card>
-    <CardHeader class="flex justify-between">
+    <CardHeader class="flex flex-row items-center justify-between">
       <CardTitle>Votes</CardTitle>
-      <Button @click="$emit('show-new-vote')">
+      <Button @click="$emit('show-new-vote')" class="flex items-center">
         <Icon name="heroicons:plus" class="h-4 w-4 mr-2" />
         New Vote
       </Button>
@@ -15,7 +15,7 @@
         <span class="ml-2">Loading votes...</span>
       </div>
       <div v-else-if="votes.length === 0" class="text-center text-muted-foreground py-8">
-        No votes yet
+        No votes yet. Create a vote for your group to decide on something!
       </div>
       <div v-else class="space-y-4">
         <VoteCard 
