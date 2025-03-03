@@ -1,14 +1,20 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
-    <!-- Dashboard Title (centered at top) -->
-    <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
-      <div class="flex items-center justify-center">
+    <!-- Groups Title with right-aligned header -->
+    <div class="w-full max-w-2xl mx-auto flex justify-between items-center mb-8">
+      <!-- Icon and title (left-aligned) -->
+      <div class="flex items-center">
         <div class="flex-shrink-0 mr-2">
           <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
             <LayoutDashboard class="h-5 w-5 text-gray-600" />
           </div>
         </div>
-        <h1 class="text-xl font-semibold">Dashboard</h1>
+        <h1 class="text-xl font-semibold">Groups</h1>
+      </div>
+      
+      <!-- Right side - can be used for actions later if needed -->
+      <div>
+        <!-- Placeholder for future actions -->
       </div>
     </div>
     
@@ -149,8 +155,8 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import NewGroupDialog from '@/components/dashboard/groups/NewGroupDialog.vue'
-import UserGroupsTab from '@/components/dashboard/groups/UserGroupsTab.vue'
+import NewGroupDialog from '~/components/dashboard/NewGroupDialog.vue'
+import UserGroupsTab from '~/components/dashboard/UserGroupsTab.vue'
 
 const router = useRouter()
 

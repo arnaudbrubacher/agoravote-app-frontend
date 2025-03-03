@@ -1,9 +1,10 @@
 <!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/pages/user/[id].vue -->
 <template>
   <div class="container mx-auto py-8 px-4">
-    <!-- User header with consistent styling -->
-    <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
-      <div class="flex items-center justify-center">
+    <!-- User header with left-aligned name and right-aligned space -->
+    <div class="w-full max-w-2xl mx-auto flex justify-between items-center mb-8">
+      <!-- User info (left-aligned) -->
+      <div class="flex items-center">
         <div class="flex-shrink-0 mr-2">
           <div v-if="!userData?.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
             <User class="h-5 w-5 text-gray-600" />
@@ -16,6 +17,11 @@
           />
         </div>
         <h1 class="text-xl font-semibold">{{ userData?.name || 'User' }}</h1>
+      </div>
+      
+      <!-- Right side - can be used for actions later if needed -->
+      <div>
+        <!-- Placeholder for future actions -->
       </div>
     </div>
     
@@ -47,7 +53,7 @@
         <!-- User's posts -->
         <Card class="mt-6">
           <CardContent class="p-6">
-            <UserPostsList
+            <PostCard
               :posts="posts"
               :loading="postsLoading"
               :is-current-user="false"
@@ -82,7 +88,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
 import PostDetailsDialog from '@/components/shared/posts/PostDetailsDialog.vue'
 import UserProfileCard from '@/components/shared/users/UserCard.vue'
-import UserPostsList from '@/components/shared/posts/PostCard.vue'
+import PostCard from '@/components/shared/posts/PostCard.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 

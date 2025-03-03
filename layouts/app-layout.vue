@@ -14,7 +14,7 @@
                 <LayoutDashboard class="h-5 w-5 text-gray-600" />
               </div>
             </div>
-            <span class="text-sm font-medium">Dashboard</span>
+            <span class="text-sm font-medium">Groups</span>
           </div>
           
           

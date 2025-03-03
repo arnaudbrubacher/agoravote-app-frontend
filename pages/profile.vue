@@ -1,8 +1,9 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
     <!-- Profile header with consistent styling -->
-    <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
-      <div class="flex items-center justify-center">
+    <div class="w-full max-w-2xl mx-auto flex justify-between items-center mb-8">
+      <!-- User info (left-aligned) -->
+      <div class="flex items-center">
         <div class="flex-shrink-0 mr-2">
           <div v-if="!userData?.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
             <User class="h-5 w-5 text-gray-600" />
@@ -15,6 +16,19 @@
           />
         </div>
         <h1 class="text-xl font-semibold">{{ userData?.name || 'User' }}</h1>
+      </div>
+      
+      <!-- Settings button (right-aligned) -->
+      <div class="flex items-center">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          @click="showUserSettings = true"
+          class="flex items-center gap-1"
+        >
+          <Settings class="h-4 w-4" />
+          <span>Settings</span>
+        </Button>
       </div>
     </div>
     
@@ -47,7 +61,7 @@
       <!-- Personal Posts Card -->
       <Card class="w-full max-w-2xl mx-auto mt-6">
         <CardContent class="p-6">
-          <UserPostsList
+          <PostCard
             :posts="posts"
             :loading="postsLoading"
             :is-current-user="true"
@@ -101,7 +115,7 @@ definePageMeta({
 
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { User } from 'lucide-vue-next'
+import { User, Settings } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
@@ -109,7 +123,7 @@ import UserSettingsDialog from '@/components/UserSettingsDialog.vue'
 import NewPostDialog from '@/components/shared/posts/NewPostDialog.vue'
 import PostDetailsDialog from '@/components/shared/posts/PostDetailsDialog.vue'
 import UserProfileCard from '@/components/shared/users/UserCard.vue'
-import UserPostsList from '@/components/shared/posts/PostCard.vue'
+import PostCard from '@/components/shared/posts/PostCard.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 
