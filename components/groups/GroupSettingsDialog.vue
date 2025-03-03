@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="true" @update:open="$emit('close')">
-    <DialogContent class="sm:max-w-md">
+    <DialogContent class="sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>Group Settings</DialogTitle>
         <DialogDescription>
@@ -45,13 +45,13 @@
         </div>
         
         <!-- Actions -->
-        <div class="flex justify-between pt-4">
-          <div class="space-x-2">
+        <div class="flex flex-col pt-4 space-y-10">
+          <div class="flex justify-center space-x-4">
             <Button 
               type="button" 
               variant="destructive" 
               @click="handleDelete"
-              v-if="isCurrentUserAdmin"
+              class="flex-1"
             >
               <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-2" />
               Delete Group
@@ -62,13 +62,14 @@
               variant="outline" 
               @click="handleLeave"
               v-if="!isCurrentUserAdmin"
+              class="flex-1"
             >
               <LucideIcon name="LogOut" size="4" class="h-4 w-4 mr-2" />
               Leave Group
             </Button>
           </div>
           
-          <div class="space-x-2">
+          <div class="flex justify-end space-x-2">
             <Button type="button" variant="outline" @click="$emit('close')">
               Cancel
             </Button>
@@ -86,7 +87,6 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, onMounted, computed } from 'vue'
-import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
