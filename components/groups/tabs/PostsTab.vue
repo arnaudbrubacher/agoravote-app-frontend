@@ -57,7 +57,7 @@ const currentUserId = computed(() => {
   return ''
 })
 
-const { posts, isLoadingPosts, fetchPosts, createPost, updatePost, deletePost } = useGroupPosts(props.group.id)
+const { posts, isLoadingPosts, fetchPosts, createNewPost, updatePost, deletePost } = useGroupPosts(props.group.id)
 
 const showNewPostDialog = ref(false)
 const selectedPost = ref(null)
@@ -68,7 +68,7 @@ const openPostDetails = (post) => {
 
 const handleCreatePost = async (postData) => {
   try {
-    await createPost(postData)
+    await createNewPost(postData)
     showNewPostDialog.value = false
     await fetchPosts() // Refresh the posts list
   } catch (error) {

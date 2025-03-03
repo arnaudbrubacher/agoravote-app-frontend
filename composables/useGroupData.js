@@ -8,6 +8,9 @@ export function useGroupData(groupId) {
   const group = ref(null)
   const isLoading = ref(false)
   
+
+
+
   const fetchGroup = async () => {
     try {
       isLoading.value = true
@@ -32,6 +35,9 @@ export function useGroupData(groupId) {
       isLoading.value = false
     }
   }
+  
+
+
   
   const updateGroupSettings = async (settings) => {
     try {

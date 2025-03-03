@@ -296,4 +296,16 @@ const handleVoteDeleted = async (voteId) => {
     console.error('Failed to delete vote:', err)
   }
 }
+
+const createPost = async (postData) => {
+  try {
+    const response = await axios.post('/posts', postData); // Adjust the endpoint as needed
+    // Update the posts list in the relevant location (profile or group)
+    // For example, if in a group context, you might want to fetch the updated posts
+    await fetchPosts(); // Assuming you have a function to fetch posts
+  } catch (error) {
+    console.error('Failed to create post:', error);
+    alert('Failed to create post: ' + (error.response?.data?.error || 'Unknown error'));
+  }
+};
 </script>

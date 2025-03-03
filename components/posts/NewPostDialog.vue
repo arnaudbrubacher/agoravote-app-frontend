@@ -38,16 +38,13 @@
           <Label for="isPublic" class="cursor-pointer">Make this post public</Label>
         </div>
         
-        <!-- File Upload (optional) - FIXED POSITIONING -->
+        <!-- File Upload (optional) -->
         <div>
           <Label for="file-label" class="block mb-2">Attachment (Optional)</Label>
           <div class="border-2 border-dashed border-gray-300 rounded-md p-4">
             <div v-if="!formData.file" class="text-center relative">
-              <!-- File upload icon and text -->
               <LucideIcon name="FileUp" size="8" class="h-8 w-8 mx-auto text-muted-foreground" />
               <p class="text-sm text-muted-foreground mt-2">Click to upload or drag and drop</p>
-              
-              <!-- File input with proper positioning -->
               <label for="file" class="cursor-pointer block absolute inset-0">
                 <span class="sr-only">Upload a file</span>
                 <input 
