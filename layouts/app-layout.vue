@@ -1,11 +1,27 @@
 <template>
   <div class="min-h-screen bg-background">
     <header class="border-b">
-      <div class="container flex h-16 items-center px-4">
+      <div class="container mx-auto flex h-16 items-center px-4">
         <div class="flex w-full items-center justify-between">
-          <h1 class="text-xl font-bold">Agora Vote</h1>
+          <!-- Dashboard Button (always shown when authenticated) -->
+          <div 
+            v-if="isAuthenticated" 
+            class="flex items-center cursor-pointer"
+            @click="navigateToDashboard"
+          >
+            <div class="flex-shrink-0 mr-2">
+              <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <LayoutDashboard class="h-5 w-5 text-gray-600" />
+              </div>
+            </div>
+            <span class="text-sm font-medium">Dashboard</span>
+          </div>
           
-          <!-- User Card - Only show when authenticated -->
+          
+          <!-- App Title (center) -->
+          <h1 class="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Agora Vote</h1>
+          
+          <!-- User Card (right) - Only show when authenticated -->
           <div 
             v-if="isAuthenticated" 
             class="flex items-center cursor-pointer"
@@ -22,8 +38,9 @@
                 class="w-8 h-8 rounded-full object-cover border"
               />
             </div>
-            <span class="text-sm font-medium mr-2">{{ userData?.name || 'User' }}</span>
+            <span class="text-sm font-medium">{{ userData?.name || 'User' }}</span>
           </div>
+          <div v-else class="w-[120px]"></div> <!-- Spacer when user card is not shown -->
         </div>
       </div>
     </header>
@@ -41,7 +58,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User } from 'lucide-vue-next'
+import { User, LayoutDashboard } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import axios from '~/src/utils/axios'
 
@@ -55,11 +72,24 @@ const isAuthenticated = computed(() => {
   return !!localStorage.getItem('token')
 })
 
+// Check if currently on dashboard page
+const isOnDashboard = computed(() => {
+  return route.path === '/dashboard'
+})
+
 // Navigate to user profile
 const navigateToProfile = () => {
   const userId = localStorage.getItem('userId')
   if (userId) {
     router.push(`/profile`)
+  }
+}
+
+// Navigate to dashboard
+const navigateToDashboard = () => {
+  // Only navigate if not already on dashboard
+  if (!isOnDashboard.value) {
+    router.push('/dashboard')
   }
 }
 

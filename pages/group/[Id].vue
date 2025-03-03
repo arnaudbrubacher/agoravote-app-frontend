@@ -7,14 +7,24 @@
   />
 
   <!-- Main content when loaded -->
-  <div v-if="!loading && !error && group" class="container mx-auto p-4 space-y-6">
-    <!-- Group header -->
-    <GroupHeader
-      :group="group"
-      :is-current-user-admin="isCurrentUserAdmin.value"
-      @back-to-dashboard="navigateToDashboard"
-      @open-settings="showSettingsDialog = true"
-    />
+  <div v-if="!loading && !error && group" class="container mx-auto max-w-2xl p-6 space-y-6">
+    <!-- Group header with consistent styling -->
+    <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
+      <div class="flex items-center justify-center">
+        <div class="flex-shrink-0 mr-2">
+          <div v-if="!group.picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <Users class="h-5 w-5 text-gray-600" />
+          </div>
+          <img 
+            v-else
+            :src="group.picture" 
+            alt="Group Picture"
+            class="w-8 h-8 rounded-full object-cover border"
+          />
+        </div>
+        <h1 class="text-xl font-semibold">{{ group.name }}</h1>
+      </div>
+    </div>
 
     <!-- Group content tabs -->
     <GroupTabs
@@ -65,10 +75,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Users } from 'lucide-vue-next'
 import LoadingError from '@/components/group/core/LoadingError.vue'
-import GroupHeader from '@/components/group/core/GroupHeader.vue'
 import GroupTabs from '@/components/group/core/GroupTabs.vue'
 import GroupDialogs from '@/components/group/core/GroupDialogs.vue'
+
+// Define page layout
+definePageMeta({
+  layout: 'app-layout'
+})
 
 // Import composables
 import { useGroupData } from '@/composables/useGroupData'

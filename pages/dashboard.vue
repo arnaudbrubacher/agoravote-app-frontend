@@ -1,5 +1,17 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
+    <!-- Dashboard Title (centered at top) -->
+    <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
+      <div class="flex items-center justify-center">
+        <div class="flex-shrink-0 mr-2">
+          <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <LayoutDashboard class="h-5 w-5 text-gray-600" />
+          </div>
+        </div>
+        <h1 class="text-xl font-semibold">Dashboard</h1>
+      </div>
+    </div>
+    
     <!-- Groups Card -->
     <UserGroupsTab
       class="w-full max-w-2xl mx-auto"
@@ -121,7 +133,8 @@ import {
   CheckCircle as CheckCircleIcon,
   AlertCircle as AlertCircleIcon,
   Users as UserGroupIcon,
-  User
+  User,
+  LayoutDashboard
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { 

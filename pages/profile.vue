@@ -1,12 +1,11 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
-    <!-- Top navigation bar with user card (identical to user/[id].vue) -->
+    <!-- Profile header with consistent styling -->
     <div class="w-full max-w-2xl mx-auto flex justify-center items-center mb-8">
-      <!-- User Card (centered) -->
-      <div v-if="userData" class="flex items-center justify-center">
+      <div class="flex items-center justify-center">
         <div class="flex-shrink-0 mr-2">
-          <div v-if="!userData.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-            <User class="h-5 w-5 text-gray-400" />
+          <div v-if="!userData?.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <User class="h-5 w-5 text-gray-600" />
           </div>
           <img 
             v-else
@@ -15,7 +14,7 @@
             class="w-8 h-8 rounded-full object-cover border"
           />
         </div>
-        <span class="text-base font-medium">{{ userData?.name || 'User' }}</span>
+        <h1 class="text-xl font-semibold">{{ userData?.name || 'User' }}</h1>
       </div>
     </div>
     
