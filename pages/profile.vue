@@ -61,7 +61,7 @@
       <!-- Personal Posts Card -->
       <Card class="w-full max-w-2xl mx-auto mt-6">
         <CardContent class="p-6">
-          <PostCard
+          <Postslist
             :posts="posts"
             :loading="postsLoading"
             :is-current-user="true"
@@ -123,7 +123,7 @@ import UserSettingsDialog from '@/components/users/UserSettingsDialog.vue'
 import NewPostDialog from '@/components/posts/NewPostDialog.vue'
 import PostDetailsDialog from '@/components/posts/PostDetailsDialog.vue'
 import UserProfileCard from '@/components/users/UserCard.vue'
-import PostCard from '@/components/posts/PostCard.vue'
+import Postslist from '@/components/posts/Postslist.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 

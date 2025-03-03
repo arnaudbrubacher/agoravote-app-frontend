@@ -88,7 +88,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
 import PostDetailsDialog from '~/components/shared/PostDetailsDialog.vue'
 import UserProfileCard from '~/components/users/UserCard.vue'
-import PostCard from '~/components/posts/PostCard.vue'
+import PostCard from '~/components/posts/Postslist.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 

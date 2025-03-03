@@ -1,42 +1,45 @@
 <!-- components/group/tabs/VotesTab.vue -->
 <template>
-  <Card>
-    <CardHeader class="flex flex-row items-center justify-between">
-      <CardTitle>Votes</CardTitle>
-      <Button @click="$emit('show-new-vote')" class="flex items-center">
-        <LucideIcon name="Plus" size="4" class="h-4 w-4 mr-2" />
-        New Vote
-      </Button>
-    </CardHeader>
-    <CardContent>
-      <!-- Votes list -->
-      <div v-if="isLoadingVotes" class="text-center py-8">
-        <LucideIcon name="RefreshCw" size="6" class="h-6 w-6 animate-spin inline-block" />
-        <span class="ml-2">Loading votes...</span>
-      </div>
-      <div v-else-if="votes.length === 0" class="text-center text-muted-foreground py-8">
-        No votes yet. Create a vote for your group to decide on something!
-      </div>
-      <div v-else class="space-y-4">
-        <VoteCard 
-          v-for="vote in votes" 
-          :key="vote.id" 
-          :vote="vote" 
-          @click="openVoteDetails(vote)"
-        />
-      </div>
+  <Card class="mt-6">
+    <CardContent class="p-6">
+      <!-- Use the shared VotesList component which handles lists of votes -->
+      <VotesList
+        :votes="votes"
+        :loading="isLoadingVotes"
+        :show-create-button="true"
+        @create-vote="showNewVoteDialog = true"
+        @open-vote="openVoteDetails"
+      />
     </CardContent>
   </Card>
+  
+  <!-- New Vote Dialog -->
+  <NewVoteDialog
+    v-if="showNewVoteDialog"
+    :group="group"
+    @close="showNewVoteDialog = false"
+    @submit="handleCreateVote"
+  />
+  
+  <!-- Vote Details Dialog -->
+  <VoteDetailsDialog
+    v-if="selectedVote"
+    :vote="selectedVote"
+    :current-user-id="currentUserId"
+    @close="selectedVote = null"
+    @submit-vote="handleSubmitVote"
+    @delete="handleDeleteVote"
+  />
 </template>
 
 <script setup>
-import LucideIcon from '@/components/LucideIcon.vue'
-import { ref, onMounted } from 'vue'
-import { Icon } from '@iconify/vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import VoteCard from '~/components/votes/VoteCard.vue'
+import { ref, onMounted, computed } from 'vue'
+import { Card, CardContent } from '@/components/ui/card'
+import VotesList from '~/components/votes/VotesList.vue'
+import NewVoteDialog from '~/components/votes/NewVoteDialog.vue'
+import VoteDetailsDialog from '~/components/votes/VoteDetailsDialog.vue'
 import { useGroupVotes } from '@/composables/useGroupVotes'
+import { getUserIdFromToken } from '~/src/utils/auth'
 
 const props = defineProps({
   group: {
@@ -47,7 +50,18 @@ const props = defineProps({
 
 const emit = defineEmits(['show-new-vote', 'open-vote'])
 
-const { votes, isLoadingVotes, fetchVotes } = useGroupVotes(props.group.id)
+// Get current user ID from token
+const currentUserId = computed(() => {
+  if (process.client) {
+    return getUserIdFromToken() || ''
+  }
+  return ''
+})
+
+const { votes, isLoadingVotes, fetchVotes, createVote, submitVote, deleteVote } = useGroupVotes(props.group.id)
+
+const showNewVoteDialog = ref(false)
+const selectedVote = ref(null)
 
 const openVoteDetails = (vote) => {
   const now = new Date()
@@ -61,10 +75,42 @@ const openVoteDetails = (vote) => {
     status = 'Closed'
   }
   
-  emit('open-vote', {
+  selectedVote.value = {
     ...vote,
     status
-  })
+  }
+}
+
+const handleCreateVote = async (voteData) => {
+  try {
+    await createVote(voteData)
+    showNewVoteDialog.value = false
+    await fetchVotes() // Refresh the votes list
+  } catch (error) {
+    console.error('Failed to create vote:', error)
+  }
+}
+
+const handleSubmitVote = async (voteData) => {
+  if (!selectedVote.value) return
+  
+  try {
+    await submitVote(selectedVote.value.id, voteData)
+    selectedVote.value = null
+    await fetchVotes() // Refresh the votes list
+  } catch (error) {
+    console.error('Failed to submit vote:', error)
+  }
+}
+
+const handleDeleteVote = async (voteId) => {
+  try {
+    await deleteVote(voteId)
+    selectedVote.value = null
+    await fetchVotes() // Refresh the votes list
+  } catch (error) {
+    console.error('Failed to delete vote:', error)
+  }
 }
 
 onMounted(fetchVotes)

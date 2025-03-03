@@ -1,133 +1,112 @@
 <template>
-  <div class="fixed inset-0 bg-background/80 backdrop-blur-sm">
-    <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background shadow-lg duration-200 sm:rounded-lg">
-      <div class="flex flex-col h-[90vh]">
-        <header class="flex justify-between items-center p-6 border-b">
-          <h2 class="text-lg font-semibold">Vote Details</h2>
-          <Button variant="ghost" size="icon" @click="$emit('close')">
-            <LucideIcon name="X" size="4" class="h-4 w-4" />
-          </Button>
-        </header>
+  <Dialog :open="true" @update:open="$emit('close')">
+    <DialogContent class="sm:max-w-lg">
+      <DialogHeader>
+        <div class="flex items-center justify-between">
+          <DialogTitle>{{ vote.title }}</DialogTitle>
+          <div v-if="canDelete" class="flex items-center space-x-2">
+            <Button variant="destructive" size="sm" @click="confirmDelete">
+              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          </div>
+        </div>
+        <DialogDescription>
+          {{ vote.status }} vote · {{ formatDate(vote.start_time) }} - {{ formatDate(vote.end_time) }}
+        </DialogDescription>
+      </DialogHeader>
+      
+      <div class="py-4">
+        <!-- Vote Details -->
+        <div class="space-y-4">
+          <div class="prose max-w-none">
+            <h4 class="font-medium">Question</h4>
+            <p>{{ vote.question }}</p>
+          </div>
+          
+          <div v-if="vote.allowWriteIn" class="text-sm text-muted-foreground">
+            Members can write in their own answer
+          </div>
 
-        <div class="flex-1 overflow-y-auto p-6 space-y-6">
-          <!-- Vote Details -->
-          <div class="space-y-6">
-            <div class="space-y-1">
-              <Label class="text-sm text-muted-foreground">Title</Label>
-              <p class="text-lg font-medium">{{ vote.title }}</p>
-            </div>
+          <div class="text-sm">
+            <span class="text-muted-foreground">Selection:</span> 
+            Members must select between {{ vote.minChoices }} and {{ vote.maxChoices }} choices
+          </div>
 
-            <div class="space-y-1">
-              <Label class="text-sm text-muted-foreground">Question</Label>
-              <p class="text-lg font-medium">{{ vote.question }}</p>
-            </div>
+          <!-- Voting Section for Open Votes -->
+          <div v-if="vote.status === 'Open'" class="mt-6 pt-4 border-t">
+            <h4 class="font-medium mb-4">Cast Your Vote</h4>
+            <form @submit.prevent="submitVote" class="space-y-4">
+              <div class="space-y-2">
+                <div v-for="choice in vote.choices" :key="choice.text" class="flex items-center space-x-2">
+                  <Checkbox
+                    :id="choice.text"
+                    v-model:checked="selectedChoices"
+                    :value="choice.text"
+                    :disabled="!canSelectMore && !selectedChoices.includes(choice.text)"
+                  />
+                  <Label :for="choice.text">{{ choice.text }}</Label>
+                </div>
+              </div>
 
-            <div v-if="vote.allowWriteIn" class="space-y-1">
-              <p class="text-sm text-muted-foreground">Members can write in their own answer</p>
-            </div>
+              <div v-if="vote.allowWriteIn" class="space-y-2">
+                <Label>Write-in Answer</Label>
+                <Input v-model="writeInAnswer" placeholder="Enter your answer" />
+              </div>
 
-            <div class="space-y-1">
-              <Label class="text-sm text-muted-foreground">Voting Options</Label>
-              <p class="text-base">
-                Members must select between {{ vote.minChoices }} and {{ vote.maxChoices }} choices
+              <p class="text-sm text-muted-foreground">
+                Select {{ vote.minChoices === vote.maxChoices ? vote.minChoices : `${vote.minChoices}-${vote.maxChoices}` }} 
+                {{ vote.maxChoices === 1 ? 'option' : 'options' }}
               </p>
-            </div>
 
-            <!-- Voting Section for Open Votes -->
-            <div v-if="vote.status === 'Open'" class="mt-8 pt-6 border-t">
-              <h3 class="text-lg font-semibold mb-4">Cast Your Vote</h3>
-              <form @submit.prevent="submitVote" class="space-y-4">
-                <div class="space-y-2">
-                  <div v-for="choice in vote.choices" :key="choice.text" class="flex items-center">
-                    <input
-                      type="checkbox"
-                      :id="choice.text"
-                      v-model="selectedChoices"
-                      :value="choice.text"
-                      class="mr-2"
-                      :disabled="!canSelectMore && !selectedChoices.includes(choice.text)"
-                    />
-                    <label :for="choice.text">{{ choice.text }}</label>
-                  </div>
+              <div class="flex justify-end">
+                <Button 
+                  type="submit" 
+                  :disabled="!isValidVote"
+                >
+                  <LucideIcon v-if="isSubmitting" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
+                  Submit Vote
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Results Section for Closed Votes -->
+          <div v-if="vote.status === 'Closed'" class="mt-6 pt-4 border-t">
+            <h4 class="font-medium mb-4">Results</h4>
+            
+            <div class="space-y-4">
+              <p class="text-sm text-muted-foreground">
+                Total votes cast: {{ getTotalVotes() }}
+              </p>
+
+              <div v-for="choice in vote.choices" :key="choice.text" class="space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span>{{ choice.text }}</span>
+                  <span>{{ getVoteCount(choice) }} votes ({{ getVotePercentage(choice) }}%)</span>
                 </div>
-
-                <div v-if="vote.allowWriteIn" class="space-y-2">
-                  <Label>Write-in Answer</Label>
-                  <Input v-model="writeInAnswer" placeholder="Enter your answer" />
+                <div class="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    class="h-full bg-primary" 
+                    :style="{ width: `${getVotePercentage(choice)}%` }"
+                  ></div>
                 </div>
+              </div>
 
-                <p class="text-sm text-muted-foreground">
-                  Select {{ vote.minChoices === vote.maxChoices ? vote.minChoices : `${vote.minChoices}-${vote.maxChoices}` }} 
-                  {{ vote.maxChoices === 1 ? 'option' : 'options' }}
-                </p>
-
-                <div class="flex justify-end">
-                  <Button 
-                    type="submit" 
-                    :disabled="!isValidVote"
-                  >
-                    Submit Vote
-                  </Button>
-                </div>
-              </form>
-            </div>
-
-            <!-- Results Section for Closed Votes -->
-            <div v-if="vote.status === 'Closed'" class="mt-8 pt-6 border-t">
-              <h3 class="text-lg font-semibold mb-4">Results</h3>
-              
-              <div class="space-y-4">
-                <p class="text-sm text-muted-foreground">
-                  Total votes cast: {{ getTotalVotes() }}
-                </p>
-
-                <div v-for="choice in vote.choices" :key="choice.text" class="space-y-2">
-                  <div class="flex justify-between text-sm">
-                    <span>{{ choice.text }}</span>
-                    <span>{{ getVoteCount(choice) }} votes ({{ getVotePercentage(choice) }}%)</span>
-                  </div>
-                  <div class="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      class="h-full bg-primary" 
-                      :style="{ width: `${getVotePercentage(choice)}%` }"
-                    ></div>
-                  </div>
-                </div>
-
-                <div v-if="vote.allowWriteIn && vote.writeInResponses?.length" class="mt-4">
-                  <h4 class="font-medium mb-2">Write-in Responses:</h4>
-                  <ul class="space-y-1">
-                    <li v-for="response in vote.writeInResponses" :key="response.text" class="text-sm">
-                      {{ response.text }} ({{ response.count }} votes)
-                    </li>
-                  </ul>
-                </div>
+              <div v-if="vote.allowWriteIn && vote.writeInResponses?.length" class="mt-4">
+                <h4 class="font-medium mb-2">Write-in Responses:</h4>
+                <ul class="space-y-1">
+                  <li v-for="response in vote.writeInResponses" :key="response.text" class="text-sm">
+                    {{ response.text }} ({{ response.count }} votes)
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- Update the footer section -->
-        <footer class="p-6 border-t">
-          <div class="flex justify-between">
-            <!-- Add delete button on the left -->
-            <Button 
-              v-if="canDelete" 
-              variant="destructive" 
-              @click="confirmDelete"
-            >
-              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-2" />
-              Delete Vote
-            </Button>
-            <div></div> <!-- Spacer when delete button isn't shown -->
-            
-            <!-- Close button on the right -->
-            <Button @click="$emit('close')">Close</Button>
-          </div>
-        </footer>
       </div>
-    </div>
-  </div>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup>
@@ -136,41 +115,40 @@ import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Icon } from '@iconify/vue'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog'
 
 const props = defineProps({
   vote: {
     type: Object,
     required: true
   },
-  currentUserId: { // Add this prop to check if user can delete
+  currentUserId: {
     type: String,
     default: ''
   }
 })
 
-// Define emit once (remove the duplicate at the bottom of the file)
 const emit = defineEmits(['close', 'submit-vote', 'delete'])
 
-// Add computed property to check if user can delete
-const canDelete = computed(() => {
-  // User can delete if they're the creator or if we don't have creator info
-  return (
-    props.currentUserId === props.vote.creator_id || 
-    !props.vote.creator_id // If we don't track creator, allow delete for testing
-  )
-})
-
-// Add confirmation method
-const confirmDelete = () => {
-  if (confirm(`Are you sure you want to delete this vote: "${props.vote.title}"?`)) {
-    emit('delete', props.vote.id)
-  }
-}
-
-// Rest of your existing script
+// State management
 const selectedChoices = ref([])
 const writeInAnswer = ref('')
+const isSubmitting = ref(false)
+
+// Computed properties
+const canDelete = computed(() => {
+  return (
+    props.currentUserId === props.vote.creator_id || 
+    !props.vote.creator_id
+  )
+})
 
 const canSelectMore = computed(() => {
   return selectedChoices.value.length < props.vote.maxChoices
@@ -183,19 +161,42 @@ const isValidVote = computed(() => {
          (!props.vote.allowWriteIn || !writeInAnswer.value || selectedChoices.value.length > 0)
 })
 
-const submitVote = () => {
-  if (!isValidVote.value) return
-
-  const voteData = {
-    choices: selectedChoices.value,
-    writeInAnswer: writeInAnswer.value
+// Methods
+const confirmDelete = () => {
+  if (confirm(`Are you sure you want to delete this vote: "${props.vote.title}"?`)) {
+    emit('delete', props.vote.id)
   }
+}
 
-  emit('submit-vote', voteData)
+const submitVote = async () => {
+  if (!isValidVote.value) return
+  
+  isSubmitting.value = true
+  
+  try {
+    const voteData = {
+      choices: selectedChoices.value,
+      writeInAnswer: writeInAnswer.value
+    }
+
+    emit('submit-vote', voteData)
+  } catch (error) {
+    console.error('Failed to submit vote:', error)
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 const formatDate = (dateStr) => {
-  return new Date(dateStr).toLocaleString()
+  if (!dateStr) return ''
+  
+  const date = new Date(dateStr)
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
+  }).format(date)
 }
 
 const getTotalVotes = () => {
