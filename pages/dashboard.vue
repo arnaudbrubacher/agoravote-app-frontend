@@ -28,6 +28,39 @@
       @find-group="showFindGroupDialog = true"
     />
 
+    <!-- Following Card -->
+    <Card class="w-full max-w-2xl mx-auto mt-8">
+      <CardHeader class="flex flex-row items-center justify-between">
+        <CardTitle>Following</CardTitle>
+        <Button variant="outline" size="sm" @click="showFindUsersDialog = true" class="flex items-center">
+          <SearchIcon class="h-4 w-4 mr-2" />
+          Find Users
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <!-- Loading state -->
+        <div v-if="isLoadingFollowing" class="text-center py-8">
+          <SpinnerIcon class="h-6 w-6 animate-spin inline-block text-muted-foreground" />
+          <span class="ml-2">Loading users...</span>
+        </div>
+        
+        <!-- Empty state -->
+        <div v-else-if="following.length === 0" class="text-center text-muted-foreground py-8">
+          You're not following anyone yet. Find users to follow!
+        </div>
+        
+        <!-- Users list -->
+        <div v-else class="space-y-4">
+          <UserCard 
+            v-for="user in following" 
+            :key="user.id" 
+            :user="user" 
+            @click="navigateToUserProfile(user.id)"
+          />
+        </div>
+      </CardContent>
+    </Card>
+
     <!-- Dialogs -->
     <NewGroupDialog
       v-if="showNewGroupDialog"
@@ -122,6 +155,94 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    <!-- Find Users Dialog -->
+    <Dialog :open="showFindUsersDialog" @update:open="showFindUsersDialog = $event">
+      <DialogContent class="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Find Users</DialogTitle>
+          <DialogDescription>
+            Search for users to follow
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="space-y-4 py-4">
+          <!-- Search Input -->
+          <div class="relative">
+            <SearchIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              v-model="userSearchQuery"
+              type="text"
+              placeholder="Search for users..."
+              class="w-full pl-10 pr-4 py-2 border rounded-md"
+              @input="debounceUserSearch"
+            />
+          </div>
+
+          <!-- Search results -->
+          <div v-if="userSearchLoading" class="text-center py-4">
+            <SpinnerIcon class="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+            <span class="text-sm text-muted-foreground mt-2 block">Searching...</span>
+          </div>
+
+          <div v-else-if="userSearchResults.length" class="space-y-3 max-h-[400px] overflow-y-auto">
+            <div 
+              v-for="user in userSearchResults" 
+              :key="user.id" 
+              class="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+            >
+              <div class="flex items-center space-x-4">
+                <div v-if="user.profile_picture" class="w-12 h-12 rounded-full overflow-hidden">
+                  <img :src="user.profile_picture" :alt="user.name" class="w-full h-full object-cover" />
+                </div>
+                <div v-else class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <User class="h-6 w-6 text-muted-foreground" />
+                </div>
+                
+                <div>
+                  <h4 class="font-medium">{{ user.name }}</h4>
+                  <p class="text-sm text-muted-foreground">{{ user.email }}</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center space-x-2">
+                <Button variant="outline" size="sm" @click.stop="navigateToUserProfile(user.id)">
+                  View
+                </Button>
+                <Button 
+                  v-if="!isFollowing(user.id)"
+                  variant="default" 
+                  size="sm"
+                  @click.stop="followUser(user.id)"
+                >
+                  Follow
+                </Button>
+                <Button 
+                  v-else
+                  variant="secondary" 
+                  size="sm"
+                  @click.stop="unfollowUser(user.id)"
+                >
+                  Unfollow
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="userSearchQuery && !userSearchLoading" class="text-center py-4 text-muted-foreground">
+            No users found matching your search
+          </div>
+
+          <div v-else-if="!userSearchQuery" class="text-center py-4 text-muted-foreground">
+            Type to search for users
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" @click="showFindUsersDialog = false">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -145,7 +266,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { 
   Card, 
-  CardContent 
+  CardContent,
+  CardHeader,
+  CardTitle 
 } from '@/components/ui/card'
 import {
   Dialog,
@@ -155,8 +278,9 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import NewGroupDialog from '~/components/dashboard/NewGroupDialog.vue'
-import UserGroupsTab from '~/components/dashboard/UserGroupsTab.vue'
+import NewGroupDialog from '@/components/dashboard//NewGroupDialog.vue'
+import UserGroupsTab from '@/components/dashboard/UserGroupsTab.vue'
+import UserCard from '@/components/shared/users/UserCard.vue'
 
 const router = useRouter()
 
@@ -168,11 +292,22 @@ const groups = ref([])
 const isLoadingGroups = ref(false)
 const userData = ref(null)
 
+// Following users refs
+const following = ref([])
+const isLoadingFollowing = ref(false)
+const showFindUsersDialog = ref(false)
+
 // New group dialog ref
 const showNewGroupDialog = ref(false)
 
 // Find group dialog ref
 const showFindGroupDialog = ref(false)
+
+// User search refs
+const userSearchQuery = ref('')
+const userSearchResults = ref([])
+const userSearchLoading = ref(false)
+const userSearchTimeout = ref(null)
 
 // Handle logout
 const handleLogout = async () => {
@@ -194,13 +329,8 @@ const handleLogout = async () => {
 }
 
 // Navigate to user profile page
-const navigateToUserProfile = () => {
-  const userId = userData.value?.id || localStorage.getItem('userId')
-  if (userId) {
-    router.push(`/user/${userId}`)
-  } else {
-    router.push('/profile')
-  }
+const navigateToUserProfile = (userId) => {
+  router.push(`/user/${userId}`)
 }
 
 // Resend verification email
@@ -377,9 +507,136 @@ const joinGroup = async (groupId) => {
   }
 }
 
+// Fetch following users
+const fetchFollowing = async () => {
+  try {
+    isLoadingFollowing.value = true
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await axios.get('/user/following', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    following.value = response.data
+    console.log('Following users fetched:', response.data)
+  } catch (error) {
+    console.error('Failed to fetch following users:', error)
+    if (error.response?.status === 401) {
+      router.push('/auth')
+    }
+  } finally {
+    isLoadingFollowing.value = false
+  }
+}
+
+// Check if user is already being followed
+const isFollowing = (userId) => {
+  return following.value.some(user => user.id === userId)
+}
+
+// Follow a user
+const followUser = async (userId) => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    await axios.post(`/user/follow/${userId}`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    // Refresh following list
+    await fetchFollowing()
+    
+    // Show success message
+    alert('Successfully followed user!')
+  } catch (error) {
+    console.error('Failed to follow user:', error)
+    alert('Failed to follow user: ' + (error.response?.data?.message || 'Unknown error'))
+  }
+}
+
+// Unfollow a user
+const unfollowUser = async (userId) => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    await axios.delete(`/user/follow/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    // Refresh following list
+    await fetchFollowing()
+    
+    // Show success message
+    alert('Successfully unfollowed user!')
+  } catch (error) {
+    console.error('Failed to unfollow user:', error)
+    alert('Failed to unfollow user: ' + (error.response?.data?.message || 'Unknown error'))
+  }
+}
+
+// Debounce user search
+const debounceUserSearch = () => {
+  if (userSearchTimeout.value) {
+    clearTimeout(userSearchTimeout.value)
+  }
+  
+  userSearchTimeout.value = setTimeout(() => {
+    searchUsers()
+  }, 500)
+}
+
+// Search for users
+const searchUsers = async () => {
+  if (!userSearchQuery.value.trim()) {
+    userSearchResults.value = []
+    return
+  }
+  
+  try {
+    userSearchLoading.value = true
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await axios.get(`/users/search`, {
+      params: {
+        query: userSearchQuery.value
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    userSearchResults.value = response.data || []
+    console.log('User search results:', userSearchResults.value)
+  } catch (error) {
+    console.error('Failed to search users:', error)
+    userSearchResults.value = []
+  } finally {
+    userSearchLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchUserInfo()
   fetchGroups()
+  fetchFollowing()
 })
 </script>
 
