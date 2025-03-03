@@ -278,9 +278,9 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import NewGroupDialog from '@/components/dashboard//NewGroupDialog.vue'
-import UserGroupsTab from '@/components/dashboard/UserGroupsTab.vue'
-import UserCard from '@/components/shared/users/UserCard.vue'
+import NewGroupDialog from '~/components/groups/NewGroupDialog.vue'
+import UserGroupsTab from '~/components/groups/UserGroupsTab.vue'
+import UserCard from '~/components/users/UserCard.vue'
 
 const router = useRouter()
 

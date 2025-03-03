@@ -68,13 +68,13 @@
 
 <script setup>
 import { defineProps, defineEmits } from 'vue'
-import GroupSettingsDialog from '@/components/group/dialogs/GroupSettingsDialog.vue'
-import NewVoteDialog from '@/components/group/dialogs/NewVoteDialog.vue'
-import NewPostDialog from '@/components/group/dialogs/NewPostDialog.vue'
-import AddMemberDialog from '@/components/group/dialogs/AddMemberDialog.vue'
-import PostDetailsDialog from '@/components/group/dialogs/PostDetailsDialog.vue'
-import VoteDetailsDialog from '@/components/group/dialogs/VoteDetailsDialog.vue'
-import UserSearchDialog from '@/components/group/dialogs/UserSearchDialog.vue'
+import GroupSettingsDialog from '~/components/groups/GroupSettingsDialog.vue'
+import NewVoteDialog from '~/components/votes/NewVoteDialog.vue'
+import NewPostDialog from '~/components/posts/NewPostDialog.vue'
+import AddMemberDialog from '~/components/users/AddMemberDialog.vue'
+import PostDetailsDialog from '~/components/posts/PostDetailsDialog.vue'
+import VoteDetailsDialog from '~/components/votes/VoteDetailsDialog.vue'
+import UserSearchDialog from '~/components/users/UserSearchDialog.vue'
 
 const props = defineProps({
   showSettingsDialog: Boolean,

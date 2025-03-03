@@ -35,7 +35,7 @@ import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import VoteCard from '@/components/group/cards/VoteCard.vue'
+import VoteCard from '~/components/votes/VoteCard.vue'
 import { useGroupVotes } from '@/composables/useGroupVotes'
 
 const props = defineProps({

@@ -52,9 +52,9 @@ import {
   TabsContent
 } from '@/components/ui/tabs'
 
-import VotesTab from '@/components/group/tabs/VotesTab.vue'
-import PostsTab from '@/components/group/tabs/PostsTab.vue'
-import MembersTab from '@/components/group/tabs/MembersTab.vue'
+import VotesTab from '@/components/groups/tabs/VotesTab.vue'
+import PostsTab from '@/components/groups/tabs/PostsTab.vue'
+import MembersTab from '@/components/groups/tabs/MembersTab.vue'
 
 defineProps({
   group: {

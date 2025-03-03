@@ -19,7 +19,7 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import UserPostsList from '@/components/shared/posts/PostCard.vue'
+import UserPostsList from '~/components/posts/PostCard.vue'
 import { useGroupPosts } from '@/composables/useGroupPosts'
 
 const props = defineProps({

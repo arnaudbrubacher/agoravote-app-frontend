@@ -112,7 +112,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu/index.js'
-import MemberRow from '@/components/group/cards/MemberRow.vue'
+import MemberRow from '~/components/users/MemberRow.vue'
 
 const props = defineProps({
   group: {
