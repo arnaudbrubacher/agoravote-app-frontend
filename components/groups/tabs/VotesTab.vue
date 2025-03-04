@@ -35,11 +35,12 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
-import VotesList from '~/components/votes/VotesList.vue'
+import VotesList from '~/components/votes/Voteslist.vue'
 import NewVoteDialog from '~/components/votes/NewVoteDialog.vue'
 import VoteDetailsDialog from '~/components/votes/VoteDetailsDialog.vue'
 import { useGroupVotes } from '@/composables/useGroupVotes'
 import { getUserIdFromToken } from '~/src/utils/auth'
+import axios from '~/src/utils/axios'
 
 const props = defineProps({
   group: {
@@ -58,7 +59,7 @@ const currentUserId = computed(() => {
   return ''
 })
 
-const { votes, isLoadingVotes, fetchVotes, createVote, submitVote, deleteVote } = useGroupVotes(props.group.id)
+const { votes, isLoadingVotes, fetchVotes, createNewVote, handleVoteSubmit, deleteVote } = useGroupVotes(props.group.id)
 
 const showNewVoteDialog = ref(false)
 const selectedVote = ref(null)
@@ -83,11 +84,14 @@ const openVoteDetails = (vote) => {
 
 const handleCreateVote = async (voteData) => {
   try {
-    await createVote(voteData)
-    showNewVoteDialog.value = false
-    await fetchVotes() // Refresh the votes list
+    console.log('Creating vote with data:', voteData);
+    await createNewVote(voteData);
+    showNewVoteDialog.value = false;
+    await fetchVotes(); // Refresh the votes list
   } catch (error) {
-    console.error('Failed to create vote:', error)
+    console.error('Failed to create vote:', error);
+    console.error('Error response:', error.response?.data);
+    alert('Failed to create vote: ' + (error.response?.data?.error || error.message));
   }
 }
 
@@ -95,11 +99,14 @@ const handleSubmitVote = async (voteData) => {
   if (!selectedVote.value) return
   
   try {
-    await submitVote(selectedVote.value.id, voteData)
-    selectedVote.value = null
-    await fetchVotes() // Refresh the votes list
+    console.log('Submitting vote with data:', voteData);
+    await handleVoteSubmit(voteData);
+    selectedVote.value = null;
+    await fetchVotes(); // Refresh the votes list
   } catch (error) {
-    console.error('Failed to submit vote:', error)
+    console.error('Failed to submit vote:', error);
+    console.error('Error response:', error.response?.data);
+    alert('Failed to submit vote: ' + (error.response?.data?.error || error.message));
   }
 }
 

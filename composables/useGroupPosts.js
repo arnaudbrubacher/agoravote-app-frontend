@@ -6,6 +6,10 @@ export function useGroupPosts(groupId) {
   const isLoadingPosts = ref(true)
   const selectedPost = ref(null)
 
+
+  // 1. FETCH POSTS
+
+
   // Fetch all posts for the group
   const fetchPosts = async () => {
     try {
@@ -23,37 +27,66 @@ export function useGroupPosts(groupId) {
     }
   }
 
+  // 2. CREATE A NEW POST
+
+
   // Create a new post
   const createNewPost = async (postData) => {
     try {
+      console.log('Creating new post with data:', postData);
+      
       // If we received FormData, use it directly
-      let dataToSend = postData
+      let dataToSend = postData;
       
       // If we received a plain object, convert it to FormData
       if (!(postData instanceof FormData)) {
-        dataToSend = new FormData()
-        dataToSend.append('title', postData.title)
-        dataToSend.append('content', postData.content)
-        dataToSend.append('type', 'group')
-        dataToSend.append('groupId', groupId)
+        dataToSend = new FormData();
+        dataToSend.append('title', postData.title);
+        dataToSend.append('content', postData.content);
+        
+        // Add these fields only if they're not already in the FormData
+        if (!postData.has || !postData.has('type')) {
+          dataToSend.append('type', 'group');
+        }
+        
+        if (!postData.has || !postData.has('groupId')) {
+          dataToSend.append('groupId', groupId);
+        }
         
         if (postData.file) {
-          dataToSend.append('file', postData.file)
+          dataToSend.append('file', postData.file);
+        }
+        
+        if (postData.isPublic !== undefined) {
+          dataToSend.append('isPublic', postData.isPublic);
+        }
+      } else {
+        // If it's already FormData, make sure groupId is included
+        if (!postData.has('groupId')) {
+          dataToSend.append('groupId', groupId);
+        }
+        
+        if (!postData.has('type')) {
+          dataToSend.append('type', 'group');
         }
       }
+      
+      console.log('Sending request to:', `/groups/${groupId}/posts`);
       
       // Create post
       const response = await axios.post(`/groups/${groupId}/posts`, dataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
-      })
+      });
       
-      return response.data
+      console.log('Post created successfully:', response.data);
+      return response.data;
     } catch (err) {
-      console.error('Failed to create post:', err)
-      alert('Failed to create post: ' + (err.response?.data?.error || err.message))
-      throw err
+      console.error('Failed to create post:', err);
+      console.error('Error response:', err.response?.data);
+      alert('Failed to create post: ' + (err.response?.data?.error || err.message));
+      throw err;
     }
   }
 
@@ -67,6 +100,9 @@ export function useGroupPosts(groupId) {
   const openPostDetails = (post) => {
     selectedPost.value = post
   }
+
+  // 3. EDIT A POST
+
 
   // Edit a post
   const editPost = async (post) => {
@@ -87,6 +123,9 @@ export function useGroupPosts(groupId) {
       throw err
     }
   }
+  
+  // 4. DELETE A POST
+
 
   // Delete a post
   const deletePost = async (post) => {

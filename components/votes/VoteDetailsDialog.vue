@@ -4,7 +4,7 @@
       <DialogHeader>
         <div class="flex items-center justify-between">
           <DialogTitle>{{ vote.title }}</DialogTitle>
-          <div v-if="canDelete" class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2">
             <Button variant="destructive" size="sm" @click="confirmDelete">
               <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
               Delete

@@ -41,16 +41,25 @@ import NewPostDialog from '~/components/posts/NewPostDialog.vue'
 import PostDetailsDialog from '~/components/posts/PostDetailsDialog.vue'
 import { useGroupPosts } from '@/composables/useGroupPosts'
 import { getUserIdFromToken } from '~/src/utils/auth'
+import axios from '~/src/utils/axios'
 
 const props = defineProps({
   group: {
     type: Object,
     required: true
+  },
+  currentUser: {
+    type: Object,
+    default: () => ({})
   }
 })
 
-// Get current user ID from token
+// Get current user ID from token or from props
 const currentUserId = computed(() => {
+  if (props.currentUser && props.currentUser.id) {
+    return props.currentUser.id
+  }
+  
   if (process.client) {
     return getUserIdFromToken() || ''
   }
@@ -68,11 +77,16 @@ const openPostDetails = (post) => {
 
 const handleCreatePost = async (postData) => {
   try {
-    await createNewPost(postData)
-    showNewPostDialog.value = false
-    await fetchPosts() // Refresh the posts list
+    console.log('Creating post with data:', postData);
+    // Use the createNewPost function from the composable
+    const newPost = await createNewPost(postData);
+    console.log('Post created successfully:', newPost);
+    showNewPostDialog.value = false; // Close the dialog
+    await fetchPosts(); // Refresh the posts list
   } catch (error) {
-    console.error('Failed to create post:', error)
+    console.error('Failed to create post:', error);
+    console.error('Error response:', error.response?.data);
+    alert('Failed to create post: ' + (error.response?.data?.error || error.message));
   }
 }
 
@@ -87,14 +101,14 @@ const handleEditPost = async (updatedPost) => {
 }
 
 const handleDeletePost = async (post) => {
-  try {
-    await deletePost(post.id)
-    selectedPost.value = null
-    await fetchPosts() // Refresh the posts list
-  } catch (error) {
-    console.error('Failed to delete post:', error)
-  }
-}
+     try {
+       await deletePost(post); // Use the composable's function
+     } catch (error) {
+       console.error('Failed to delete post:', error);
+       alert('Failed to delete post');
+     }
+   }
 
+   
 onMounted(fetchPosts)
 </script>

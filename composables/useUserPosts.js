@@ -34,7 +34,26 @@ export function useUserPosts(userId = null) {
   // Create a new post
   const createNewPost = async (postData) => {
     try {
-      const response = await axios.post('/posts', postData)
+      // If we received FormData, use it directly
+      let dataToSend = postData
+      
+      // If we received a plain object, convert it to FormData
+      if (!(postData instanceof FormData)) {
+        dataToSend = new FormData()
+        dataToSend.append('title', postData.title)
+        dataToSend.append('content', postData.content)
+        
+        if (postData.file) {
+          dataToSend.append('file', postData.file)
+        }
+      }
+      
+      const response = await axios.post(`/users/me/posts`, dataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
       return response.data
     } catch (err) {
       console.error('Failed to create post:', err)

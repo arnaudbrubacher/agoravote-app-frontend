@@ -5,7 +5,7 @@
       <DialogHeader>
         <div class="flex items-center justify-between">
           <DialogTitle>{{ post.title }}</DialogTitle>
-          <div v-if="isCurrentUsersPost" class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2">
             <Button variant="outline" size="sm" @click="editMode = !editMode">
               <LucideIcon name="Pencil" size="4" class="h-4 w-4 mr-1" />
               {{ editMode ? 'Cancel' : 'Edit' }}
@@ -275,5 +275,8 @@ onMounted(() => {
     content: props.post.content,
     isPublic: props.post.isPublic
   }
+
+  console.log('Current User ID:', props.currentUserId);
+  console.log('Post User ID:', props.post.user_id);
 })
 </script>

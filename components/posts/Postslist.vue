@@ -62,5 +62,5 @@ const props = defineProps({
   }
 })
 
-defineEmits(['create-post', 'open-post'])
+defineEmits(['create-post', 'open-post', 'delete-post'])
 </script>

@@ -244,14 +244,17 @@ const handleVoteCreated = async (voteData) => {
   }
 }
 
-// Keep this function but use the renamed imported function inside
 const handlePostCreated = async (postData) => {
   try {
-    const newPost = await createNewPost(postData)
-    addNewPostToList(newPost) // 👈 Use the renamed function
-    showNewPostDialog.value = false
+    console.log('Creating post with data:', postData);
+    const newPost = await createNewPost(postData);
+    console.log('Post created successfully:', newPost);
+    addNewPostToList(newPost); //  Use the renamed function
+    showNewPostDialog.value = false;
   } catch (err) {
-    console.error('Failed to create post:', err)
+    console.error('Failed to create post:', err);
+    console.error('Error response:', err.response?.data);
+    alert('Failed to create post: ' + (err.response?.data?.error || err.message));
   }
 }
 
@@ -275,9 +278,15 @@ const handlePostEdited = async (post) => {
 
 const handlePostDeleted = async (post) => {
   try {
-    await deletePost(post)
+    console.log('Deleting post with ID:', post.id);
+    await deletePost(post);
+    console.log('Post deleted successfully');
+    // Optionally refresh the posts list
+    // await fetchPosts();
   } catch (err) {
-    console.error('Failed to delete post:', err)
+    console.error('Failed to delete post:', err);
+    console.error('Error response:', err.response?.data);
+    alert('Failed to delete post: ' + (err.response?.data?.error || err.message));
   }
 }
 
@@ -296,16 +305,4 @@ const handleVoteDeleted = async (voteId) => {
     console.error('Failed to delete vote:', err)
   }
 }
-
-const createPost = async (postData) => {
-  try {
-    const response = await axios.post('/posts', postData); // Adjust the endpoint as needed
-    // Update the posts list in the relevant location (profile or group)
-    // For example, if in a group context, you might want to fetch the updated posts
-    await fetchPosts(); // Assuming you have a function to fetch posts
-  } catch (error) {
-    console.error('Failed to create post:', error);
-    alert('Failed to create post: ' + (error.response?.data?.error || 'Unknown error'));
-  }
-};
 </script>
