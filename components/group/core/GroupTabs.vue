@@ -12,7 +12,7 @@
       <VotesTab 
         :group="group" 
         :current-user="currentUser" 
-        @show-new-vote="$emit('show-new-vote-dialog')"
+        @show-new-vote="$emit('create-vote')"
         @open-vote="$emit('open-vote', $event)"
       />
     </TabsContent>
@@ -22,7 +22,7 @@
       <PostsTab 
         :group="group" 
         :current-user="currentUser" 
-        @show-new-post="$emit('show-new-post-dialog')"
+        @show-new-post="$emit('create-post')"
         @open-post="$emit('open-post', $event)"
       />
     </TabsContent>
@@ -33,8 +33,8 @@
         :group="group" 
         :current-user="currentUser" 
         :is-current-user-admin="isCurrentUserAdmin"
-        @show-add-member="$emit('show-add-member-dialog')"
-        @show-user-search="$emit('show-user-search-dialog')"
+        @show-add-member="$emit('add-member')"
+        @show-user-search="$emit('search-user')"
         @csv-import="$emit('csv-import', $event)"
         @member-promoted="$emit('member-promoted', $event)"
         @member-demoted="$emit('member-demoted', $event)"
@@ -68,14 +68,22 @@ defineProps({
   isCurrentUserAdmin: {
     type: Boolean,
     default: false
+  },
+  posts: {
+    type: Array,
+    default: () => []
+  },
+  votes: {
+    type: Array,
+    default: () => []
   }
 })
 
 defineEmits([
-  'show-new-vote-dialog',
-  'show-new-post-dialog',
-  'show-add-member-dialog',
-  'show-user-search-dialog',
+  'create-vote',
+  'create-post',
+  'add-member',
+  'search-user',
   'csv-import',
   'member-promoted',
   'member-demoted',

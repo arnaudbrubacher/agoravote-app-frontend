@@ -45,12 +45,18 @@
       :group="group"
       :posts="posts"
       :votes="votes"
+      :current-user="currentUser"
       :is-current-user-admin="isCurrentUserAdmin"
       @create-post="showNewPostDialog = true"
       @open-post="selectedPost = $event"
       @create-vote="showNewVoteDialog = true"
       @open-vote="selectedVote = $event"
       @add-member="showAddMemberDialog = true"
+      @search-user="showUserSearchDialog = true"
+      @csv-import="handleCsvImport"
+      @member-promoted="handleMemberPromoted"
+      @member-demoted="handleMemberDemoted"
+      @member-removed="handleMemberRemoved"
     />
 
     <!-- All dialogs -->
@@ -94,6 +100,7 @@ import { Button } from '@/components/ui/button'
 import LoadingError from '@/components/group/core/LoadingError.vue'
 import GroupTabs from '@/components/group/core/GroupTabs.vue'
 import GroupDialogs from '@/components/group/core/GroupDialogs.vue'
+import axios from '~/src/utils/axios'
 
 // Define page layout
 definePageMeta({
@@ -156,7 +163,11 @@ const {
   currentUser,
   fetchCurrentUser,
   addMember, 
-  handleUserAdded
+  handleUserAdded,
+  handleCsvImport: importCsvMembers,
+  promoteMember,
+  demoteMember,
+  removeMember
 } = useGroupMembers(groupId, group, fetchGroup)
 
 // Use group posts functionality
@@ -303,6 +314,39 @@ const handleVoteDeleted = async (voteId) => {
     await deleteVote(voteId)
   } catch (err) {
     console.error('Failed to delete vote:', err)
+  }
+}
+
+// Use the existing functions from the useGroupMembers composable
+const handleCsvImport = async (file) => {
+  try {
+    await importCsvMembers({ target: { files: [file] } })
+  } catch (err) {
+    console.error('Failed to import members:', err)
+  }
+}
+
+const handleMemberPromoted = async (member) => {
+  try {
+    await promoteMember(member)
+  } catch (err) {
+    console.error('Failed to promote member:', err)
+  }
+}
+
+const handleMemberDemoted = async (member) => {
+  try {
+    await demoteMember(member)
+  } catch (err) {
+    console.error('Failed to demote member:', err)
+  }
+}
+
+const handleMemberRemoved = async (member) => {
+  try {
+    await removeMember(member)
+  } catch (err) {
+    console.error('Failed to remove member:', err)
   }
 }
 </script>
