@@ -1,6 +1,6 @@
 <template>
-  <div class="mx-auto max-w-md space-y-6">
-    <div class="space-y-2 text-center">
+  <div class="mx-auto max-w-md">
+    <div class="mb-2 text-center">
     </div>
     <Tabs v-model="activeTab" class="w-full">
       <TabsList class="grid w-full grid-cols-2">
