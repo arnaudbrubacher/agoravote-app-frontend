@@ -69,19 +69,32 @@ export function useUserPosts(userId = null) {
   // Edit an existing post
   const editPost = async (post) => {
     try {
-      const response = await axios.put(`/posts/${post.id}`, post)
-      const updatedPost = response.data
+      console.log('Updating post with data:', post);
+      
+      // Extract only the fields we want to update
+      const updateData = {
+        title: post.title,
+        content: post.content,
+        isPublic: post.isPublic
+      };
+      
+      // Call API to update post
+      const response = await axios.put(`/posts/${post.id}`, updateData);
+      console.log('Post updated successfully:', response.data);
+      
+      const updatedPost = response.data;
       
       // Update the post in the list
-      const index = posts.value.findIndex(p => p.id === updatedPost.id)
+      const index = posts.value.findIndex(p => p.id === updatedPost.id);
       if (index !== -1) {
-        posts.value[index] = updatedPost
+        posts.value[index] = updatedPost;
       }
       
-      return updatedPost
+      return updatedPost;
     } catch (err) {
-      console.error('Failed to edit post:', err)
-      throw err
+      console.error('Failed to edit post:', err);
+      console.error('Error response:', err.response?.data);
+      throw err;
     }
   }
 

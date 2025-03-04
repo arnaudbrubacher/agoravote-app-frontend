@@ -107,20 +107,31 @@ export function useGroupPosts(groupId) {
   // Edit a post
   const editPost = async (post) => {
     try {
+      console.log('Updating post with data:', post);
+      
+      // Extract only the fields we want to update
+      const updateData = {
+        title: post.title,
+        content: post.content,
+        isPublic: post.isPublic
+      };
+      
       // Call API to update post
-      const response = await axios.put(`/posts/${post.id}`, post)
+      const response = await axios.put(`/posts/${post.id}`, updateData);
+      console.log('Post updated successfully:', response.data);
       
       // Update post in the list
-      const index = posts.value.findIndex(p => p.id === post.id)
+      const index = posts.value.findIndex(p => p.id === post.id);
       if (index !== -1) {
-        posts.value[index] = response.data
+        posts.value[index] = response.data;
       }
       
-      return response.data
+      return response.data;
     } catch (err) {
-      console.error('Failed to update post:', err)
-      alert('Failed to update post: ' + (err.response?.data?.error || err.message))
-      throw err
+      console.error('Failed to update post:', err);
+      console.error('Error response:', err.response?.data);
+      alert('Failed to update post: ' + (err.response?.data?.error || err.message));
+      throw err;
     }
   }
   

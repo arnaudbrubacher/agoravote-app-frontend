@@ -56,7 +56,7 @@ const props = defineProps({
 
 // Get current user ID from token or from props
 const currentUserId = computed(() => {
-  if (props.currentUser && props.currentUser.id) {
+  if (props.currentUser?.id) {
     return props.currentUser.id
   }
   
@@ -66,7 +66,7 @@ const currentUserId = computed(() => {
   return ''
 })
 
-const { posts, isLoadingPosts, fetchPosts, createNewPost, updatePost, deletePost } = useGroupPosts(props.group.id)
+const { posts, isLoadingPosts, fetchPosts, createNewPost, editPost, deletePost } = useGroupPosts(props.group.id)
 
 const showNewPostDialog = ref(false)
 const selectedPost = ref(null)
@@ -92,7 +92,7 @@ const handleCreatePost = async (postData) => {
 
 const handleEditPost = async (updatedPost) => {
   try {
-    await updatePost(updatedPost.id, updatedPost)
+    await editPost(updatedPost)
     selectedPost.value = null
     await fetchPosts() // Refresh the posts list
   } catch (error) {
