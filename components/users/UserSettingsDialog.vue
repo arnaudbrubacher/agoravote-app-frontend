@@ -480,12 +480,12 @@ const deleteAccount = async () => {
       throw new Error('Authentication required')
     }
     
-    // Make API call to delete account
-    await axios.delete(`/users/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    const headers = {
+      'Authorization': `Bearer ${token}`
+    };
+    
+    // Make API call to delete account - use the singular form /user/:id
+    await axios.delete(`/user/${userId}`, { headers });
     
     // Clear local storage and redirect
     localStorage.removeItem('token')
