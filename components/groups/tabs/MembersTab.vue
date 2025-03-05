@@ -17,6 +17,7 @@
         @demote="demoteMember"
         @remove="removeMember"
         @refresh-members="$emit('refresh-group')"
+        @admin-status-update="handleAdminStatusUpdate"
       />
       <input
         type="file"
@@ -67,7 +68,8 @@ const emit = defineEmits([
   'member-promoted',
   'member-demoted',
   'member-removed',
-  'refresh-group'
+  'refresh-group',
+  'admin-status-update'
 ])
 
 const csvFileInput = ref(null)
@@ -96,5 +98,10 @@ const demoteMember = (member) => {
 
 const removeMember = (member) => {
   emit('member-removed', member)
+}
+
+const handleAdminStatusUpdate = (isAdmin) => {
+  console.log('MembersTab received admin status update:', isAdmin)
+  emit('admin-status-update', isAdmin)
 }
 </script>

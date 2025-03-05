@@ -39,8 +39,20 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       // Show success message
       alert(`Member ${memberData.email} added successfully`)
       
+      // Update admin status if provided in the response
+      if (response.data.currentUserIsAdmin !== undefined) {
+        console.log('Received currentUserIsAdmin from API:', response.data.currentUserIsAdmin)
+        if (group.value) {
+          console.log('Updating group.currentUserIsAdmin from', group.value.currentUserIsAdmin, 'to', response.data.currentUserIsAdmin)
+          group.value.currentUserIsAdmin = response.data.currentUserIsAdmin
+        }
+      }
+      
       // Refresh members list
       await fetchGroup()
+      
+      // Dispatch an event to notify components that group data has been updated
+      window.dispatchEvent(new CustomEvent('group-data-updated'))
       
       return response.data
     } catch (err) {

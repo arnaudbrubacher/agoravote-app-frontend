@@ -21,6 +21,23 @@ export function useGroupData(groupId) {
       console.log('Group data from API:', group.value)
       console.log('User role in group:', group.value?.currentUserRole)
       console.log('Is admin flag:', group.value?.currentUserIsAdmin)
+      console.log('Admin ID:', group.value?.admin_id)
+      console.log('Current user ID from API:', group.value?.currentUser?.id)
+      
+      // If currentUserIsAdmin is not set but we have admin_id, check if current user is the admin
+      if (group.value && group.value.currentUserIsAdmin === undefined) {
+        // Get current user ID from local storage or auth store
+        const currentUserId = localStorage.getItem('userId') // Adjust based on your auth implementation
+        
+        console.log('Current user ID from localStorage:', currentUserId)
+        console.log('Comparing with admin_id:', group.value.admin_id)
+        
+        // Set admin flag if current user is the group admin
+        if (currentUserId && group.value.admin_id && currentUserId === group.value.admin_id) {
+          console.log('Setting currentUserIsAdmin to true based on admin_id match')
+          group.value.currentUserIsAdmin = true
+        }
+      }
       
       // Normalize member data if needed
       if (group.value.members) {
@@ -98,31 +115,66 @@ export function useGroupData(groupId) {
   
   // Add detailed logging to see exactly what's happening with admin status
   const isCurrentUserAdmin = computed(() => {
+    if (!group.value) {
+      console.log('Group data not available yet');
+      return false;
+    }
+    
     // Log all relevant data
     console.log('---- ADMIN CHECK DATA ----');
     console.log('Group data:', group.value);
-    console.log('Current user ID:', group.value?.currentUser?.id);
+    
+    // Get current user ID from local storage or auth store
+    const currentUserId = localStorage.getItem('userId'); // Adjust based on your auth implementation
+    console.log('Current user ID from localStorage:', currentUserId);
+    console.log('Admin ID from group:', group.value.admin_id);
     
     // Check all possible admin indicators
     const adminByRole = group.value?.currentUserRole === 'admin';
     const adminByFlag = group.value?.currentUserIsAdmin === true;
     const adminByUserRole = group.value?.userRole === 'admin';
-    const adminInMembers = group.value?.members?.some(m => 
-      m.id === group.value?.currentUser?.id && m.isAdmin
-    );
+    const adminInMembers = group.value?.members?.some(m => {
+      const memberId = m.id || m.userId || m.user_id;
+      const memberUserId = m.user?.id || m.userId || m.user_id;
+      const isCurrentUser = (memberId === currentUserId || memberUserId === currentUserId);
+      const isAdmin = m.isAdmin || m.is_admin || m.role === 'admin';
+      
+      console.log('Member admin check:', {
+        memberId,
+        memberUserId,
+        currentUserId,
+        isCurrentUser,
+        isAdmin
+      });
+      
+      return isCurrentUser && isAdmin;
+    });
+    const isGroupCreator = currentUserId && group.value.admin_id && 
+                           (currentUserId === group.value.admin_id || 
+                            currentUserId === group.value.admin_id.toString());
     
     console.log('Admin checks:', {
       adminByRole,
       adminByFlag,
       adminByUserRole, 
       adminInMembers,
+      isGroupCreator,
       currentUserRole: group.value?.currentUserRole,
       currentUserIsAdmin: group.value?.currentUserIsAdmin,
       userRole: group.value?.userRole
     });
     
+    // If any check indicates admin status, update the group object for consistency
+    const isAdmin = adminByRole || adminByFlag || adminByUserRole || adminInMembers || isGroupCreator;
+    
+    // Update the group object if we determined admin status but it's not set
+    if (isAdmin && group.value.currentUserIsAdmin !== true) {
+      console.log('Updating group.currentUserIsAdmin to true based on computed checks');
+      group.value.currentUserIsAdmin = true;
+    }
+    
     // Expand our check to catch all possible admin indicators
-    return adminByRole || adminByFlag || adminByUserRole || adminInMembers;
+    return isAdmin;
   })
   
   return {

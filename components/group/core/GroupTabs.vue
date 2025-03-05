@@ -40,6 +40,7 @@
         @member-demoted="$emit('member-demoted', $event)"
         @member-removed="$emit('member-removed', $event)"
         @refresh-group="$emit('refresh-group')"
+        @admin-status-update="$emit('admin-status-update', $event)"
       />
     </TabsContent>
   </Tabs>
@@ -102,6 +103,7 @@ defineEmits([
   'member-removed',
   'open-vote',
   'open-post',
-  'refresh-group'
+  'refresh-group',
+  'admin-status-update'
 ])
 </script>

@@ -58,6 +58,7 @@
       @member-demoted="handleMemberDemoted"
       @member-removed="handleMemberRemoved"
       @refresh-group="refreshGroupData"
+      @admin-status-update="handleAdminStatusUpdate"
     />
 
     <!-- All dialogs -->
@@ -207,6 +208,38 @@ onMounted(async () => {
     // Debug admin status
     console.log('Group page - isCurrentUserAdmin:', isCurrentUserAdmin.value)
     console.log('Group data:', group.value)
+    
+    // Check if admin status is missing and try to determine it
+    if (group.value && group.value.currentUserIsAdmin === undefined) {
+      console.log('Admin status is undefined, attempting to determine it')
+      
+      // Get current user ID
+      const currentUserId = localStorage.getItem('userId')
+      
+      // Check if user is admin based on members list
+      if (group.value.members && currentUserId) {
+        const isAdmin = group.value.members.some(member => {
+          const memberId = member.id || member.userId || member.user_id
+          const memberUserId = member.user?.id || member.userId || member.user_id
+          const isCurrentUser = memberId === currentUserId || memberUserId === currentUserId
+          
+          console.log('Member check:', {
+            memberId,
+            memberUserId,
+            currentUserId,
+            isCurrentUser,
+            isAdmin: member.isAdmin
+          })
+          
+          return isCurrentUser && member.isAdmin
+        })
+        
+        if (isAdmin) {
+          console.log('Setting currentUserIsAdmin to true based on members list')
+          group.value.currentUserIsAdmin = true
+        }
+      }
+    }
     
     // Add event listener for group data updates
     window.addEventListener('group-data-updated', refreshGroupData)
@@ -386,4 +419,16 @@ const groupPictureUrl = computed(() => {
   const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
   return `${apiBaseUrl}${group.value.picture}`
 })
+
+// Add a handler for admin status updates
+const handleAdminStatusUpdate = (isAdmin) => {
+  console.log('Group page received admin status update:', isAdmin)
+  if (group.value) {
+    console.log('Updating group.currentUserIsAdmin from', group.value.currentUserIsAdmin, 'to', isAdmin)
+    group.value.currentUserIsAdmin = isAdmin
+    
+    // Dispatch an event to notify components that group data has been updated
+    window.dispatchEvent(new CustomEvent('group-data-updated'))
+  }
+}
 </script>

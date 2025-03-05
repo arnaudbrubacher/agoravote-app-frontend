@@ -144,7 +144,8 @@ const emit = defineEmits([
   'promote',
   'demote',
   'remove',
-  'refresh-members'
+  'refresh-members',
+  'admin-status-update'
 ])
 
 const searchQuery = ref('')
@@ -153,24 +154,63 @@ const isEditMode = ref(false)
 // Check if the current user is an admin based on members data
 const isCurrentUserAdminInMembers = computed(() => {
   if (!props.currentUser || !props.members || props.members.length === 0) {
-    return false
+    console.log('Missing data for admin check:', {
+      currentUser: !!props.currentUser,
+      members: props.members?.length || 0
+    });
+    return false;
   }
+  
+  // Get current user ID from various sources
+  const currentUserId = props.currentUser.id || 
+                        props.currentUser.userId || 
+                        props.currentUser.user_id || 
+                        localStorage.getItem('userId');
+  
+  console.log('Current user ID for member check:', currentUserId);
+  console.log('Members:', props.members);
   
   // Find the current user in the members list
   const currentUserMember = props.members.find(member => {
-    return member.id === props.currentUser.id || 
-           member.userId === props.currentUser.id || 
-           member.user_id === props.currentUser.id
-  })
+    const memberId = member.id || member.userId || member.user_id;
+    const memberUserId = member.user?.id || member.userId || member.user_id;
+    
+    console.log('Comparing member:', {
+      memberId,
+      memberUserId,
+      currentUserId,
+      isMatch: memberId === currentUserId || memberUserId === currentUserId
+    });
+    
+    return memberId === currentUserId || memberUserId === currentUserId;
+  });
+  
+  console.log('Current user member found:', currentUserMember);
   
   // Check if the current user is an admin
-  return currentUserMember?.isAdmin === true
+  return currentUserMember?.isAdmin === true;
 })
 
 // Computed property to determine if the user can edit
 const canEdit = computed(() => {
+  // Log the admin status for debugging
+  console.log('MembersList - Admin status check:', {
+    propIsAdmin: props.isCurrentUserAdmin,
+    memberCheck: isCurrentUserAdminInMembers.value
+  });
+  
   // Use either the prop passed from parent or our own check
-  return props.isCurrentUserAdmin === true || isCurrentUserAdminInMembers.value === true
+  const isAdmin = props.isCurrentUserAdmin === true || isCurrentUserAdminInMembers.value === true;
+  
+  console.log('MembersList - Final admin status:', isAdmin);
+  
+  // If we determined admin status but it's not reflected in props, emit an event
+  if (isCurrentUserAdminInMembers.value === true && props.isCurrentUserAdmin !== true) {
+    console.log('Emitting admin status update event');
+    emit('admin-status-update', true);
+  }
+  
+  return isAdmin;
 })
 
 // Debug admin status
