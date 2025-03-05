@@ -8,6 +8,45 @@
 
       <div class="flex-1 overflow-y-auto p-6"> 
         <form @submit.prevent="saveSettings" class="space-y-6">
+          <!-- Profile Picture Section -->
+          <div class="flex flex-col items-center pb-6 border-b">
+            <div class="relative mb-4">
+              <div v-if="!profilePicture" class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
+                <User class="h-10 w-10 text-gray-400" />
+              </div>
+              <img 
+                v-else
+                :src="profilePicture" 
+                alt="Profile Picture"
+                class="w-24 h-24 rounded-full object-cover border"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                class="absolute bottom-0 right-0 rounded-full bg-background border shadow-sm"
+                @click="triggerFileInput"
+              >
+                <EditIcon class="h-4 w-4" />
+              </Button>
+            </div>
+            <input 
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleProfilePictureUpload"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              @click="triggerFileInput"
+            >
+              Change Profile Picture
+            </Button>
+          </div>
+
           <!-- Personal Information Section -->
           <div class="space-y-4">
             
@@ -181,11 +220,12 @@
 import { ref, computed, onMounted, watch } from 'vue' // Add watch import here
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { TrashIcon, LogOutIcon, EditIcon, CheckCircleIcon, AlertCircleIcon } from 'lucide-vue-next'
+import { TrashIcon, LogOutIcon, EditIcon, CheckCircleIcon, AlertCircleIcon, User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { useUserProfile } from '@/composables/useUserProfile'
 import {
   Dialog,
   DialogContent,
@@ -210,6 +250,9 @@ const emit = defineEmits([
   'refresh-user-data',
 ])
 
+// Use the user profile composable
+const { updateProfilePicture } = useUserProfile()
+
 // Refs
 const userNameEdit = ref('')
 const userEmailEdit = ref('')
@@ -222,7 +265,26 @@ const editingEmail = ref(false)
 const userStats = ref(null)
 
 // Computed props
-const profilePicture = computed(() => props.userData?.profile_picture || null)
+const profilePicture = computed(() => {
+  console.log('userData in profilePicture computed:', props.userData)
+  
+  if (!props.userData?.profile_picture) {
+    console.log('No profile picture found')
+    return null
+  }
+  
+  // If the profile picture is a full URL, return it as is
+  if (props.userData.profile_picture.startsWith('http')) {
+    console.log('Using full URL:', props.userData.profile_picture)
+    return props.userData.profile_picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const fullUrl = `${baseUrl}/${props.userData.profile_picture}`
+  console.log('Constructed URL:', fullUrl)
+  return fullUrl
+})
 
 // Format date helper function
 const formatDate = (dateString) => {
@@ -274,29 +336,23 @@ const handleProfilePictureUpload = async (event) => {
   const file = event.target.files[0]
   if (!file) return
   
+  console.log('Uploading file:', file.name, file.type)
+  
   try {
-    // Create form data
-    const formData = new FormData()
-    formData.append('profile_picture', file)
+    // Use the updateProfilePicture method from the composable
+    const result = await updateProfilePicture(file)
+    console.log('Profile picture upload result:', result)
     
-    // Get user ID from localStorage
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
+    // Update the user data with new profile picture
+    if (props.userData) {
+      props.userData.profile_picture = result
     }
     
-    // Upload the file
-    const response = await axios.post(`/users/${userId}/profile-picture`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    // Emit event to refresh parent data
+    // Emit refresh event
     emit('refresh-user-data')
+    
+    // Dispatch global event for other components
+    window.dispatchEvent(new CustomEvent('user-data-updated'))
     
     // Show success message
     console.log('Profile picture updated successfully')
@@ -310,32 +366,30 @@ const handleProfilePictureUpload = async (event) => {
 const saveUserName = async () => {
   try {
     const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
     
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    // Make API call to update user name
+    // Update user name
     await axios.put(`/users/${userId}`, {
       name: userNameEdit.value
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
     })
     
-    // Exit edit mode
+    // Update local user data
+    if (props.userData) {
+      props.userData.name = userNameEdit.value
+    }
+    
+    // Hide editing UI
     editingName.value = false
     
-    // Emit event to refresh parent data
+    // Emit refresh event
     emit('refresh-user-data')
     
-    // Show success message
-    console.log('User name updated successfully')
+    // Dispatch global event for other components
+    window.dispatchEvent(new CustomEvent('user-data-updated'))
+    
+    return true
   } catch (error) {
     console.error('Failed to update user name:', error)
-    alert('Failed to update user name: ' + (error.response?.data?.error || 'Unknown error'))
+    throw error
   }
 }
 
@@ -344,6 +398,10 @@ const saveUserEmail = async () => {
   try {
     const userId = localStorage.getItem('userId')
     const token = localStorage.getItem('token')
+    
+    console.log('Saving user email:', userEmailEdit.value)
+    console.log('User ID:', userId)
+    console.log('Token available:', !!token)
     
     if (!userId || !token) {
       throw new Error('Authentication required')
@@ -354,13 +412,16 @@ const saveUserEmail = async () => {
     
     if (emailChanged) {
       // Make API call to update user email
-      await axios.put(`/users/${userId}`, {
+      console.log('Making PUT request to:', `/users/${userId}`)
+      const response = await axios.put(`/users/${userId}`, {
         email: userEmailEdit.value
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
+      
+      console.log('Update user email response:', response.data)
       
       // Show verification message
       alert('A verification email has been sent to your new email address. Please verify to complete the change.')
@@ -376,6 +437,7 @@ const saveUserEmail = async () => {
     console.log('User email updated successfully')
   } catch (error) {
     console.error('Failed to update user email:', error)
+    console.error('Error response:', error.response)
     alert('Failed to update user email: ' + (error.response?.data?.error || 'Unknown error'))
   }
 }

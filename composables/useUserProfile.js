@@ -15,8 +15,12 @@ export function useUserProfile() {
       loading.value = true
       error.value = null
       
+      console.log('Fetching current user profile...')
       const response = await axios.get('/users/me')
+      console.log('Current user profile response:', response.data)
+      
       userData.value = response.data
+      console.log('Updated userData.value:', userData.value)
       
       return userData.value
     } catch (err) {
@@ -69,6 +73,8 @@ export function useUserProfile() {
       // Get user ID from localStorage
       const userId = localStorage.getItem('userId')
       
+      console.log('Uploading profile picture for user:', userId)
+      
       // Upload the file
       const response = await axios.post(`/users/${userId}/profile-picture`, formData, {
         headers: {
@@ -76,13 +82,21 @@ export function useUserProfile() {
         }
       })
       
+      console.log('Upload response:', response.data)
+      
+      // Get the profile picture path from the response
+      const profilePicturePath = response.data.profile_picture
+      console.log('Profile picture path:', profilePicturePath)
+      
       // Update the user data with new profile picture
       userData.value = {
         ...userData.value,
-        profile_picture: response.data.url || response.data.profile_picture
+        profile_picture: profilePicturePath
       }
       
-      return response.data.url || response.data.profile_picture
+      console.log('Updated userData with new profile picture:', userData.value)
+      
+      return profilePicturePath
     } catch (error) {
       console.error('Failed to upload profile picture:', error)
       throw error

@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -137,13 +137,14 @@ const props = defineProps({
   }
 })
 
-defineEmits([
+const emit = defineEmits([
   'add-member', 
   'search-user', 
   'import-csv',
   'promote',
   'demote',
-  'remove'
+  'remove',
+  'refresh-members'
 ])
 
 const searchQuery = ref('')
@@ -179,7 +180,21 @@ onMounted(() => {
   console.log('MembersList - canEdit:', canEdit.value)
   console.log('MembersList - currentUser:', props.currentUser)
   console.log('MembersList - members:', props.members)
+  
+  // Listen for user data updates
+  window.addEventListener('user-data-updated', handleUserDataUpdated)
 })
+
+// Clean up event listener
+onBeforeUnmount(() => {
+  window.removeEventListener('user-data-updated', handleUserDataUpdated)
+})
+
+// Handle user data updates
+const handleUserDataUpdated = () => {
+  console.log('MembersList received user-data-updated event')
+  emit('refresh-members')
+}
 
 // Watch for changes in the members or currentUser
 watch([() => props.members, () => props.currentUser], () => {

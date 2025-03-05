@@ -4,12 +4,12 @@
     <div class="flex items-center space-x-3">
       <!-- Member Avatar -->
       <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-        <span v-if="!member.avatar" class="font-medium text-primary">
+        <span v-if="!memberAvatarUrl" class="font-medium text-primary">
           {{ getMemberInitial(member) }}
         </span>
         <img 
           v-else 
-          :src="member.avatar" 
+          :src="memberAvatarUrl" 
           class="w-10 h-10 rounded-full object-cover"
           alt="Member avatar"
         />
@@ -70,6 +70,7 @@
 </template>
 
 <script setup>
+import { ref, computed, inject } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
@@ -96,6 +97,40 @@ const props = defineProps({
 })
 
 defineEmits(['promote', 'demote', 'remove'])
+
+// Try to get app user data from parent components
+const appUserData = inject('appUserData', null)
+
+// Computed property for member avatar URL
+const memberAvatarUrl = computed(() => {
+  // Check if this is the current user and if we have updated profile data from app layout
+  if (isCurrentMember(props.member) && appUserData?.value?.profile_picture) {
+    const profilePic = appUserData.value.profile_picture
+    
+    // If the profile picture is a full URL, return it as is
+    if (profilePic.startsWith('http')) {
+      return profilePic
+    }
+    
+    // Otherwise, prepend the API base URL
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    return `${baseUrl}/${profilePic}`
+  }
+  
+  // Otherwise use the member's avatar if available
+  if (!props.member.avatar && !props.member.profile_picture) return null
+  
+  const avatarUrl = props.member.avatar || props.member.profile_picture
+  
+  // If the avatar is a full URL, return it as is
+  if (avatarUrl.startsWith('http')) {
+    return avatarUrl
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${baseUrl}/${avatarUrl}`
+})
 
 const getMemberInitial = (member) => {
   if (!member || !member.name || member.name === 'Unknown Member') return 'U'

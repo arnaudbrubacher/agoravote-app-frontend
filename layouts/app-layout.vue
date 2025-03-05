@@ -28,12 +28,12 @@
             @click="navigateToProfile"
           >
             <div class="flex-shrink-0 mr-2">
-              <div v-if="!userData?.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+              <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
                 <User class="h-5 w-5 text-gray-400" />
               </div>
               <img 
                 v-else
-                :src="userData.profile_picture" 
+                :src="profilePictureUrl" 
                 alt="User Profile Picture"
                 class="w-8 h-8 rounded-full object-cover border"
               />
@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, provide, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, LayoutDashboard } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -93,6 +93,20 @@ const navigateToDashboard = () => {
   }
 }
 
+// Computed property for profile picture URL
+const profilePictureUrl = computed(() => {
+  if (!userData.value?.profile_picture) return null
+  
+  // If the profile picture is a full URL, return it as is
+  if (userData.value.profile_picture.startsWith('http')) {
+    return userData.value.profile_picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${baseUrl}/${userData.value.profile_picture}`
+})
+
 // Fetch user data if authenticated
 const fetchUserData = async () => {
   if (isAuthenticated.value) {
@@ -116,7 +130,29 @@ const fetchUserData = async () => {
   }
 }
 
+// Provide user data to child components
+provide('appUserData', userData)
+provide('refreshAppUserData', fetchUserData)
+
+// Watch for route changes to refresh user data
+watch(
+  () => route.path,
+  () => {
+    if (isAuthenticated.value) {
+      fetchUserData()
+    }
+  }
+)
+
 onMounted(() => {
   fetchUserData()
+  
+  // Listen for the global user-data-updated event
+  window.addEventListener('user-data-updated', fetchUserData)
+})
+
+// Clean up event listener
+onBeforeUnmount(() => {
+  window.removeEventListener('user-data-updated', fetchUserData)
 })
 </script>

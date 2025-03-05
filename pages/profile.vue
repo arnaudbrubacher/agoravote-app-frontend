@@ -5,12 +5,12 @@
       <!-- User info (left-aligned) -->
       <div class="flex items-center">
         <div class="flex-shrink-0 mr-2">
-          <div v-if="!userData?.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+          <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
             <User class="h-5 w-5 text-gray-600" />
           </div>
           <img 
             v-else
-            :src="userData.profile_picture" 
+            :src="profilePictureUrl" 
             alt="User Profile Picture"
             class="w-8 h-8 rounded-full object-cover border"
           />
@@ -87,7 +87,7 @@
       :open="showUserSettings"
       :userData="userData"
       @update:open="showUserSettings = $event"
-      @refresh-user-data="fetchCurrentUserProfile"
+      @refresh-user-data="handleUserDataRefresh"
     />
 
     <NewPostDialog
@@ -113,7 +113,7 @@ definePageMeta({
   layout: 'app-layout'
 })
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Settings } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -196,6 +196,27 @@ const handlePostDeleted = async (post) => {
     console.error('Failed to delete post:', error)
   }
 }
+
+// Handle user data refresh
+const handleUserDataRefresh = async () => {
+  console.log('Refreshing user data...')
+  await fetchCurrentUserProfile()
+  console.log('User data refreshed:', userData.value)
+}
+
+// Computed property for profile picture URL
+const profilePictureUrl = computed(() => {
+  if (!userData.value?.profile_picture) return null
+  
+  // If the profile picture is a full URL, return it as is
+  if (userData.value.profile_picture.startsWith('http')) {
+    return userData.value.profile_picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${baseUrl}/${userData.value.profile_picture}`
+})
 
 onMounted(() => {
   fetchCurrentUserProfile()

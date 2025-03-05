@@ -57,6 +57,7 @@
       @member-promoted="handleMemberPromoted"
       @member-demoted="handleMemberDemoted"
       @member-removed="handleMemberRemoved"
+      @refresh-group="refreshGroupData"
     />
 
     <!-- All dialogs -->
@@ -351,6 +352,16 @@ const handleMemberRemoved = async (member) => {
     await removeMember(member)
   } catch (err) {
     console.error('Failed to remove member:', err)
+  }
+}
+
+const refreshGroupData = async () => {
+  try {
+    await fetchGroup()
+    await fetchPosts()
+    await fetchVotes()
+  } catch (err) {
+    console.error('Failed to refresh group data:', err)
   }
 }
 </script>

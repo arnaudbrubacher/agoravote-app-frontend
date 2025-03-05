@@ -6,12 +6,12 @@
       <!-- User info (left-aligned) -->
       <div class="flex items-center">
         <div class="flex-shrink-0 mr-2">
-          <div v-if="!userData?.profile_picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+          <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
             <User class="h-5 w-5 text-gray-600" />
           </div>
           <img 
             v-else
-            :src="userData.profile_picture" 
+            :src="profilePictureUrl" 
             alt="User Profile Picture"
             class="w-8 h-8 rounded-full object-cover border"
           />
@@ -128,6 +128,20 @@ const openSettings = () => {
   // For now, just show an alert
   alert('Settings functionality will be implemented here')
 }
+
+// Computed property for profile picture URL
+const profilePictureUrl = computed(() => {
+  if (!userData.value?.profile_picture) return null
+  
+  // If the profile picture is a full URL, return it as is
+  if (userData.value.profile_picture.startsWith('http')) {
+    return userData.value.profile_picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${baseUrl}/${userData.value.profile_picture}`
+})
 
 onMounted(async () => {
   const userId = route.params.id

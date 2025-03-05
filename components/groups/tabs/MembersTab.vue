@@ -16,6 +16,7 @@
         @promote="promoteMember"
         @demote="demoteMember"
         @remove="removeMember"
+        @refresh-members="$emit('refresh-group')"
       />
       <input
         type="file"
@@ -65,7 +66,8 @@ const emit = defineEmits([
   'csv-import',
   'member-promoted',
   'member-demoted',
-  'member-removed'
+  'member-removed',
+  'refresh-group'
 ])
 
 const csvFileInput = ref(null)

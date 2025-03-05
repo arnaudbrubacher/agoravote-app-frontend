@@ -39,6 +39,7 @@
         @member-promoted="$emit('member-promoted', $event)"
         @member-demoted="$emit('member-demoted', $event)"
         @member-removed="$emit('member-removed', $event)"
+        @refresh-group="$emit('refresh-group')"
       />
     </TabsContent>
   </Tabs>

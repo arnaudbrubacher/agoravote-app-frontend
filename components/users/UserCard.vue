@@ -5,12 +5,12 @@
     @click="navigateToUserProfile"
   >
     <div class="flex-shrink-0 mr-4">
-      <div v-if="!user.profile_picture" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+      <div v-if="!profilePictureUrl" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
         <User class="h-6 w-6 text-gray-400" />
       </div>
       <img 
         v-else
-        :src="user.profile_picture" 
+        :src="profilePictureUrl" 
         alt="User Profile Picture"
         class="w-12 h-12 rounded-full object-cover border"
       />
@@ -25,6 +25,7 @@
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { User } from 'lucide-vue-next'
+import { computed } from 'vue'
 
 const router = useRouter()
 
@@ -36,6 +37,20 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['click'])
+
+// Computed property for profile picture URL
+const profilePictureUrl = computed(() => {
+  if (!props.user.profile_picture) return null
+  
+  // If the profile picture is a full URL, return it as is
+  if (props.user.profile_picture.startsWith('http')) {
+    return props.user.profile_picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${baseUrl}/${props.user.profile_picture}`
+})
 
 const navigateToUserProfile = () => {
   emit('click')
