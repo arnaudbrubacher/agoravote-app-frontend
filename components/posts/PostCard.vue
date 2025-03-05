@@ -10,18 +10,6 @@
         </span>
       </div>
       <p class="text-sm line-clamp-2">{{ post.content }}</p>
-      
-      <!-- Post footer with stats -->
-      <div class="flex items-center space-x-4 mt-3 pt-2 border-t text-sm text-muted-foreground">
-        <div class="flex items-center">
-          <LucideIcon name="MessageSquare" size="4" class="h-4 w-4 mr-1" />
-          <span>{{ post.comment_count || 0 }}</span>
-        </div>
-        <div class="flex items-center">
-          <LucideIcon name="QuestionMark" size="4" class="h-4 w-4 mr-1" />
-          <span>{{ post.like_count || 0 }}</span>
-        </div>
-      </div>
     </div>
   </template>
   

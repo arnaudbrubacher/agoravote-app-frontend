@@ -29,13 +29,18 @@
           </DropdownMenuContent>
         </DropdownMenu>
         
-        <!-- Edit List Button -->
+        <!-- Edit List Button - Disabled for non-admins -->
         <Button
           size="sm"
           variant="outline"
-          @click="isEditMode = !isEditMode"
+          @click="handleEditButtonClick"
           class="flex items-center"
-          :class="isEditMode ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''"
+          :class="[
+            isEditMode ? 'bg-primary text-primary-foreground hover:bg-primary/90' : '',
+            !canEdit ? 'opacity-50 cursor-not-allowed' : ''
+          ]"
+          :disabled="!canEdit"
+          :title="!canEdit ? 'Only admins can edit the member list' : ''"
         >
           <LucideIcon :name="isEditMode ? 'Check' : 'Edit2'" size="4" class="h-4 w-4 mr-1" />
           {{ isEditMode ? 'Done' : 'Edit List' }}
@@ -94,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -143,6 +148,63 @@ defineEmits([
 
 const searchQuery = ref('')
 const isEditMode = ref(false)
+
+// Check if the current user is an admin based on members data
+const isCurrentUserAdminInMembers = computed(() => {
+  if (!props.currentUser || !props.members || props.members.length === 0) {
+    return false
+  }
+  
+  // Find the current user in the members list
+  const currentUserMember = props.members.find(member => {
+    return member.id === props.currentUser.id || 
+           member.userId === props.currentUser.id || 
+           member.user_id === props.currentUser.id
+  })
+  
+  // Check if the current user is an admin
+  return currentUserMember?.isAdmin === true
+})
+
+// Computed property to determine if the user can edit
+const canEdit = computed(() => {
+  // Use either the prop passed from parent or our own check
+  return props.isCurrentUserAdmin === true || isCurrentUserAdminInMembers.value === true
+})
+
+// Debug admin status
+onMounted(() => {
+  console.log('MembersList - props.isCurrentUserAdmin:', props.isCurrentUserAdmin)
+  console.log('MembersList - isCurrentUserAdminInMembers:', isCurrentUserAdminInMembers.value)
+  console.log('MembersList - canEdit:', canEdit.value)
+  console.log('MembersList - currentUser:', props.currentUser)
+  console.log('MembersList - members:', props.members)
+})
+
+// Watch for changes in the members or currentUser
+watch([() => props.members, () => props.currentUser], () => {
+  console.log('Members or currentUser changed')
+  console.log('isCurrentUserAdminInMembers is now:', isCurrentUserAdminInMembers.value)
+  console.log('canEdit is now:', canEdit.value)
+})
+
+// Watch for changes in the isCurrentUserAdmin prop
+watch(() => props.isCurrentUserAdmin, (newValue) => {
+  console.log('isCurrentUserAdmin prop changed to:', newValue)
+  console.log('canEdit is now:', canEdit.value)
+  
+  // If user is no longer admin, exit edit mode
+  if (!canEdit.value && isEditMode.value) {
+    isEditMode.value = false
+  }
+})
+
+const handleEditButtonClick = () => {
+  console.log('Edit button clicked, canEdit:', canEdit.value)
+  if (canEdit.value) {
+    isEditMode.value = !isEditMode.value
+  }
+}
 
 const filteredMembers = computed(() => {
   if (!props.members) return []

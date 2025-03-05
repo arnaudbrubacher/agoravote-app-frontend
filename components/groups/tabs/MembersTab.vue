@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
 import MembersList from '~/components/members/MembersList.vue'
 
@@ -46,6 +46,17 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+})
+
+// Debug admin status
+onMounted(() => {
+  console.log('MembersTab - isCurrentUserAdmin:', props.isCurrentUserAdmin)
+  console.log('MembersTab - group:', props.group)
+})
+
+// Watch for changes in the isCurrentUserAdmin prop
+watch(() => props.isCurrentUserAdmin, (newValue) => {
+  console.log('MembersTab - isCurrentUserAdmin changed to:', newValue)
 })
 
 const emit = defineEmits([

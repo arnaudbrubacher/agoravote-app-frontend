@@ -51,12 +51,13 @@ import {
   TabsTrigger,
   TabsContent
 } from '@/components/ui/tabs'
+import { onMounted, watch } from 'vue'
 
 import VotesTab from '@/components/groups/tabs/VotesTab.vue'
 import PostsTab from '@/components/groups/tabs/PostsTab.vue'
 import MembersTab from '@/components/groups/tabs/MembersTab.vue'
 
-defineProps({
+const props = defineProps({
   group: {
     type: Object,
     required: true
@@ -77,6 +78,16 @@ defineProps({
     type: Array,
     default: () => []
   }
+})
+
+// Debug admin status
+onMounted(() => {
+  console.log('GroupTabs - isCurrentUserAdmin:', props.isCurrentUserAdmin)
+})
+
+// Watch for changes in the isCurrentUserAdmin prop
+watch(() => props.isCurrentUserAdmin, (newValue) => {
+  console.log('GroupTabs - isCurrentUserAdmin changed to:', newValue)
 })
 
 defineEmits([

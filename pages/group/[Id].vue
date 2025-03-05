@@ -202,6 +202,10 @@ onMounted(async () => {
       fetchPosts(),
       fetchVotes()
     ])
+
+    // Debug admin status
+    console.log('Group page - isCurrentUserAdmin:', isCurrentUserAdmin.value)
+    console.log('Group data:', group.value)
   } catch (err) {
     console.error('Error initializing page:', err)
     error.value = err.response?.data?.error || 'Failed to initialize page'

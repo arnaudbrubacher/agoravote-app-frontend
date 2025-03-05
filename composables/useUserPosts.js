@@ -118,24 +118,6 @@ export function useUserPosts(userId = null) {
     }
   }
 
-  // Toggle like on a post
-  const toggleLike = async (post) => {
-    try {
-      const response = await axios.post(`/posts/${post.id}/like`)
-      
-      // Update post likes in the list
-      const index = posts.value.findIndex(p => p.id === post.id)
-      if (index !== -1 && response.data.likes) {
-        posts.value[index].likes = response.data.likes
-      }
-      
-      return response.data
-    } catch (error) {
-      console.error('Failed to toggle like:', error)
-      throw error
-    }
-  }
-
   return {
     posts,
     loading,
@@ -145,7 +127,6 @@ export function useUserPosts(userId = null) {
     createNewPost,
     handlePostCreated,
     editPost,
-    deletePost,
-    toggleLike
+    deletePost
   }
 }
