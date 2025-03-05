@@ -10,7 +10,7 @@
       </div>
       <img 
         v-else
-        :src="group.picture" 
+        :src="groupPictureUrl" 
         alt="Group Picture"
         class="w-12 h-12 rounded-full object-cover border"
       />
@@ -30,6 +30,7 @@
 <script setup>
 import { Button } from '@/components/ui/button'
 import { Users } from 'lucide-vue-next'
+import { computed } from 'vue'
 
 const props = defineProps({
   group: {
@@ -39,4 +40,18 @@ const props = defineProps({
 })
 
 defineEmits(['click', 'view'])
+
+// Compute the proper URL for the group picture
+const groupPictureUrl = computed(() => {
+  if (!props.group.picture) return null
+  
+  // Check if it's already a full URL
+  if (props.group.picture.startsWith('http://') || props.group.picture.startsWith('https://')) {
+    return props.group.picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
+  return `${apiBaseUrl}${props.group.picture}`
+})
 </script> 

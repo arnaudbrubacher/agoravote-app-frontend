@@ -182,17 +182,20 @@ onMounted(() => {
   console.log('MembersList - members:', props.members)
   
   // Listen for user data updates
-  window.addEventListener('user-data-updated', handleUserDataUpdated)
+  window.addEventListener('user-data-updated', handleDataUpdated)
+  // Listen for group data updates
+  window.addEventListener('group-data-updated', handleDataUpdated)
 })
 
 // Clean up event listener
 onBeforeUnmount(() => {
-  window.removeEventListener('user-data-updated', handleUserDataUpdated)
+  window.removeEventListener('user-data-updated', handleDataUpdated)
+  window.removeEventListener('group-data-updated', handleDataUpdated)
 })
 
-// Handle user data updates
-const handleUserDataUpdated = () => {
-  console.log('MembersList received user-data-updated event')
+// Handle data updates (from both user and group updates)
+const handleDataUpdated = () => {
+  console.log('MembersList received data update event')
   emit('refresh-members')
 }
 

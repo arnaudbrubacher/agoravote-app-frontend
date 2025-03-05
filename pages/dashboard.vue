@@ -26,6 +26,7 @@
       @create-group="openNewGroupDialog"
       @view-group="viewGroup"
       @find-group="showFindGroupDialog = true"
+      @refresh-groups="fetchGroups"
     />
 
     <!-- Following Card -->

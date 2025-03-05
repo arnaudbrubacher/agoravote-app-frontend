@@ -18,7 +18,7 @@
           </div>
           <img 
             v-else
-            :src="group.picture" 
+            :src="groupPictureUrl" 
             alt="Group Picture"
             class="w-8 h-8 rounded-full object-cover border"
           />
@@ -94,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Users, Settings } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -207,12 +207,20 @@ onMounted(async () => {
     // Debug admin status
     console.log('Group page - isCurrentUserAdmin:', isCurrentUserAdmin.value)
     console.log('Group data:', group.value)
+    
+    // Add event listener for group data updates
+    window.addEventListener('group-data-updated', refreshGroupData)
   } catch (err) {
     console.error('Error initializing page:', err)
     error.value = err.response?.data?.error || 'Failed to initialize page'
   } finally {
     loading.value = false
   }
+})
+
+// Clean up event listeners when component is unmounted
+onBeforeUnmount(() => {
+  window.removeEventListener('group-data-updated', refreshGroupData)
 })
 
 // Navigation helpers
@@ -364,4 +372,18 @@ const refreshGroupData = async () => {
     console.error('Failed to refresh group data:', err)
   }
 }
+
+// Computed property for group picture URL
+const groupPictureUrl = computed(() => {
+  if (!group.value?.picture) return null
+  
+  // Check if it's already a full URL
+  if (group.value.picture.startsWith('http://') || group.value.picture.startsWith('https://')) {
+    return group.value.picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
+  return `${apiBaseUrl}${group.value.picture}`
+})
 </script>

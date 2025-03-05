@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref, defineProps, defineEmits, onMounted, onBeforeUnmount } from 'vue'
 import { PlusIcon, Search as SearchIcon } from 'lucide-vue-next'
 import { Loader2 as SpinnerIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -56,5 +56,19 @@ const props = defineProps({
   }
 })
 
-defineEmits(['create-group', 'view-group', 'find-group'])
+const emit = defineEmits(['create-group', 'view-group', 'find-group', 'refresh-groups'])
+
+// Listen for group data updates
+onMounted(() => {
+  window.addEventListener('group-data-updated', handleGroupDataUpdated)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('group-data-updated', handleGroupDataUpdated)
+})
+
+// When group data is updated, emit an event to refresh the groups
+const handleGroupDataUpdated = () => {
+  emit('refresh-groups')
+}
 </script> 
