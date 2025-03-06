@@ -210,19 +210,6 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     demoteMember,
     removeMember,
     getMemberInitial,
-    isCurrentMember,
-    // Add a test function to check if axios is working
-    testAxios: async () => {
-      try {
-        console.log('Testing axios with a GET request to /users/me');
-        const response = await axios.get('/users/me');
-        console.log('Test axios response:', response.data);
-        return response.data;
-      } catch (err) {
-        console.error('Test axios error:', err);
-        console.error('Error response:', err.response?.data);
-        return null;
-      }
-    }
+    isCurrentMember
   }
 }
