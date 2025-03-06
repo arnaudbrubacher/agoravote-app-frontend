@@ -27,7 +27,31 @@
       </div>
       
       <!-- Settings button (right-aligned) -->
-      <div class="flex items-center">
+      <div class="flex items-center space-x-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          @click="testAxios"
+          class="flex items-center gap-1"
+        >
+          <span>Test API</span>
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          @click="testRemoveMember"
+          class="flex items-center gap-1"
+        >
+          <span>Test Remove</span>
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          @click="logMembers"
+          class="flex items-center gap-1"
+        >
+          <span>Log Members</span>
+        </Button>
         <Button 
           variant="outline" 
           size="sm" 
@@ -169,7 +193,8 @@ const {
   handleCsvImport: importCsvMembers,
   promoteMember,
   demoteMember,
-  removeMember
+  removeMember,
+  testAxios: testAxiosFunction
 } = useGroupMembers(groupId, group, fetchGroup)
 
 // Use group posts functionality
@@ -389,10 +414,19 @@ const handleMemberDemoted = async (member) => {
 }
 
 const handleMemberRemoved = async (member) => {
+  console.log('Group page - Member removal event received for:', member.name, {
+    id: member.id,
+    userId: member.userId,
+    user_id: member.user_id,
+    user: member.user && member.user.id
+  });
+  
   try {
-    await removeMember(member)
+    await removeMember(member);
+    console.log('Group page - Member removed successfully');
   } catch (err) {
-    console.error('Failed to remove member:', err)
+    console.error('Group page - Failed to remove member:', err);
+    alert('Failed to remove member: ' + (err.response?.data?.error || err.message));
   }
 }
 
@@ -430,5 +464,87 @@ const handleAdminStatusUpdate = (isAdmin) => {
     // Dispatch an event to notify components that group data has been updated
     window.dispatchEvent(new CustomEvent('group-data-updated'))
   }
+}
+
+// Add a test function to check if axios is working
+const testAxios = async () => {
+  try {
+    console.log('Group page - Testing axios');
+    // Use the testAxios function from the useGroupMembers composable
+    const userData = await testAxiosFunction();
+    console.log('Group page - Test axios result:', userData);
+    alert('API test successful! Check console for details.');
+  } catch (err) {
+    console.error('Group page - Test axios error:', err);
+    alert('API test failed: ' + (err.message || 'Unknown error'));
+  }
+}
+
+// Add a test function to directly test the removeMember function
+const testRemoveMember = async () => {
+  try {
+    console.log('Group page - Testing removeMember function');
+    
+    // Get the first member from the group
+    if (!group.value || !group.value.members || group.value.members.length === 0) {
+      console.log('Group page - No members found');
+      alert('No members found to test removal');
+      return;
+    }
+    
+    // Get a member that is not the current user
+    const memberToRemove = group.value.members.find(m => {
+      const memberId = m.id || m.userId || m.user_id;
+      const memberUserId = m.user?.id || m.userId || m.user_id;
+      const currentUserId = currentUser.value?.id || localStorage.getItem('userId');
+      
+      return memberId !== currentUserId && memberUserId !== currentUserId;
+    });
+    
+    if (!memberToRemove) {
+      console.log('Group page - No other members found to test removal');
+      alert('No other members found to test removal');
+      return;
+    }
+    
+    console.log('Group page - Test member object:', memberToRemove);
+    
+    // Call the removeMember function directly
+    await removeMember(memberToRemove);
+    
+    console.log('Group page - Test removeMember completed');
+  } catch (err) {
+    console.error('Group page - Test removeMember error:', err);
+    alert('Remove member test failed: ' + (err.message || 'Unknown error'));
+  }
+}
+
+// Add a function to log the members
+const logMembers = () => {
+  console.log('Group page - Logging members');
+  
+  if (!group.value || !group.value.members) {
+    console.log('Group page - No members found');
+    alert('No members found');
+    return;
+  }
+  
+  console.log('Group page - Members:', group.value.members);
+  
+  // Log each member's structure
+  group.value.members.forEach((member, index) => {
+    console.log(`Member ${index + 1}:`, {
+      id: member.id,
+      userId: member.userId,
+      user_id: member.user_id,
+      user: member.user,
+      name: member.name,
+      email: member.email,
+      isAdmin: member.isAdmin,
+      fullObject: member
+    });
+  });
+  
+  alert(`Logged ${group.value.members.length} members to console`);
 }
 </script>

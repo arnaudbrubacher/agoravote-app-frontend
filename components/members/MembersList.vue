@@ -92,7 +92,7 @@
         :is-current-user-admin="isEditMode || isCurrentUserAdmin"
         @promote="$emit('promote', member)"
         @demote="$emit('demote', member)"
-        @remove="$emit('remove', member)"
+        @remove="handleMemberRemove(member)"
       />
     </div>
   </div>
@@ -284,4 +284,15 @@ const filteredMembers = computed(() => {
     return false
   })
 })
+
+// Add a handler for member removal to log the data
+const handleMemberRemove = (member) => {
+  console.log('MembersList - Member removal event received for:', member.name, {
+    id: member.id,
+    userId: member.userId,
+    user_id: member.user_id,
+    user: member.user && member.user.id
+  });
+  emit('remove', member);
+}
 </script> 

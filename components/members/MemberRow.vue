@@ -50,15 +50,15 @@
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem v-if="!member.isAdmin" @click="$emit('promote', member)">
+            <DropdownMenuItem v-if="!member.isAdmin" @click="emit('promote', member)">
               <LucideIcon name="UserPlus" size="4" class="h-4 w-4 mr-2" />
               Make Admin
             </DropdownMenuItem>
-            <DropdownMenuItem v-if="member.isAdmin && !isCurrentMember(member)" @click="$emit('demote', member)">
+            <DropdownMenuItem v-if="member.isAdmin && !isCurrentMember(member)" @click="emit('demote', member)">
               <LucideIcon name="UserMinus" size="4" class="h-4 w-4 mr-2" />
               Remove Admin Role
             </DropdownMenuItem>
-            <DropdownMenuItem v-if="!isCurrentMember(member)" @click="$emit('remove', member)">
+            <DropdownMenuItem v-if="!isCurrentMember(member)" @click="handleRemove(member)">
               <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-2" />
               Remove
             </DropdownMenuItem>
@@ -96,7 +96,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['promote', 'demote', 'remove'])
+const emit = defineEmits(['promote', 'demote', 'remove'])
 
 // Try to get app user data from parent components
 const appUserData = inject('appUserData', null)
@@ -143,5 +143,16 @@ const isCurrentMember = (member) => {
   return member.id === props.currentUser.id || 
          member.userId === props.currentUser.id || 
          member.user_id === props.currentUser.id
+}
+
+// Add a handler for the remove action to log the member data
+const handleRemove = (member) => {
+  console.log('MemberRow - Remove button clicked for member:', member.name, {
+    id: member.id,
+    userId: member.userId,
+    user_id: member.user_id,
+    user: member.user && member.user.id
+  });
+  emit('remove', member);
 }
 </script>

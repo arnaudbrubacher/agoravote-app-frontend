@@ -97,7 +97,13 @@ const demoteMember = (member) => {
 }
 
 const removeMember = (member) => {
-  emit('member-removed', member)
+  console.log('MembersTab - Member removal event received for:', member.name, {
+    id: member.id,
+    userId: member.userId,
+    user_id: member.user_id,
+    user: member.user && member.user.id
+  });
+  emit('member-removed', member);
 }
 
 const handleAdminStatusUpdate = (isAdmin) => {

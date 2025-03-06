@@ -144,24 +144,42 @@ export function useGroupMembers(groupId, group, fetchGroup) {
 
   // Remove member from group
   const removeMember = async (member) => {
+    console.log('useGroupMembers - removeMember function called with:', member);
     try {
       // Confirm removal
+      console.log('useGroupMembers - Showing confirmation dialog');
       if (!confirm(`Are you sure you want to remove ${member.name} from this group?`)) {
-        return
+        console.log('useGroupMembers - User cancelled member removal');
+        return;
       }
       
-      // Call API to remove member
-      await axios.delete(`/groups/${groupId}/members/${member.id}`)
+      // Get the correct user ID - prioritize user_id since that's the column name in the database
+      const userId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+      
+      console.log('useGroupMembers - Removing member with details:', {
+        member,
+        userId,
+        originalId: member.id,
+        groupId
+      });
+      
+      // Call API to remove member using the user ID
+      console.log(`useGroupMembers - Making API call to: /groups/${groupId}/members/${userId}`);
+      const response = await axios.delete(`/groups/${groupId}/members/${userId}`);
+      console.log('useGroupMembers - API response:', response.data);
       
       // Show success message
-      alert(`${member.name} has been removed from the group`)
+      alert(`${member.name} has been removed from the group`);
       
       // Refresh group data to update members list
-      await fetchGroup()
+      console.log('useGroupMembers - Refreshing group data');
+      await fetchGroup();
+      console.log('useGroupMembers - Group data refreshed');
     } catch (err) {
-      console.error('Failed to remove member:', err)
-      alert('Failed to remove member: ' + (err.response?.data?.error || err.message))
-      throw err
+      console.error('useGroupMembers - Failed to remove member:', err);
+      console.error('useGroupMembers - Error response:', err.response?.data);
+      alert('Failed to remove member: ' + (err.response?.data?.error || err.message));
+      throw err;
     }
   }
 
@@ -192,6 +210,19 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     demoteMember,
     removeMember,
     getMemberInitial,
-    isCurrentMember
+    isCurrentMember,
+    // Add a test function to check if axios is working
+    testAxios: async () => {
+      try {
+        console.log('Testing axios with a GET request to /users/me');
+        const response = await axios.get('/users/me');
+        console.log('Test axios response:', response.data);
+        return response.data;
+      } catch (err) {
+        console.error('Test axios error:', err);
+        console.error('Error response:', err.response?.data);
+        return null;
+      }
+    }
   }
 }

@@ -38,7 +38,7 @@
         @csv-import="$emit('csv-import', $event)"
         @member-promoted="$emit('member-promoted', $event)"
         @member-demoted="$emit('member-demoted', $event)"
-        @member-removed="$emit('member-removed', $event)"
+        @member-removed="handleMemberRemoved"
         @refresh-group="$emit('refresh-group')"
         @admin-status-update="$emit('admin-status-update', $event)"
       />
@@ -92,7 +92,7 @@ watch(() => props.isCurrentUserAdmin, (newValue) => {
   console.log('GroupTabs - isCurrentUserAdmin changed to:', newValue)
 })
 
-defineEmits([
+const emit = defineEmits([
   'create-vote',
   'create-post',
   'add-member',
@@ -106,4 +106,15 @@ defineEmits([
   'refresh-group',
   'admin-status-update'
 ])
+
+// Add a handler for member removal to debug the event flow
+const handleMemberRemoved = (member) => {
+  console.log('GroupTabs - Member removal event received for:', member.name, {
+    id: member.id,
+    userId: member.userId,
+    user_id: member.user_id,
+    user: member.user && member.user.id
+  });
+  emit('member-removed', member);
+}
 </script>
