@@ -56,7 +56,7 @@
       @csv-import="handleCsvImport"
       @member-promoted="handleMemberPromoted"
       @member-demoted="handleMemberDemoted"
-      @member-removed="handleMemberRemoved"
+      @member-removed="handleMemberRemoveEvent"
       @refresh-group="refreshGroupData"
       @admin-status-update="handleAdminStatusUpdate"
     />
@@ -169,7 +169,7 @@ const {
   handleCsvImport: importCsvMembers,
   promoteMember,
   demoteMember,
-  removeMember
+  handleMemberRemove
 } = useGroupMembers(groupId, group, fetchGroup)
 
 // Use group posts functionality
@@ -388,7 +388,7 @@ const handleMemberDemoted = async (member) => {
   }
 }
 
-const handleMemberRemoved = async (member) => {
+const handleMemberRemoveEvent = async (member) => {
   console.log('Group page - Member removal event received for:', member.name, {
     id: member.id,
     userId: member.userId,
@@ -397,7 +397,7 @@ const handleMemberRemoved = async (member) => {
   });
   
   try {
-    await removeMember(member);
+    await handleMemberRemove(member);
     console.log('Group page - Member removed successfully');
   } catch (err) {
     console.error('Group page - Failed to remove member:', err);

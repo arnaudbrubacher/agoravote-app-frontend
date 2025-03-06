@@ -143,8 +143,8 @@ export function useGroupMembers(groupId, group, fetchGroup) {
   }
 
   // Remove member from group
-  const removeMember = async (member) => {
-    console.log('useGroupMembers - removeMember function called with:', member);
+  const handleMemberRemove = async (member) => {
+    console.log('useGroupMembers - Member removal function called with:', member);
     try {
       // Confirm removal
       console.log('useGroupMembers - Showing confirmation dialog');
@@ -208,7 +208,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     handleUserAdded,
     promoteMember,
     demoteMember,
-    removeMember,
+    handleMemberRemove,
     getMemberInitial,
     isCurrentMember
   }

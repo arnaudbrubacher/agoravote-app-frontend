@@ -38,7 +38,7 @@
         @csv-import="$emit('csv-import', $event)"
         @member-promoted="$emit('member-promoted', $event)"
         @member-demoted="$emit('member-demoted', $event)"
-        @member-removed="handleMemberRemoved"
+        @member-removed="handleMemberRemove"
         @refresh-group="$emit('refresh-group')"
         @admin-status-update="$emit('admin-status-update', $event)"
       />
@@ -108,7 +108,7 @@ const emit = defineEmits([
 ])
 
 // Add a handler for member removal to debug the event flow
-const handleMemberRemoved = (member) => {
+const handleMemberRemove = (member) => {
   console.log('GroupTabs - Member removal event received for:', member.name, {
     id: member.id,
     userId: member.userId,

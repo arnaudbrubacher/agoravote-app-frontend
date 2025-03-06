@@ -15,7 +15,7 @@
         @import-csv="triggerCsvFileInput"
         @promote="promoteMember"
         @demote="demoteMember"
-        @remove="removeMember"
+        @remove="handleMemberRemove"
         @refresh-members="$emit('refresh-group')"
         @admin-status-update="handleAdminStatusUpdate"
       />
@@ -96,7 +96,7 @@ const demoteMember = (member) => {
   emit('member-demoted', member)
 }
 
-const removeMember = (member) => {
+const handleMemberRemove = (member) => {
   console.log('MembersTab - Member removal event received for:', member.name, {
     id: member.id,
     userId: member.userId,

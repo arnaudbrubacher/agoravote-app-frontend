@@ -58,7 +58,7 @@
               <LucideIcon name="UserMinus" size="4" class="h-4 w-4 mr-2" />
               Remove Admin Role
             </DropdownMenuItem>
-            <DropdownMenuItem v-if="!isCurrentMember(member)" @click="handleRemove(member)">
+            <DropdownMenuItem v-if="!isCurrentMember(member)" @click="handleMemberRemove(member)">
               <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-2" />
               Remove
             </DropdownMenuItem>
@@ -146,7 +146,7 @@ const isCurrentMember = (member) => {
 }
 
 // Add a handler for the remove action to log the member data
-const handleRemove = (member) => {
+const handleMemberRemove = (member) => {
   console.log('MemberRow - Remove button clicked for member:', member.name, {
     id: member.id,
     userId: member.userId,
