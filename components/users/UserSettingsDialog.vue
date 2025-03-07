@@ -149,32 +149,35 @@
           </div>
           
           <!-- Action Buttons -->
-          <div class="flex flex-col sm:flex-row gap-3 pt-4">
+          <div class="flex justify-center pt-4">
             <Button 
               variant="outline" 
-              class="flex-1 justify-center"
+              class="mx-auto"
               @click="logout"
             >
               <LogOutIcon class="mr-2 h-4 w-4" />
               Log Out
             </Button>
-
-            <Button 
-              variant="destructive" 
-              class="flex-1 justify-center"
-              @click="confirmDeleteAccount"
-            >
-              <TrashIcon class="mr-2 h-4 w-4" />
-              Delete Account
-            </Button>
           </div>
         </form>
       </div>
       
-      <DialogFooter class="px-6 pb-6">
-        <Button variant="outline" @click="$emit('update:open', false)">Cancel</Button>
-        <Button type="submit" @click="saveSettings">Save Changes</Button>
-      </DialogFooter>
+      <!-- Custom Footer instead of DialogFooter -->
+      <div class="px-6 pb-6 border-t pt-4 mt-4 flex justify-between w-full">
+        <Button 
+          variant="destructive" 
+          size="sm"
+          @click="confirmDeleteAccount"
+        >
+          <TrashIcon class="mr-2 h-4 w-4" />
+          Delete Account
+        </Button>
+        
+        <div class="flex space-x-2">
+          <Button variant="outline" @click="$emit('update:open', false)">Cancel</Button>
+          <Button type="submit" @click="saveSettings">Save Changes</Button>
+        </div>
+      </div>
     </DialogContent>
   </Dialog>
 

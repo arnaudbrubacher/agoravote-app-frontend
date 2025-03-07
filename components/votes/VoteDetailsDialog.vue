@@ -2,15 +2,7 @@
   <Dialog :open="true" @update:open="$emit('close')">
     <DialogContent class="sm:max-w-lg">
       <DialogHeader>
-        <div class="flex items-center justify-between">
-          <DialogTitle>{{ vote.title }}</DialogTitle>
-          <div class="flex items-center space-x-2">
-            <Button variant="destructive" size="sm" @click="confirmDelete">
-              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
-              Delete
-            </Button>
-          </div>
-        </div>
+        <DialogTitle>{{ vote.title }}</DialogTitle>
         <DialogDescription>
           {{ vote.status }} vote · {{ formatDate(vote.start_time) }} - {{ formatDate(vote.end_time) }}
         </DialogDescription>
@@ -105,6 +97,14 @@
           </div>
         </div>
       </div>
+      
+      <!-- Bottom Action Button -->
+      <div class="border-t pt-4 flex justify-start">
+        <Button variant="destructive" size="sm" @click="confirmDelete">
+          <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
+          Delete
+        </Button>
+      </div>
     </DialogContent>
   </Dialog>
 </template>
@@ -121,7 +121,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from '@/components/ui/dialog'
 
 const props = defineProps({
