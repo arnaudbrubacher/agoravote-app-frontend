@@ -86,20 +86,20 @@
         <!-- Group Password -->
          <div class="space-y-2">
             <Label>
-              <input type="checkbox" v-model="form.requiresPassword" />
+              <input type="checkbox" v-model="form.requires_password" />
               Admission requires a password
             </Label>
             <Input 
               type="password" 
               v-model="form.password" 
               placeholder="Enter password" 
-              :disabled="!form.requiresPassword"
+              :disabled="!form.requires_password"
             />
             <Input 
               type="password" 
               v-model="form.confirmPassword" 
               placeholder="Confirm password" 
-              :disabled="!form.requiresPassword"
+              :disabled="!form.requires_password"
             />
           </div>
 
@@ -177,7 +177,7 @@ const form = ref({
   description: '',
   isPrivate: true,
   picture: null,
-  requiresPassword: false,
+  requires_password: false,
   password: '',
   confirmPassword: '',
   documents: []
@@ -210,11 +210,29 @@ const handleSubmit = async () => {
   try {
     isSubmitting.value = true
     
+    // Validate password if required
+    if (form.value.requires_password) {
+      if (!form.value.password) {
+        alert('Please enter a password')
+        isSubmitting.value = false
+        return
+      }
+      
+      if (form.value.password !== form.value.confirmPassword) {
+        alert('Passwords do not match')
+        isSubmitting.value = false
+        return
+      }
+      
+      console.log('Password validation passed:', {
+        requires_password: form.value.requires_password,
+        password_length: form.value.password.length
+      })
+    }
+    
     // Convert documents to the format expected by the backend
-    const requiredDocuments = form.value.documents.map(doc => ({
-      name: doc.name,
-      required: true
-    }))
+    const requiredDocuments = form.value.documents.map(doc => doc.name)
+    console.log('Required documents array:', requiredDocuments)
     
     // Create form data to send to API
     const groupData = {
@@ -222,10 +240,17 @@ const handleSubmit = async () => {
       description: form.value.description,
       is_private: form.value.isPrivate,
       picture: form.value.picture,
-      required_documents: requiredDocuments // Use the correct field name
+      requires_password: form.value.requires_password,
+      password: form.value.requires_password ? form.value.password : '',
+      required_documents: JSON.stringify(requiredDocuments)
     }
     
-    console.log('Sending group data:', JSON.stringify(groupData))
+    // Log the exact data being sent (without the picture for brevity)
+    const logData = { ...groupData }
+    if (logData.picture) {
+      logData.picture = '[Picture data omitted for brevity]'
+    }
+    console.log('Sending group data:', JSON.stringify(logData, null, 2))
     
     // Make API call to create group
     const response = await axios.post('/groups', groupData)
@@ -236,7 +261,8 @@ const handleSubmit = async () => {
     console.log('Group created:', response.data)
   } catch (error) {
     console.error('Failed to create group:', error)
-    // Handle error (could add error state and display)
+    console.error('Error response:', error.response?.data)
+    alert('Failed to create group: ' + (error.response?.data?.error || 'Unknown error'))
   } finally {
     isSubmitting.value = false
   }

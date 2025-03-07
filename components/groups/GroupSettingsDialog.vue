@@ -121,37 +121,143 @@
               </Button>
             </div>
             <div v-if="editingPrivacy" class="pb-4">
-              <Select
-                v-model="formData.isPublic"
-                class="w-full mb-2"
-              >
-                <option :value="true">Public - Anyone can find this group</option>
-                <option :value="false">Private - Only invited members can join</option>
-              </Select>
+              <div class="flex space-x-4 mb-2">
+                <label class="flex items-center space-x-2">
+                  <input 
+                    type="radio" 
+                    v-model="formData.isPublic" 
+                    :value="false"
+                  />
+                  <span>Private Group</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input 
+                    type="radio" 
+                    v-model="formData.isPublic" 
+                    :value="true"
+                  />
+                  <span>Public Group</span>
+                </label>
+              </div>
               <div class="flex justify-end gap-2">
                 <Button variant="outline" size="sm" @click="cancelPrivacyEdit">Cancel</Button>
                 <Button type="button" size="sm" @click="savePrivacy">Save</Button>
               </div>
             </div>
+
+            <!-- Password Requirement Field -->
+            <div class="flex items-center justify-between pb-3 border-b">
+              <div>
+                <p class="text-xs text-muted-foreground mb-1">Password Protection</p>
+                <p class="font-medium">{{ formData.requires_password ? 'Password Required' : 'No Password Required' }}</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                @click="editingPassword = !editingPassword"
+              >
+                <EditIcon class="h-4 w-4" />
+              </Button>
+            </div>
+            <div v-if="editingPassword" class="pb-4">
+              <div class="space-y-3 mb-2">
+                <div class="flex items-center space-x-2">
+                  <input type="checkbox" id="requires-password" v-model="formData.requires_password" />
+                  <Label for="requires-password">Admission requires a password</Label>
+                </div>
+                
+                <Input 
+                  type="password" 
+                  v-model="formData.password" 
+                  placeholder="Enter password" 
+                  :disabled="!formData.requires_password"
+                  class="mb-2"
+                />
+                
+                <Input 
+                  type="password" 
+                  v-model="formData.confirmPassword" 
+                  placeholder="Confirm password" 
+                  :disabled="!formData.requires_password"
+                />
+              </div>
+              <div class="flex justify-end gap-2">
+                <Button variant="outline" size="sm" @click="cancelPasswordEdit">Cancel</Button>
+                <Button type="button" size="sm" @click="savePassword">Save</Button>
+              </div>
+            </div>
+
+            <!-- Required Documents Field -->
+            <div class="flex items-center justify-between pb-3 border-b">
+              <div>
+                <p class="text-xs text-muted-foreground mb-1">Required Documents</p>
+                <p class="font-medium">
+                  <template v-if="formData.documents.length">
+                    <span v-for="(doc, index) in formData.documents" :key="index">
+                      {{ doc.name }}{{ index < formData.documents.length - 1 ? ', ' : '' }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    No documents required
+                  </template>
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                @click="editingDocuments = !editingDocuments"
+              >
+                <EditIcon class="h-4 w-4" />
+              </Button>
+            </div>
+            <div v-if="editingDocuments" class="pb-4">
+              <div class="space-y-3 mb-2">
+                <p class="text-sm">Documents required from users to join:</p>
+                
+                <div v-if="formData.documents.length" class="space-y-2">
+                  <div v-for="(doc, index) in formData.documents" :key="index" class="flex items-center space-x-2">
+                    <Input 
+                      v-model="doc.name" 
+                      placeholder="Document name (e.g. ID Card, Student Card)" 
+                    />
+                    <Button 
+                      type="button"
+                      variant="destructive" 
+                      size="icon" 
+                      @click="removeDocument(index)"
+                      title="Remove this document requirement"
+                    >
+                      <LucideIcon name="Trash" class="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  @click="addDocument"
+                  class="flex items-center"
+                >
+                  <LucideIcon name="Plus" class="h-4 w-4 mr-1" />
+                  Add Required Document
+                </Button>
+              </div>
+              <div class="flex justify-end gap-2">
+                <Button variant="outline" size="sm" @click="cancelDocumentsEdit">Cancel</Button>
+                <Button type="button" size="sm" @click="saveDocuments">Save</Button>
+              </div>
+            </div>
           </div>
           
           <!-- Actions -->
-          <div class="flex flex-col sm:flex-row gap-3 pt-4">
-            <Button 
-              type="button" 
-              variant="destructive" 
-              @click="handleDelete"
-              class="flex-1 justify-center"
-            >
-              <LucideIcon name="Trash" size="4" class="mr-2 h-4 w-4" />
-              Delete Group
-            </Button>
-            
+          <div class="flex justify-center pt-4">
             <Button 
               type="button" 
               variant="outline" 
               @click="handleLeave"
-              class="flex-1 justify-center"
+              class="mx-auto"
             >
               <LucideIcon name="LogOut" size="4" class="mr-2 h-4 w-4" />
               Leave Group
@@ -160,10 +266,22 @@
         </div>
       </div>
       
-      <DialogFooter class="px-6 pb-6">
-        <Button variant="outline" @click="$emit('close')">Cancel</Button>
-        <Button type="button" @click="handleSubmit">Save All Changes</Button>
-      </DialogFooter>
+      <!-- Custom Footer instead of DialogFooter -->
+      <div class="px-6 pb-6 border-t pt-4 mt-4 flex justify-between w-full">
+        <Button 
+          variant="destructive" 
+          size="sm"
+          @click="handleDelete"
+        >
+          <LucideIcon name="Trash" class="mr-2 h-4 w-4" />
+          Delete Group
+        </Button>
+        
+        <div class="flex space-x-2">
+          <Button variant="outline" @click="$emit('close')">Cancel</Button>
+          <Button type="button" @click="handleSubmit">Save All Changes</Button>
+        </div>
+      </div>
     </DialogContent>
   </Dialog>
 </template>
@@ -205,11 +323,17 @@ const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhos
 const editingName = ref(false)
 const editingDescription = ref(false)
 const editingPrivacy = ref(false)
+const editingPassword = ref(false)
+const editingDocuments = ref(false)
 
 const formData = ref({
   name: '',
   description: '',
-  isPublic: true
+  isPublic: true,
+  requires_password: false,
+  password: '',
+  confirmPassword: '',
+  documents: []
 })
 
 // Check if a URL is a full URL or a relative path
@@ -219,11 +343,58 @@ const isFullUrl = (url) => {
 
 // Initialize form data
 onMounted(() => {
+  console.log('Group data received:', props.group);
+  console.log('Is private:', props.group.isPrivate, props.group.is_private);
+  console.log('Required documents (raw):', props.group.required_documents);
+  console.log('Required documents type:', typeof props.group.required_documents);
+  
+  // Direct check of the required_documents field
+  console.log('Direct check of required_documents:');
+  if (props.group.required_documents === null) {
+    console.log('required_documents is null');
+  } else if (props.group.required_documents === undefined) {
+    console.log('required_documents is undefined');
+  } else if (props.group.required_documents === '') {
+    console.log('required_documents is an empty string');
+  } else if (props.group.required_documents === '[]') {
+    console.log('required_documents is an empty JSON array string');
+  } else {
+    console.log('required_documents has content:', props.group.required_documents);
+    
+    // Try to access it directly as an array
+    if (Array.isArray(props.group.required_documents)) {
+      console.log('It is an array with length:', props.group.required_documents.length);
+      console.log('Array contents:', props.group.required_documents);
+    }
+  }
+  
+  if (props.group.required_documents) {
+    try {
+      // Try to parse if it's a string
+      if (typeof props.group.required_documents === 'string') {
+        console.log('Attempting to parse required_documents as JSON string');
+        const parsed = JSON.parse(props.group.required_documents);
+        console.log('Parsed required_documents:', parsed);
+      }
+    } catch (e) {
+      console.error('Error parsing required_documents:', e);
+    }
+  }
+  
+  const parsedDocs = parseRequiredDocuments(props.group.required_documents);
+  console.log('Parsed documents result:', parsedDocs);
+  
   formData.value = {
     name: props.group.name || '',
     description: props.group.description || '',
-    isPublic: !props.group.isPrivate // Convert from backend's isPrivate to frontend's isPublic
+    isPublic: !(props.group.isPrivate || props.group.is_private), // Check both possible field names
+    requires_password: props.group.requires_password || false,
+    password: '',
+    confirmPassword: '',
+    documents: parsedDocs
   }
+  
+  console.log('Form data initialized with documents:', formData.value.documents);
   
   // Add event listener for group data updates
   window.addEventListener('group-data-updated', refreshFormData)
@@ -236,10 +407,181 @@ onBeforeUnmount(() => {
 
 // Refresh form data when group data is updated
 const refreshFormData = () => {
+  console.log('Refreshing form data with:', props.group);
+  console.log('Required documents (refresh):', props.group.required_documents);
+  
+  // Direct check of the required_documents field on refresh
+  console.log('Direct check of required_documents on refresh:');
+  if (props.group.required_documents === null) {
+    console.log('required_documents is null');
+  } else if (props.group.required_documents === undefined) {
+    console.log('required_documents is undefined');
+  } else if (props.group.required_documents === '') {
+    console.log('required_documents is an empty string');
+  } else if (props.group.required_documents === '[]') {
+    console.log('required_documents is an empty JSON array string');
+  } else {
+    console.log('required_documents has content:', props.group.required_documents);
+    
+    // Try to access it directly as an array
+    if (Array.isArray(props.group.required_documents)) {
+      console.log('It is an array with length:', props.group.required_documents.length);
+      console.log('Array contents:', props.group.required_documents);
+    }
+  }
+  
+  const parsedDocs = parseRequiredDocuments(props.group.required_documents);
+  console.log('Parsed documents on refresh:', parsedDocs);
+  
   formData.value = {
     name: props.group.name || '',
     description: props.group.description || '',
-    isPublic: !props.group.isPrivate
+    isPublic: !(props.group.isPrivate || props.group.is_private), // Check both possible field names
+    requires_password: props.group.requires_password || false,
+    password: '',
+    confirmPassword: '',
+    documents: parsedDocs
+  }
+  
+  console.log('Form data refreshed with documents:', formData.value.documents);
+}
+
+// Parse required documents from JSON string or object
+const parseRequiredDocuments = (requiredDocs) => {
+  console.log('Parsing required documents, raw value:', requiredDocs);
+  console.log('Type of requiredDocs:', typeof requiredDocs);
+  
+  if (!requiredDocs) {
+    console.log('No required documents found');
+    return [];
+  }
+  
+  try {
+    // If it's already an array, use it
+    if (Array.isArray(requiredDocs)) {
+      console.log('requiredDocs is an array with length:', requiredDocs.length);
+      const result = requiredDocs.map(doc => {
+        console.log('Processing array item:', doc, 'type:', typeof doc);
+        // If it's a string, create an object with name property
+        if (typeof doc === 'string') {
+          console.log('Item is a string, creating object with name:', doc);
+          return { name: doc };
+        }
+        // If it's an object, extract the name property or use the object itself
+        const name = doc.name || doc.toString();
+        console.log('Item is not a string, using name property or toString():', name);
+        return { name };
+      });
+      console.log('Processed array result:', result);
+      return result;
+    }
+    
+    // If it's a string, try to parse it as JSON
+    if (typeof requiredDocs === 'string') {
+      console.log('requiredDocs is a string, attempting to parse');
+      
+      // If it's an empty string, return empty array
+      if (requiredDocs.trim() === '') {
+        console.log('requiredDocs is an empty string');
+        return [];
+      }
+      
+      try {
+        const parsed = JSON.parse(requiredDocs);
+        console.log('Parsed JSON:', parsed, 'type:', typeof parsed);
+        
+        if (Array.isArray(parsed)) {
+          console.log('Parsed JSON is an array with length:', parsed.length);
+          const result = parsed.map(doc => {
+            console.log('Processing parsed item:', doc, 'type:', typeof doc);
+            if (typeof doc === 'string') {
+              console.log('Parsed item is a string, creating object with name:', doc);
+              return { name: doc };
+            } else if (typeof doc === 'object' && doc !== null) {
+              const name = doc.name || '';
+              console.log('Parsed item is an object, using name property:', name);
+              return { name };
+            } else {
+              const name = String(doc);
+              console.log('Parsed item is neither string nor object, converting to string:', name);
+              return { name };
+            }
+          });
+          console.log('Processed parsed array result:', result);
+          return result;
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          // If it parsed to an object but not an array, try to extract document names
+          console.log('Parsed JSON is an object, not an array');
+          if (parsed.documents) {
+            console.log('Found documents property in parsed object:', parsed.documents);
+            if (Array.isArray(parsed.documents)) {
+              const result = parsed.documents.map(doc => {
+                if (typeof doc === 'string') return { name: doc };
+                return { name: doc.name || String(doc) };
+              });
+              console.log('Processed documents property result:', result);
+              return result;
+            } else {
+              console.log('Documents property is not an array');
+              return [];
+            }
+          }
+          
+          // If it has keys that might be document names
+          const keys = Object.keys(parsed);
+          if (keys.length > 0) {
+            console.log('Using object keys as document names:', keys);
+            const result = keys.map(key => ({ name: key }));
+            console.log('Processed object keys result:', result);
+            return result;
+          }
+        }
+        
+        console.log('Parsed JSON is not in a usable format');
+        return [];
+      } catch (parseError) {
+        console.error('Error parsing JSON string:', parseError);
+        // If it can't be parsed as JSON, treat it as a single document name
+        console.log('Treating the string as a single document name:', requiredDocs);
+        return [{ name: requiredDocs }];
+      }
+    }
+    
+    // If it's an object but not an array, check if it has specific properties
+    if (typeof requiredDocs === 'object' && requiredDocs !== null) {
+      console.log('requiredDocs is an object:', requiredDocs);
+      
+      // Check if it has a property that might contain the documents
+      if (requiredDocs.documents) {
+        console.log('Found documents property:', requiredDocs.documents);
+        if (Array.isArray(requiredDocs.documents)) {
+          const result = requiredDocs.documents.map(doc => {
+            if (typeof doc === 'string') return { name: doc };
+            return { name: doc.name || String(doc) };
+          });
+          console.log('Processed documents property result:', result);
+          return result;
+        } else {
+          console.log('Documents property is not an array');
+          return [];
+        }
+      }
+      
+      // If it has keys that might be document names
+      const keys = Object.keys(requiredDocs);
+      if (keys.length > 0) {
+        console.log('Using object keys as document names:', keys);
+        const result = keys.map(key => ({ name: key }));
+        console.log('Processed object keys result:', result);
+        return result;
+      }
+    }
+    
+    console.log('Could not parse required documents, returning empty array');
+    return [];
+  } catch (error) {
+    console.error('Error parsing required documents:', error);
+    return [];
   }
 }
 
@@ -322,7 +664,7 @@ const cancelDescriptionEdit = () => {
 const savePrivacy = async () => {
   try {
     const dataToSubmit = {
-      isPrivate: !formData.value.isPublic
+      is_private: !formData.value.isPublic
     }
     
     await updateGroupField(dataToSubmit)
@@ -335,8 +677,86 @@ const savePrivacy = async () => {
 
 const cancelPrivacyEdit = () => {
   // Reset to original value
-  formData.value.isPublic = !props.group.isPrivate
+  formData.value.isPublic = !(props.group.isPrivate || props.group.is_private)
   editingPrivacy.value = false
+}
+
+const savePassword = async () => {
+  try {
+    // Validate passwords match if password is required
+    if (formData.value.requires_password) {
+      if (!formData.value.password) {
+        alert('Please enter a password')
+        return
+      }
+      
+      if (formData.value.password !== formData.value.confirmPassword) {
+        alert('Passwords do not match')
+        return
+      }
+    }
+    
+    const dataToSubmit = {
+      requires_password: formData.value.requires_password
+    }
+    
+    // Only include password if it's required and provided
+    if (formData.value.requires_password && formData.value.password) {
+      dataToSubmit.password = formData.value.password
+    }
+    
+    await updateGroupField(dataToSubmit)
+    editingPassword.value = false
+  } catch (error) {
+    console.error('Failed to update password settings:', error)
+    alert('Failed to update password settings: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
+const cancelPasswordEdit = () => {
+  // Reset to original values
+  formData.value.requires_password = props.group.requires_password || false
+  formData.value.password = ''
+  formData.value.confirmPassword = ''
+  editingPassword.value = false
+}
+
+const saveDocuments = async () => {
+  try {
+    // Validate document names
+    const emptyDocs = formData.value.documents.filter(doc => !doc.name.trim())
+    if (emptyDocs.length > 0) {
+      alert('Please provide names for all required documents')
+      return
+    }
+    
+    // Format documents for the backend - simple array of strings
+    const requiredDocuments = formData.value.documents.map(doc => doc.name.trim())
+    
+    console.log('Documents to submit (array):', requiredDocuments)
+    
+    // Convert to JSON string to match the expected format
+    const jsonDocuments = JSON.stringify(requiredDocuments)
+    console.log('Documents as JSON string:', jsonDocuments)
+    
+    const dataToSubmit = {
+      required_documents: jsonDocuments
+    }
+    
+    console.log('Submitting documents update:', dataToSubmit)
+    
+    await updateGroupField(dataToSubmit)
+    editingDocuments.value = false
+  } catch (error) {
+    console.error('Failed to update required documents:', error)
+    alert('Failed to update required documents: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
+const cancelDocumentsEdit = () => {
+  // Reset to original values
+  formData.value.documents = parseRequiredDocuments(props.group.required_documents)
+  editingDocuments.value = false
 }
 
 // Helper function to update a single field
@@ -345,8 +765,22 @@ const updateGroupField = async (fieldData) => {
     console.log('Updating group field:', fieldData)
     console.log('Group ID:', props.group.id)
     
+    // For required_documents, ensure it's a proper JSON string
+    if (fieldData.required_documents !== undefined) {
+      console.log('Required documents before sending:', fieldData.required_documents)
+      
+      // If it's already a string, we're good
+      if (typeof fieldData.required_documents !== 'string') {
+        // If it's not a string, stringify it
+        fieldData.required_documents = JSON.stringify(fieldData.required_documents)
+        console.log('Stringified required_documents:', fieldData.required_documents)
+      }
+    }
+    
     // Make direct API call instead of using emit
     const response = await axios.put(`/groups/${props.group.id}`, fieldData)
+    
+    console.log('Response from backend:', response.data)
     
     // Update local data
     Object.assign(props.group, response.data)
@@ -360,6 +794,7 @@ const updateGroupField = async (fieldData) => {
     return response.data
   } catch (error) {
     console.error('Error updating group field:', error)
+    console.error('Error response:', error.response?.data)
     throw error
   }
 }
@@ -373,11 +808,42 @@ const handleSubmit = async () => {
     }
     
     // Prepare the data to submit
-    const dataToSubmit = { ...formData.value }
+    const dataToSubmit = { 
+      name: formData.value.name,
+      description: formData.value.description,
+      is_private: !formData.value.isPublic,
+      requires_password: formData.value.requires_password
+    }
     
-    // Convert isPublic to isPrivate for the backend
-    dataToSubmit.isPrivate = !dataToSubmit.isPublic
-    delete dataToSubmit.isPublic
+    // Only include password if it's required and provided
+    if (formData.value.requires_password && formData.value.password) {
+      // Validate passwords match
+      if (formData.value.password !== formData.value.confirmPassword) {
+        alert('Passwords do not match')
+        return
+      }
+      
+      dataToSubmit.password = formData.value.password
+    }
+    
+    // Format documents for the backend - simple array of strings
+    if (formData.value.documents.length > 0) {
+      // Validate document names
+      const emptyDocs = formData.value.documents.filter(doc => !doc.name.trim())
+      if (emptyDocs.length > 0) {
+        alert('Please provide names for all required documents')
+        return
+      }
+      
+      const requiredDocuments = formData.value.documents.map(doc => doc.name.trim())
+      console.log('Documents to submit in handleSubmit (array):', requiredDocuments)
+      
+      // Convert to JSON string to match the expected format
+      dataToSubmit.required_documents = JSON.stringify(requiredDocuments)
+      console.log('Documents as JSON string in handleSubmit:', dataToSubmit.required_documents)
+    } else {
+      dataToSubmit.required_documents = '[]'
+    }
     
     // Add the picture path if a new one was uploaded
     if (picturePath) {
@@ -424,5 +890,14 @@ const handleLeave = () => {
   if (confirm('Are you sure you want to leave this group?')) {
     emit('leave')
   }
+}
+
+// Document management
+const addDocument = () => {
+  formData.value.documents.push({ name: '' })
+}
+
+const removeDocument = (index) => {
+  formData.value.documents.splice(index, 1)
 }
 </script>
