@@ -2,6 +2,20 @@
 
 Agoravote is a frontend application built with Vue.js that serves as a platform for managing groups, posts, votes, and user authentication. This README provides an overview of the project, setup instructions, and usage guidelines.
 
+## Important: Full-Stack Application
+
+This is part of a full-stack application:
+- **Frontend**: This repository (Vue.js/Nuxt.js)
+- **Backend**: Located at [../agoravote-app-backend](../agoravote-app-backend) (Go/Gin)
+
+The backend provides critical functionality including:
+- API endpoints for all data operations
+- Database interactions
+- Authentication and authorization
+- ElectionGuard integration for secure voting
+
+Always consider both repositories when making changes.
+
 ## Features
 
 - **Group Management**: Create and manage groups.

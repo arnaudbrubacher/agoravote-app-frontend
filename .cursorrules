@@ -1,0 +1,61 @@
+# AgoraVote Application Rules for AI
+
+## Project Structure
+- Frontend: Vue.js/Nuxt.js application (current repository)
+- Backend: Go application with Gin framework (located at ../agoravote-app-backend)
+
+## IMPORTANT: ALWAYS MAINTAIN FULL-STACK AWARENESS
+- The AI MUST maintain awareness of both frontend and backend components
+- The AI MUST consider backend implementation when suggesting frontend changes
+- The AI MUST reference backend code when explaining how features work
+- The AI MUST NOT forget the existence or structure of the backend repository
+
+## Backend Architecture
+- Go-based API using Gin framework
+- PostgreSQL database
+- JWT authentication
+- RESTful API endpoints
+- Domain-driven design with separate packages for users, groups, posts, votes
+
+## Backend Repository Structure
+- src/main.go: Application entry point
+- src/routes/routes.go: API route definitions
+- src/models/: Database models (User, Group, Post, Vote, etc.)
+- src/user/, src/group/, src/post/, src/vote/: Domain-specific packages
+- src/database/: Database connection and utilities
+- migrations/: Database migrations
+
+## Frontend-Backend Interaction
+- Frontend makes API calls to backend endpoints
+- Authentication uses JWT tokens
+- API base URL: http://localhost:8080
+
+## When Working on Frontend Features
+- Check corresponding backend endpoints
+- Verify data models match between frontend and backend
+- Consider authentication and authorization requirements
+- Test API interactions thoroughly
+
+## Backend Summary Location
+- Backend summary files are located in ../agoravote-app-backend/backend_summary/
+- These files contain detailed information about the backend structure
+
+## ElectionGuard Security Integration
+- The backend integrates with ElectionGuard SDK for secure, end-to-end verifiable voting
+- ElectionGuard uses homomorphic encryption to secure ballots
+- Integration uses CGo to interface between Go and C++ ElectionGuard library
+- API endpoint: POST /electionguard/encrypt-ballot
+- Implementation files: src/electionguard/wrapper/electionguard.go, src/services/electionguard_service.go, src/controllers/electionguard_controller.go
+
+## Security Considerations
+- All voting operations must use the ElectionGuard encryption
+- Frontend must handle encrypted ballot data correctly
+- Authentication and authorization are critical for all voting operations
+- Encrypted ballots must be verifiable by voters
+- The system must maintain voter privacy while ensuring vote integrity
+
+## Project Purpose
+- AgoraVote is an online voting app and governance platform
+- It is modeled as a social network
+- It allows organizations to govern: share information and vote
+- The voting functionality is a core feature requiring special security attention

@@ -189,6 +189,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useUserProfile } from '@/composables/useUserProfile'
+import { changeUserPassword } from '@/src/utils/auth'
 import {
   Dialog,
   DialogContent,
@@ -366,7 +367,24 @@ const saveSettings = async () => {
 // Change password
 const changePassword = async () => {
   if (newPassword.value !== confirmPassword.value) {
-    return // Don't proceed if passwords don't match
+    alert('Passwords do not match')
+    return
+  }
+  
+  if (!currentPassword.value) {
+    alert('Please enter your current password')
+    return
+  }
+  
+  if (!newPassword.value) {
+    alert('Please enter a new password')
+    return
+  }
+  
+  // Simple password validation
+  if (newPassword.value.length < 6) {
+    alert('Password must be at least 6 characters long')
+    return
   }
   
   try {
@@ -377,15 +395,8 @@ const changePassword = async () => {
       throw new Error('Authentication required')
     }
     
-    // Make API call to change password
-    await axios.put(`/users/${userId}/password`, {
-      current_password: currentPassword.value,
-      new_password: newPassword.value
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    // Use the new changeUserPassword utility function
+    await changeUserPassword(userId, currentPassword.value, newPassword.value)
     
     // Reset form and close dialog
     currentPassword.value = ''
@@ -400,7 +411,22 @@ const changePassword = async () => {
     alert('Password changed successfully')
   } catch (error) {
     console.error('Failed to change password:', error)
-    alert('Failed to change password: ' + (error.response?.data?.error || 'Unknown error'))
+    
+    // Handle specific error cases
+    if (error.response) {
+      const status = error.response.status
+      const errorMessage = error.response.data?.error || 'Unknown error'
+      
+      if (status === 401) {
+        alert('Current password is incorrect')
+      } else if (status === 400) {
+        alert(`Failed to change password: ${errorMessage}`)
+      } else {
+        alert(`Failed to change password: ${errorMessage}`)
+      }
+    } else {
+      alert('Failed to change password: Network error')
+    }
   }
 }
 

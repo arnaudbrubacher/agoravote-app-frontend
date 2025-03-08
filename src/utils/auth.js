@@ -89,3 +89,82 @@ export const deleteUserAccount = async () => {
     throw error
   }
 }
+
+// Function to change user password
+export const changeUserPassword = async (userId, currentPassword, newPassword) => {
+  if (!userId) {
+    userId = localStorage.getItem('userId')
+    if (!userId) throw new Error('User ID not found in local storage')
+  }
+
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) throw new Error('Authentication token not found')
+
+    // Backend API endpoint: PUT /users/:userId/password
+    // Required request body:
+    // {
+    //   current_password: string,
+    //   new_password: string
+    // }
+    // Expected responses:
+    // 200 OK: Password changed successfully
+    // 400 Bad Request: Invalid input
+    // 401 Unauthorized: Current password is incorrect
+    // 403 Forbidden: Not authorized to change this user's password
+    // 404 Not Found: User not found
+    // 500 Internal Server Error: Server error
+    const response = await axios.put(`http://localhost:8080/users/${userId}/password`, {
+      current_password: currentPassword,
+      new_password: newPassword
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    console.log('Password change response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Failed to change user password:', error)
+    throw error
+  }
+}
+
+// Function to change group password
+export const changeGroupPassword = async (groupId, currentPassword, newPassword) => {
+  if (!groupId) throw new Error('Group ID is required')
+
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) throw new Error('Authentication token not found')
+
+    // Backend API endpoint: PUT /groups/:groupId/password
+    // Required request body:
+    // {
+    //   current_password: string,
+    //   new_password: string
+    // }
+    // Expected responses:
+    // 200 OK: Password changed successfully
+    // 400 Bad Request: Invalid input
+    // 401 Unauthorized: Current password is incorrect
+    // 403 Forbidden: Not authorized to change this group's password
+    // 404 Not Found: Group not found
+    // 500 Internal Server Error: Server error
+    const response = await axios.put(`http://localhost:8080/groups/${groupId}/password`, {
+      current_password: currentPassword,
+      new_password: newPassword
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    console.log('Group password change response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Failed to change group password:', error)
+    throw error
+  }
+}

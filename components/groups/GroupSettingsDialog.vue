@@ -256,6 +256,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Users, Camera } from 'lucide-vue-next'
 import axios from '~/src/utils/axios'
+import { changeGroupPassword } from '@/src/utils/auth'
 import {
   Dialog,
   DialogContent,
@@ -942,26 +943,30 @@ const formModified = computed(() => {
 // Change password function
 const changePassword = async () => {
   if (passwordMismatch.value) {
-    return // Don't proceed if passwords don't match
+    alert('Passwords do not match')
+    return
+  }
+  
+  // Validate inputs
+  if (!currentPassword.value) {
+    alert('Please enter the current password')
+    return
+  }
+  
+  if (!newPassword.value) {
+    alert('Please enter a new password')
+    return
+  }
+  
+  // Simple password validation
+  if (newPassword.value.length < 6) {
+    alert('Password must be at least 6 characters long')
+    return
   }
   
   try {
-    // Validate inputs
-    if (!currentPassword.value) {
-      alert('Please enter the current password')
-      return
-    }
-    
-    if (!newPassword.value) {
-      alert('Please enter a new password')
-      return
-    }
-    
     // Make API call to change group password
-    await axios.put(`/groups/${props.group.id}/password`, {
-      current_password: currentPassword.value,
-      new_password: newPassword.value
-    })
+    await changeGroupPassword(props.group.id, currentPassword.value, newPassword.value)
     
     // Reset form and close dialog
     currentPassword.value = ''
@@ -979,7 +984,24 @@ const changePassword = async () => {
     
   } catch (error) {
     console.error('Failed to change group password:', error)
-    alert('Failed to change password: ' + (error.response?.data?.error || 'Unknown error'))
+    
+    // Handle specific error cases
+    if (error.response) {
+      const status = error.response.status
+      const errorMessage = error.response.data?.error || 'Unknown error'
+      
+      if (status === 401) {
+        alert('Current password is incorrect')
+      } else if (status === 400) {
+        alert(`Failed to change password: ${errorMessage}`)
+      } else if (status === 403) {
+        alert('You do not have permission to change this group\'s password')
+      } else {
+        alert(`Failed to change password: ${errorMessage}`)
+      }
+    } else {
+      alert('Failed to change password: Network error')
+    }
   }
 }
 </script>
