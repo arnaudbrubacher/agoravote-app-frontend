@@ -968,9 +968,11 @@ const changePassword = async () => {
     console.log('Group requires password:', props.group.requires_password)
     console.log('Group password:', props.group.password ? 'Set' : 'Not set')
     console.log('Group password length:', props.group.password ? props.group.password.length : 0)
+    console.log('Current password provided:', currentPassword.value)
+    console.log('Current password length:', currentPassword.value.length)
     
-    // EMERGENCY FIX: Use the emergency endpoint that bypasses verification
-    await emergencyChangeGroupPassword(props.group.id, newPassword.value)
+    // Use the regular password change function with plaintext passwords
+    await changeGroupPassword(props.group.id, currentPassword.value, newPassword.value)
     
     // Reset form and close dialog
     currentPassword.value = ''
