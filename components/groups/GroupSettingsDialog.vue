@@ -100,24 +100,25 @@
                 </Label>
               </div>
               
-              <div class="space-y-2 mt-2">
-                <Input 
-                  type="password" 
-                  v-model="formData.password" 
-                  placeholder="Enter password" 
-                  id="password"
-                  :disabled="!formData.requires_password"
-                  :class="{ 'opacity-50': !formData.requires_password }"
-                />
-                
-                <Input 
-                  type="password" 
-                  v-model="formData.confirmPassword" 
-                  placeholder="Confirm password"
-                  id="confirm-password"
-                  :disabled="!formData.requires_password"
-                  :class="{ 'opacity-50': !formData.requires_password }"
-                />
+              <div v-if="formData.requires_password" class="space-y-2 mt-2">
+                <div class="h-10 flex items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="showPasswordChange = true"
+                  >
+                    Change Password
+                  </Button>
+                </div>
+              </div>
+              
+              <div v-else class="space-y-2 mt-2">
+                <div class="h-10 flex items-center">
+                  <p class="text-sm text-muted-foreground">
+                    No password is required to join this group.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -156,8 +157,8 @@
                       :disabled="!formData.requires_documents"
                       :class="{ 'opacity-50': !formData.requires_documents }"
                     />
-                    <Button 
-                      type="button"
+              <Button
+                type="button"
                       variant="destructive" 
                       size="icon" 
                       @click="removeDocument(index)"
@@ -166,8 +167,8 @@
                       :class="{ 'opacity-50': !formData.requires_documents }"
                     >
                       <LucideIcon name="Trash" class="h-4 w-4" />
-                    </Button>
-                  </div>
+              </Button>
+            </div>
                 </div>
               </div>
             </div>
@@ -200,10 +201,47 @@
         </Button>
         
         <div class="flex space-x-2">
-          <Button variant="outline" @click="$emit('close')">Cancel</Button>
-          <Button type="button" @click="handleSubmit">Save All Changes</Button>
+          <Button variant="outline" @click="handleCancel">Cancel</Button>
+          <Button type="button" @click="handleSubmit" :disabled="!formModified">Save All Changes</Button>
         </div>
       </div>
+    </DialogContent>
+  </Dialog>
+
+  <!-- Password Change Dialog - Separate from main dialog -->
+  <Dialog :open="showPasswordChange" @update:open="showPasswordChange = $event">
+    <DialogContent class="w-full max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Change Group Password</DialogTitle>
+        <DialogDescription>
+          Enter a new password for the group.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="grid gap-4 py-4">
+        <div class="space-y-2">
+          <Label for="current-password" class="text-sm font-medium">Current Password</Label>
+          <Input id="current-password" type="password" v-model="currentPassword" />
+        </div>
+
+        <div class="space-y-2">
+          <Label for="new-password" class="text-sm font-medium">New Password</Label>
+          <Input id="new-password" type="password" v-model="newPassword" />
+        </div>
+
+        <div class="space-y-2">
+          <Label for="confirm-password" class="text-sm font-medium">Confirm New Password</Label>
+          <Input id="confirm-password" type="password" v-model="confirmPassword" />
+          <p v-if="passwordMismatch" class="text-xs text-destructive">
+            Passwords do not match
+          </p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" @click="showPasswordChange = false">Cancel</Button>
+        <Button type="submit" @click="changePassword">Change Password</Button>
+      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
@@ -228,6 +266,7 @@ import {
 } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { cloneDeep } from 'lodash'
 
 const props = defineProps({
   group: {
@@ -241,6 +280,18 @@ const fileInput = ref(null)
 const previewImage = ref(null)
 const selectedFile = ref(null)
 const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
+
+// Password change dialog state
+const showPasswordChange = ref(false)
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+
+// Computed property to check if passwords match
+const passwordMismatch = computed(() => {
+  return newPassword.value && confirmPassword.value && 
+         newPassword.value !== confirmPassword.value
+})
 
 // Editing states are no longer needed
 // const editingName = ref(false)
@@ -257,17 +308,62 @@ const formData = ref({
   documents: []
 })
 
+// Original form data from the server
+const originalFormData = ref({})
+
 // Check if a URL is a full URL or a relative path
 const isFullUrl = (url) => {
   return url && (url.startsWith('http://') || url.startsWith('https://'))
 }
 
+// Create a reference to the event handler function
+const handleGroupDataUpdated = () => {
+  refreshFormData().catch(error => {
+    console.error('Error in refreshFormData:', error);
+  });
+};
+
 // Initialize form data
-onMounted(() => {
+onMounted(async () => {
   console.log('Group data received:', props.group);
+  console.log('Group ID:', props.group.id);
   console.log('Is private:', props.group.isPrivate, props.group.is_private);
   console.log('Required documents (raw):', props.group.required_documents);
   console.log('Required documents type:', typeof props.group.required_documents);
+  console.log('Requires documents flag:', props.group.requires_documents);
+  
+  // Make a direct API call to fetch the latest group data
+  try {
+    console.log('Making direct API call to fetch group data');
+    const response = await axios.get(`/groups/${props.group.id}`);
+    console.log('Direct API response:', response.data);
+    
+    // Update the group data with the direct API response
+    Object.assign(props.group, response.data);
+    console.log('Updated group data with direct API response');
+    
+    // For backward compatibility with older backend versions
+    // If requires_documents is not in the response, we need to check if required_documents exists
+    if (props.group.requires_documents === undefined && props.group.required_documents !== undefined) {
+      console.log('requires_documents not found in API response, determining from required_documents');
+      
+      // If required_documents is a non-empty array, set requires_documents to true
+      if (typeof props.group.required_documents === 'string' && 
+          props.group.required_documents !== '[]' && 
+          props.group.required_documents !== '') {
+        props.group.requires_documents = true;
+        console.log('Setting requires_documents to true based on non-empty required_documents');
+      } else if (Array.isArray(props.group.required_documents) && props.group.required_documents.length > 0) {
+        props.group.requires_documents = true;
+        console.log('Setting requires_documents to true based on non-empty required_documents array');
+      } else {
+        props.group.requires_documents = false;
+        console.log('Setting requires_documents to false based on empty required_documents');
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching group data directly:', error);
+  }
   
   // Direct check of the required_documents field
   console.log('Direct check of required_documents:');
@@ -289,21 +385,33 @@ onMounted(() => {
     }
   }
   
-  if (props.group.required_documents) {
-    try {
-      // Try to parse if it's a string
-      if (typeof props.group.required_documents === 'string') {
-        console.log('Attempting to parse required_documents as JSON string');
-        const parsed = JSON.parse(props.group.required_documents);
-        console.log('Parsed required_documents:', parsed);
-      }
-    } catch (e) {
-      console.error('Error parsing required_documents:', e);
-    }
-  }
-  
+  // Parse the documents
   const parsedDocs = parseRequiredDocuments(props.group.required_documents);
   console.log('Parsed documents result:', parsedDocs);
+  
+  // Determine if documents are required
+  // First check the explicit requires_documents flag, then fall back to checking if there are any documents
+  let requiresDocuments = false;
+  
+  // If the requires_documents flag is explicitly set, use that
+  if (props.group.requires_documents !== undefined) {
+    requiresDocuments = Boolean(props.group.requires_documents);
+    console.log('Using explicit requires_documents flag:', requiresDocuments);
+  } 
+  // Otherwise, check if there are any documents
+  else if (parsedDocs.length > 0) {
+    requiresDocuments = true;
+    console.log('No explicit flag, but documents found. Setting requires_documents to true');
+  }
+  // If required_documents is a non-empty string but couldn't be parsed, assume documents are required
+  else if (typeof props.group.required_documents === 'string' && 
+           props.group.required_documents.trim() !== '' && 
+           props.group.required_documents.trim() !== '[]') {
+    requiresDocuments = true;
+    console.log('Non-empty required_documents string found. Setting requires_documents to true');
+  }
+  
+  console.log('Determined requires_documents value:', requiresDocuments);
   
   formData.value = {
     name: props.group.name || '',
@@ -312,25 +420,64 @@ onMounted(() => {
     requires_password: props.group.requires_password || false,
     password: '',
     confirmPassword: '',
-    requires_documents: props.group.requires_documents || (parsedDocs.length > 0),
+    requires_documents: requiresDocuments,
     documents: parsedDocs
   }
   
+  // Store a deep copy of the original form data
+  originalFormData.value = cloneDeep(formData.value)
+  
   console.log('Form data initialized with documents:', formData.value.documents);
+  console.log('Form data initialized with requires_documents:', formData.value.requires_documents);
   
   // Add event listener for group data updates
-  window.addEventListener('group-data-updated', refreshFormData)
-})
+  window.addEventListener('group-data-updated', handleGroupDataUpdated);
+});
 
 // Clean up event listeners when component is unmounted
 onBeforeUnmount(() => {
-  window.removeEventListener('group-data-updated', refreshFormData)
-})
+  window.removeEventListener('group-data-updated', handleGroupDataUpdated);
+});
 
 // Refresh form data when group data is updated
-const refreshFormData = () => {
+const refreshFormData = async () => {
   console.log('Refreshing form data with:', props.group);
+  console.log('Group ID on refresh:', props.group.id);
   console.log('Required documents (refresh):', props.group.required_documents);
+  console.log('Requires documents flag (refresh):', props.group.requires_documents);
+  
+  // Make a direct API call to fetch the latest group data
+  try {
+    console.log('Making direct API call to fetch group data on refresh');
+    const response = await axios.get(`/groups/${props.group.id}`);
+    console.log('Direct API response on refresh:', response.data);
+    
+    // Update the group data with the direct API response
+    Object.assign(props.group, response.data);
+    console.log('Updated group data with direct API response on refresh');
+    
+    // For backward compatibility with older backend versions
+    // If requires_documents is not in the response, we need to check if required_documents exists
+    if (props.group.requires_documents === undefined && props.group.required_documents !== undefined) {
+      console.log('requires_documents not found in API response on refresh, determining from required_documents');
+      
+      // If required_documents is a non-empty array, set requires_documents to true
+      if (typeof props.group.required_documents === 'string' && 
+          props.group.required_documents !== '[]' && 
+          props.group.required_documents !== '') {
+        props.group.requires_documents = true;
+        console.log('Setting requires_documents to true based on non-empty required_documents on refresh');
+      } else if (Array.isArray(props.group.required_documents) && props.group.required_documents.length > 0) {
+        props.group.requires_documents = true;
+        console.log('Setting requires_documents to true based on non-empty required_documents array on refresh');
+      } else {
+        props.group.requires_documents = false;
+        console.log('Setting requires_documents to false based on empty required_documents on refresh');
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching group data directly on refresh:', error);
+  }
   
   // Direct check of the required_documents field on refresh
   console.log('Direct check of required_documents on refresh:');
@@ -355,18 +502,50 @@ const refreshFormData = () => {
   const parsedDocs = parseRequiredDocuments(props.group.required_documents);
   console.log('Parsed documents on refresh:', parsedDocs);
   
+  // Determine if documents are required
+  // First check the explicit requires_documents flag, then fall back to checking if there are any documents
+  let requiresDocuments = false;
+  
+  // If the requires_documents flag is explicitly set, use that
+  if (props.group.requires_documents !== undefined) {
+    requiresDocuments = Boolean(props.group.requires_documents);
+    console.log('Using explicit requires_documents flag on refresh:', requiresDocuments);
+  } 
+  // Otherwise, check if there are any documents
+  else if (parsedDocs.length > 0) {
+    requiresDocuments = true;
+    console.log('No explicit flag, but documents found on refresh. Setting requires_documents to true');
+  }
+  // If required_documents is a non-empty string but couldn't be parsed, assume documents are required
+  else if (typeof props.group.required_documents === 'string' && 
+           props.group.required_documents.trim() !== '' && 
+           props.group.required_documents.trim() !== '[]') {
+    requiresDocuments = true;
+    console.log('Non-empty required_documents string found on refresh. Setting requires_documents to true');
+  }
+  
+  console.log('Determined requires_documents value on refresh:', requiresDocuments);
+  
+  // Keep the current password if it exists
+  const currentPassword = formData.value.password;
+  const currentConfirmPassword = formData.value.confirmPassword;
+  
   formData.value = {
     name: props.group.name || '',
     description: props.group.description || '',
     isPrivate: (props.group.isPrivate || props.group.is_private), // Check both possible field names
     requires_password: props.group.requires_password || false,
-    password: '',
-    confirmPassword: '',
-    requires_documents: props.group.requires_documents || (parsedDocs.length > 0),
+    password: currentPassword,
+    confirmPassword: currentConfirmPassword,
+    requires_documents: requiresDocuments,
     documents: parsedDocs
   }
   
+  // Update the original form data to match the refreshed data
+  originalFormData.value = cloneDeep(formData.value);
+  
   console.log('Form data refreshed with documents:', formData.value.documents);
+  console.log('Form data refreshed with requires_documents:', formData.value.requires_documents);
 }
 
 // Parse required documents from JSON string or object
@@ -403,10 +582,21 @@ const parseRequiredDocuments = (requiredDocs) => {
     if (typeof requiredDocs === 'string') {
       console.log('requiredDocs is a string, attempting to parse');
       
-      // If it's an empty string, return empty array
-      if (requiredDocs.trim() === '') {
-        console.log('requiredDocs is an empty string');
+      // If it's an empty string or empty JSON array, return empty array
+      if (requiredDocs.trim() === '' || requiredDocs.trim() === '[]') {
+        console.log('requiredDocs is an empty string or empty JSON array');
         return [];
+      }
+      
+      // Check if it's a simple string that's not JSON
+      // This handles cases where the backend might store a single document name as a plain string
+      if (!requiredDocs.startsWith('[') && !requiredDocs.startsWith('{')) {
+        console.log('requiredDocs appears to be a plain string, not JSON');
+        // Split by commas in case it's a comma-separated list
+        const docNames = requiredDocs.split(',').map(name => name.trim());
+        const result = docNames.map(name => ({ name }));
+        console.log('Processed plain string result:', result);
+        return result;
       }
       
       try {
@@ -543,148 +733,49 @@ const uploadGroupPicture = async () => {
   }
 }
 
-// Save individual fields
-const saveName = async () => {
-  try {
-    const dataToSubmit = {
-      name: formData.value.name
-    }
-    
-    await updateGroupField(dataToSubmit)
-  } catch (error) {
-    console.error('Failed to update group name:', error)
-    alert('Failed to update group name: ' + (error.response?.data?.error || 'Unknown error'))
+// Save individual fields - these will be removed or modified to not make immediate API calls
+const saveName = () => {
+  // Just update local state, don't make API call
+  console.log('Name updated locally:', formData.value.name)
+}
+
+const saveDescription = () => {
+  // Just update local state, don't make API call
+  console.log('Description updated locally:', formData.value.description)
+}
+
+const savePrivacy = () => {
+  // Just update local state, don't make API call
+  console.log('Privacy setting updated locally:', formData.value.isPrivate)
+}
+
+const togglePasswordRequirement = () => {
+  // Just update local state, don't make API call
+  console.log('Password requirement toggled locally:', formData.value.requires_password)
+  
+  // If turning off password requirement, clear password fields
+  if (!formData.value.requires_password) {
+    formData.value.password = ''
+    formData.value.confirmPassword = ''
   }
 }
 
-const saveDescription = async () => {
-  try {
-    const dataToSubmit = {
-      description: formData.value.description
-    }
-    
-    await updateGroupField(dataToSubmit)
-  } catch (error) {
-    console.error('Failed to update group description:', error)
-    alert('Failed to update group description: ' + (error.response?.data?.error || 'Unknown error'))
-  }
+const savePassword = () => {
+  // Just update local state, don't make API call
+  console.log('Password updated locally')
 }
 
-const savePrivacy = async () => {
-  try {
-    const dataToSubmit = {
-      is_private: formData.value.isPrivate
-    }
-    
-    await updateGroupField(dataToSubmit)
-  } catch (error) {
-    console.error('Failed to update group privacy:', error)
-    alert('Failed to update group privacy: ' + (error.response?.data?.error || 'Unknown error'))
-  }
+const toggleDocumentRequirement = () => {
+  // Just update local state, don't make API call
+  console.log('Document requirement toggled locally:', formData.value.requires_documents)
 }
 
-const togglePasswordRequirement = async () => {
-  try {
-    // Clear password fields if toggling off
-    if (!formData.value.requires_password) {
-      formData.value.password = '';
-      formData.value.confirmPassword = '';
-    }
-    
-    const dataToSubmit = {
-      requires_password: formData.value.requires_password
-    }
-    
-    await updateGroupField(dataToSubmit)
-  } catch (error) {
-    console.error('Failed to update password requirement:', error)
-    alert('Failed to update password requirement: ' + (error.response?.data?.error || 'Unknown error'))
-  }
+const saveDocuments = () => {
+  // Just update local state, don't make API call
+  console.log('Documents updated locally:', formData.value.documents)
 }
 
-const savePassword = async () => {
-  try {
-    // Validate passwords match if password is required
-    if (formData.value.requires_password) {
-      if (!formData.value.password) {
-        alert('Please enter a password')
-        return
-      }
-      
-      if (formData.value.password !== formData.value.confirmPassword) {
-        alert('Passwords do not match')
-        return
-      }
-    }
-    
-    const dataToSubmit = {
-      requires_password: formData.value.requires_password
-    }
-    
-    // Only include password if it's required and provided
-    if (formData.value.requires_password && formData.value.password) {
-      dataToSubmit.password = formData.value.password
-    }
-    
-    await updateGroupField(dataToSubmit)
-  } catch (error) {
-    console.error('Failed to update password settings:', error)
-    alert('Failed to update password settings: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-const toggleDocumentRequirement = async () => {
-  try {
-    // Clear documents if toggling off
-    if (!formData.value.requires_documents) {
-      formData.value.documents = [];
-    }
-    
-    const dataToSubmit = {
-      requires_documents: formData.value.requires_documents,
-      required_documents: formData.value.requires_documents ? undefined : '[]'
-    }
-    
-    await updateGroupField(dataToSubmit)
-  } catch (error) {
-    console.error('Failed to update document requirements:', error)
-    alert('Failed to update document requirements: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-const saveDocuments = async () => {
-  try {
-    // Validate document names
-    const emptyDocs = formData.value.documents.filter(doc => !doc.name.trim())
-    if (emptyDocs.length > 0) {
-      alert('Please provide names for all required documents')
-      return
-    }
-    
-    // Format documents for the backend - simple array of strings
-    const requiredDocuments = formData.value.documents.map(doc => doc.name.trim())
-    
-    console.log('Documents to submit (array):', requiredDocuments)
-    
-    // Convert to JSON string to match the expected format
-    const jsonDocuments = JSON.stringify(requiredDocuments)
-    console.log('Documents as JSON string:', jsonDocuments)
-    
-    const dataToSubmit = {
-      requires_documents: true,
-      required_documents: jsonDocuments
-    }
-    
-    console.log('Submitting documents update:', dataToSubmit)
-    
-    await updateGroupField(dataToSubmit)
-  } catch (error) {
-    console.error('Failed to update required documents:', error)
-    alert('Failed to update required documents: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-// Helper function to update a single field
+// Helper function to update a single field - will only be used by handleSubmit
 const updateGroupField = async (fieldData) => {
   try {
     console.log('Updating group field:', fieldData)
@@ -726,17 +817,11 @@ const updateGroupField = async (fieldData) => {
 
 const handleSubmit = async () => {
   try {
-    // Validate passwords match if password is required
-    if (formData.value.requires_password) {
-      if (!formData.value.password) {
-        alert('Please enter a password')
-        return
-      }
-      
-      if (formData.value.password !== formData.value.confirmPassword) {
-        alert('Passwords do not match')
-        return
-      }
+    // We no longer need to validate passwords here since we're using a separate dialog
+    // Just make sure to clear password fields if password is not required
+    if (!formData.value.requires_password) {
+      formData.value.password = '';
+      formData.value.confirmPassword = '';
     }
     
     // Validate document names if documents are required
@@ -763,13 +848,12 @@ const handleSubmit = async () => {
       requires_documents: formData.value.requires_documents
     }
     
-    // Only include password if it's required and provided
-    if (formData.value.requires_password && formData.value.password) {
-      dataToSubmit.password = formData.value.password
-    }
+    // We no longer include password in the main form submission
+    // Password changes are handled by the separate changePassword function
     
-    // Format documents for the backend - simple array of strings
-    if (formData.value.requires_documents && formData.value.documents.length > 0) {
+    // Format documents for the backend
+    if (formData.value.requires_documents) {
+      // If documents are required, include the document list (even if empty)
       const requiredDocuments = formData.value.documents.map(doc => doc.name.trim())
       console.log('Documents to submit in handleSubmit (array):', requiredDocuments)
       
@@ -777,6 +861,7 @@ const handleSubmit = async () => {
       dataToSubmit.required_documents = JSON.stringify(requiredDocuments)
       console.log('Documents as JSON string in handleSubmit:', dataToSubmit.required_documents)
     } else {
+      // If documents are not required, set to empty array
       dataToSubmit.required_documents = '[]'
     }
     
@@ -834,5 +919,67 @@ const addDocument = () => {
 
 const removeDocument = (index) => {
   formData.value.documents.splice(index, 1)
+}
+
+// Reset form data to original values
+const resetForm = () => {
+  formData.value = cloneDeep(originalFormData.value)
+  console.log('Form reset to original values')
+}
+
+// Cancel button handler
+const handleCancel = () => {
+  resetForm()
+  emit('close')
+}
+
+// Check if form has been modified
+const formModified = computed(() => {
+  // Compare current form data with original form data
+  return JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)
+})
+
+// Change password function
+const changePassword = async () => {
+  if (passwordMismatch.value) {
+    return // Don't proceed if passwords don't match
+  }
+  
+  try {
+    // Validate inputs
+    if (!currentPassword.value) {
+      alert('Please enter the current password')
+      return
+    }
+    
+    if (!newPassword.value) {
+      alert('Please enter a new password')
+      return
+    }
+    
+    // Make API call to change group password
+    await axios.put(`/groups/${props.group.id}/password`, {
+      current_password: currentPassword.value,
+      new_password: newPassword.value
+    })
+    
+    // Reset form and close dialog
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+    showPasswordChange.value = false
+    
+    // Show success message
+    alert('Group password changed successfully')
+    
+    // Update the original form data to reflect that password has been changed
+    // but we don't need to store the actual password
+    originalFormData.value.password = ''
+    originalFormData.value.confirmPassword = ''
+    
+  } catch (error) {
+    console.error('Failed to change group password:', error)
+    alert('Failed to change password: ' + (error.response?.data?.error || 'Unknown error'))
+  }
 }
 </script>

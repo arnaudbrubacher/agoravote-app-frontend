@@ -81,7 +81,6 @@
               <Switch
                 id="requires-password"
                 v-model="form.requires_password"
-                @update:modelValue="(val) => { if (!val) { form.password = ''; form.confirmPassword = ''; } }"
               />
               <Label for="requires-password" class="text-sm text-muted-foreground">
                 {{ form.requires_password ? 'Password Required' : 'No Password Required' }}
@@ -113,7 +112,6 @@
               <Switch
                 id="requires-documents"
                 v-model="form.requires_documents"
-                @update:modelValue="(val) => { if (!val) { form.documents = []; } }"
               />
               <Label for="requires-documents" class="text-sm text-muted-foreground">
                 {{ form.requires_documents ? 'Documents Required' : 'No Documents Required' }}
@@ -159,7 +157,7 @@
         </div>
         
         <DialogFooter class="pt-2">
-          <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
+          <Button type="button" variant="outline" @click="handleCancel">Cancel</Button>
           <Button type="submit" :disabled="isSubmitting" @click="handleSubmit">
             {{ isSubmitting ? 'Creating...' : 'Create Group' }}
           </Button>
@@ -187,13 +185,15 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { cloneDeep } from 'lodash'
 
 const emit = defineEmits(['close', 'group-created'])
 
 const fileInput = ref(null)
 const isSubmitting = ref(false)
 
-const form = ref({
+// Initial empty form
+const initialForm = {
   name: '',
   description: '',
   isPrivate: true,
@@ -203,7 +203,10 @@ const form = ref({
   confirmPassword: '',
   requires_documents: false,
   documents: []
-})
+}
+
+// Create the form ref with initial values
+const form = ref(cloneDeep(initialForm))
 
 const triggerFileInput = () => {
   fileInput.value.click()
@@ -250,6 +253,11 @@ const handleSubmit = async () => {
         requires_password: form.value.requires_password,
         password_length: form.value.password.length
       })
+    } else {
+      // Clear password fields if password is not required
+      // This only affects password fields, not documents
+      form.value.password = '';
+      form.value.confirmPassword = '';
     }
     
     // Convert documents to the format expected by the backend
@@ -257,6 +265,11 @@ const handleSubmit = async () => {
     if (form.value.requires_documents && form.value.documents.length > 0) {
       requiredDocuments = form.value.documents.map(doc => doc.name)
       console.log('Required documents array:', requiredDocuments)
+    } else if (!form.value.requires_documents) {
+      // Clear documents if documents are not required
+      // This only affects documents, not password fields
+      form.value.documents = [];
+      requiredDocuments = [];
     }
     
     // Create form data to send to API
@@ -293,4 +306,25 @@ const handleSubmit = async () => {
     isSubmitting.value = false
   }
 }
+
+// Reset form to initial state
+const resetForm = () => {
+  form.value = cloneDeep(initialForm)
+  console.log('Form reset to initial values')
+}
+
+// Cancel button handler
+const handleCancel = () => {
+  resetForm()
+  emit('close')
+}
+
+// Add watchers to log toggle changes without affecting other fields
+watch(() => form.value.requires_password, (newValue) => {
+  console.log('Password requirement toggled locally:', newValue)
+})
+
+watch(() => form.value.requires_documents, (newValue) => {
+  console.log('Document requirement toggled locally:', newValue)
+})
 </script>

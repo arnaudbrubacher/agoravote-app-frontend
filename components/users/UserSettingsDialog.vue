@@ -94,18 +94,17 @@
 
             <!-- Password Field -->
             <div class="space-y-2 pb-3">
-              <div class="flex items-center justify-between">
-                <Label class="text-sm font-medium">Password</Label>
+              <Label class="text-sm font-medium">Password</Label>
+              <div class="mt-2">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   @click="showPasswordChange = true"
                 >
-                  Change
+                  Change Password
                 </Button>
               </div>
-              <p class="font-medium">●●●●●●●●</p>
             </div>
           </div>
           
