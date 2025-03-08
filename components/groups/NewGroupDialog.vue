@@ -66,7 +66,7 @@
             <div class="flex items-center space-x-2">
               <Switch
                 id="is-private-toggle"
-                v-model:checked="form.isPrivate"
+                v-model="form.isPrivate"
               />
               <Label for="is-private-toggle" class="text-sm text-muted-foreground">
                 {{ form.isPrivate ? 'Private Group' : 'Public Group' }}
@@ -80,7 +80,8 @@
            <div class="flex items-center space-x-2">
               <Switch
                 id="requires-password"
-                v-model:checked="form.requires_password"
+                v-model="form.requires_password"
+                @update:modelValue="(val) => { if (!val) { form.password = ''; form.confirmPassword = ''; } }"
               />
               <Label for="requires-password" class="text-sm text-muted-foreground">
                 {{ form.requires_password ? 'Password Required' : 'No Password Required' }}
@@ -92,11 +93,15 @@
                 type="password" 
                 v-model="form.password" 
                 placeholder="Enter password" 
+                :disabled="!form.requires_password"
+                :class="{ 'opacity-50': !form.requires_password }"
               />
               <Input 
                 type="password" 
                 v-model="form.confirmPassword" 
                 placeholder="Confirm password" 
+                :disabled="!form.requires_password"
+                :class="{ 'opacity-50': !form.requires_password }"
               />
             </div>
           </div>
@@ -107,7 +112,8 @@
             <div class="flex items-center space-x-2">
               <Switch
                 id="requires-documents"
-                v-model:checked="form.requires_documents"
+                v-model="form.requires_documents"
+                @update:modelValue="(val) => { if (!val) { form.documents = []; } }"
               />
               <Label for="requires-documents" class="text-sm text-muted-foreground">
                 {{ form.requires_documents ? 'Documents Required' : 'No Documents Required' }}
@@ -120,6 +126,8 @@
                 variant="outline" 
                 @click="addDocument"
                 class="flex items-center mb-2"
+                :disabled="!form.requires_documents"
+                :class="{ 'opacity-50': !form.requires_documents }"
               >
                 <Plus class="h-4 w-4 mr-1" />
                 Add Required Document
@@ -130,6 +138,8 @@
                   <Input 
                     v-model="doc.name" 
                     placeholder="Document name (e.g. ID Card, Student Card)" 
+                    :disabled="!form.requires_documents"
+                    :class="{ 'opacity-50': !form.requires_documents }"
                   />
                   <Button 
                     type="button"
@@ -137,6 +147,8 @@
                     size="icon" 
                     @click="removeDocument(index)"
                     title="Remove this document requirement"
+                    :disabled="!form.requires_documents"
+                    :class="{ 'opacity-50': !form.requires_documents }"
                   >
                     <Trash class="h-4 w-4" />
                   </Button>
@@ -158,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import axios from '~/src/utils/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

@@ -77,7 +77,8 @@
               <div class="flex items-center space-x-2">
                 <Switch
                   id="is-private-toggle"
-                  v-model:checked="formData.isPrivate"
+                  v-model="formData.isPrivate"
+                  @update:modelValue="savePrivacy"
                 />
                 <Label for="is-private-toggle" class="text-sm text-muted-foreground">
                   {{ formData.isPrivate ? 'Private Group' : 'Public Group' }}
@@ -91,7 +92,8 @@
               <div class="flex items-center space-x-2">
                 <Switch
                   id="requires-password-toggle"
-                  v-model:checked="formData.requires_password"
+                  v-model="formData.requires_password"
+                  @update:modelValue="togglePasswordRequirement"
                 />
                 <Label for="requires-password-toggle" class="text-sm text-muted-foreground">
                   {{ formData.requires_password ? 'Password Required' : 'No Password Required' }}
@@ -104,6 +106,8 @@
                   v-model="formData.password" 
                   placeholder="Enter password" 
                   id="password"
+                  :disabled="!formData.requires_password"
+                  :class="{ 'opacity-50': !formData.requires_password }"
                 />
                 
                 <Input 
@@ -111,6 +115,8 @@
                   v-model="formData.confirmPassword" 
                   placeholder="Confirm password"
                   id="confirm-password"
+                  :disabled="!formData.requires_password"
+                  :class="{ 'opacity-50': !formData.requires_password }"
                 />
               </div>
             </div>
@@ -121,7 +127,8 @@
               <div class="flex items-center space-x-2">
                 <Switch
                   id="requires-documents-toggle"
-                  v-model:checked="formData.requires_documents"
+                  v-model="formData.requires_documents"
+                  @update:modelValue="toggleDocumentRequirement"
                 />
                 <Label for="requires-documents-toggle" class="text-sm text-muted-foreground">
                   {{ formData.requires_documents ? 'Documents Required' : 'No Documents Required' }}
@@ -129,12 +136,13 @@
               </div>
               
               <div class="space-y-2 mt-2">
-
                 <Button 
                   type="button"
                   variant="outline" 
                   @click="addDocument"
                   class="flex items-center"
+                  :disabled="!formData.requires_documents"
+                  :class="{ 'opacity-50': !formData.requires_documents }"
                 >
                   <LucideIcon name="Plus" class="h-4 w-4 mr-1" />
                   Add Required Document
@@ -145,6 +153,8 @@
                     <Input 
                       v-model="doc.name" 
                       placeholder="Document name (e.g. ID Card, Student Card)" 
+                      :disabled="!formData.requires_documents"
+                      :class="{ 'opacity-50': !formData.requires_documents }"
                     />
                     <Button 
                       type="button"
@@ -152,6 +162,8 @@
                       size="icon" 
                       @click="removeDocument(index)"
                       title="Remove this document requirement"
+                      :disabled="!formData.requires_documents"
+                      :class="{ 'opacity-50': !formData.requires_documents }"
                     >
                       <LucideIcon name="Trash" class="h-4 w-4" />
                     </Button>
@@ -573,6 +585,12 @@ const savePrivacy = async () => {
 
 const togglePasswordRequirement = async () => {
   try {
+    // Clear password fields if toggling off
+    if (!formData.value.requires_password) {
+      formData.value.password = '';
+      formData.value.confirmPassword = '';
+    }
+    
     const dataToSubmit = {
       requires_password: formData.value.requires_password
     }
@@ -617,8 +635,14 @@ const savePassword = async () => {
 
 const toggleDocumentRequirement = async () => {
   try {
+    // Clear documents if toggling off
+    if (!formData.value.requires_documents) {
+      formData.value.documents = [];
+    }
+    
     const dataToSubmit = {
-      requires_documents: formData.value.requires_documents
+      requires_documents: formData.value.requires_documents,
+      required_documents: formData.value.requires_documents ? undefined : '[]'
     }
     
     await updateGroupField(dataToSubmit)
