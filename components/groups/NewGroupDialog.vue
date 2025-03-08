@@ -1,152 +1,158 @@
 <template>
   <Dialog :open="true" @update:open="$emit('close')">
-    <DialogContent class="w-full max-w-3xl">
+    <DialogContent class="w-full max-w-3xl flex flex-col h-[80vh]">
       <DialogHeader>
         <DialogTitle>Create New Group</DialogTitle>
       </DialogHeader>
 
-      <form @submit.prevent="handleSubmit" class="space-y-6 p-6 pt-0">
-        <!-- Group Picture -->
-        <div class="flex justify-center mb-8">
-          <div class="relative">
-            <div v-if="!form.picture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
-              <Users class="h-16 w-16 text-gray-400" />
+      <ScrollArea class="flex-1" maxHeight="calc(80vh - 140px)">
+        <div class="p-6 pt-0 space-y-6">
+          <!-- Group Picture -->
+          <div class="flex justify-center mb-8 pb-4">
+            <div class="relative">
+              <div v-if="!form.picture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
+                <Users class="h-16 w-16 text-gray-400" />
+              </div>
+              <img 
+                v-else
+                :src="form.picture" 
+                alt="Group Picture"
+                class="w-28 h-28 rounded-full object-cover border"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
+                @click="triggerFileInput"
+              >
+                <Camera class="h-4 w-4" />
+              </Button>
+              <input 
+                type="file" 
+                ref="fileInput" 
+                class="hidden"
+                accept="image/*" 
+                @change="handlePictureUpload" 
+              />
             </div>
-            <img 
-              v-else
-              :src="form.picture" 
-              alt="Group Picture"
-              class="w-28 h-28 rounded-full object-cover border"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
-              @click="triggerFileInput"
-            >
-              <Camera class="h-4 w-4" />
-            </Button>
-            <input 
-              type="file" 
-              ref="fileInput" 
-              class="hidden"
-              accept="image/*" 
-              @change="handlePictureUpload" 
-            />
-          </div>
-        </div>
-        
-        <!-- Group Name -->
-        <div class="space-y-2">
-          <Label for="group-name">Group Name</Label>
-          <Input 
-            id="group-name"
-            v-model="form.name" 
-            placeholder="Enter group name"
-            required
-          />
-        </div>
-        
-        <!-- Group Description -->
-        <div class="space-y-2">
-          <Label for="group-description">Description</Label>
-          <textarea
-            id="group-description"
-            v-model="form.description"
-            class="w-full px-3 py-2 border rounded-md h-24"
-            placeholder="Enter group description"
-          ></textarea>
-        </div>
-        
-        <!-- Privacy Settings -->
-        <div class="space-y-2">
-          <Label>Privacy</Label>
-          <div class="flex space-x-4">
-            <label class="flex items-center space-x-2">
-              <input 
-                type="radio" 
-                v-model="form.isPrivate" 
-                :value="true"
-              />
-              <span>Private Group</span>
-            </label>
-            <label class="flex items-center space-x-2">
-              <input 
-                type="radio" 
-                v-model="form.isPrivate" 
-                :value="false"
-              />
-              <span>Public Group</span>
-            </label>
-          </div>
-        </div>
-        
-
-        <!-- Group Password -->
-         <div class="space-y-2">
-            <Label>
-              <input type="checkbox" v-model="form.requires_password" />
-              Admission requires a password
-            </Label>
-            <Input 
-              type="password" 
-              v-model="form.password" 
-              placeholder="Enter password" 
-              :disabled="!form.requires_password"
-            />
-            <Input 
-              type="password" 
-              v-model="form.confirmPassword" 
-              placeholder="Confirm password" 
-              :disabled="!form.requires_password"
-            />
-          </div>
-
-
-
-        <!-- Documents Required -->
-        <div class="space-y-4">
-          <div class="space-y-2">
-            <Label>Documents Required from Users to Join</Label>
           </div>
           
-          <Button 
-            type="button"
-            variant="outline" 
-            @click="addDocument"
-            class="flex items-center"
-          >
-            <Plus class="h-4 w-4 mr-1" />
-            Add Required Document
-          </Button>
+          <!-- Group Name -->
+          <div class="space-y-2 pb-3">
+            <Label for="group-name" class="text-sm font-medium">Name</Label>
+            <Input 
+              id="group-name"
+              v-model="form.name" 
+              placeholder="Enter group name"
+              required
+            />
+          </div>
           
-          <div v-if="form.documents.length" class="space-y-2">
-            <div v-for="(doc, index) in form.documents" :key="index" class="flex items-center space-x-2">
+          <!-- Group Description -->
+          <div class="space-y-2 pb-3">
+            <Label for="group-description" class="text-sm font-medium">Description</Label>
+            <Textarea
+              id="group-description"
+              v-model="form.description"
+              class="w-full"
+              placeholder="Enter group description"
+            />
+          </div>
+          
+          <!-- Privacy Settings -->
+          <div class="space-y-2 pb-3">
+            <Label for="is-private-toggle" class="text-sm font-medium">Privacy</Label>
+            <div class="flex items-center space-x-2">
+              <Switch
+                id="is-private-toggle"
+                v-model:checked="form.isPrivate"
+              />
+              <Label for="is-private-toggle" class="text-sm text-muted-foreground">
+                {{ form.isPrivate ? 'Private Group' : 'Public Group' }}
+              </Label>
+            </div>
+          </div>
+          
+          <!-- Group Password -->
+          <div class="space-y-2 pb-3">
+            <Label for="requires-password" class="text-sm font-medium">Password</Label>
+           <div class="flex items-center space-x-2">
+              <Switch
+                id="requires-password"
+                v-model:checked="form.requires_password"
+              />
+              <Label for="requires-password" class="text-sm text-muted-foreground">
+                {{ form.requires_password ? 'Password Required' : 'No Password Required' }}
+              </Label>
+            </div>
+            
+            <div class="space-y-2 mt-2">
               <Input 
-                v-model="doc.name" 
-                placeholder="Document name (e.g. ID Card, Student Card)" 
+                type="password" 
+                v-model="form.password" 
+                placeholder="Enter password" 
               />
+              <Input 
+                type="password" 
+                v-model="form.confirmPassword" 
+                placeholder="Confirm password" 
+              />
+            </div>
+          </div>
+
+          <!-- Documents Required -->
+          <div class="space-y-2 pb-3">
+            <Label for="requires-documents" class="text-sm font-medium">Documents</Label>
+            <div class="flex items-center space-x-2">
+              <Switch
+                id="requires-documents"
+                v-model:checked="form.requires_documents"
+              />
+              <Label for="requires-documents" class="text-sm text-muted-foreground">
+                {{ form.requires_documents ? 'Documents Required' : 'No Documents Required' }}
+              </Label>
+            </div>
+            
+            <div class="mt-2">
               <Button 
                 type="button"
-                variant="destructive" 
-                size="icon" 
-                @click="removeDocument(index)"
-                title="Remove this document requirement"
+                variant="outline" 
+                @click="addDocument"
+                class="flex items-center mb-2"
               >
-                <Trash class="h-4 w-4" />
+                <Plus class="h-4 w-4 mr-1" />
+                Add Required Document
               </Button>
+              
+              <div class="space-y-2">
+                <div v-for="(doc, index) in form.documents" :key="index" class="flex items-center space-x-2">
+                  <Input 
+                    v-model="doc.name" 
+                    placeholder="Document name (e.g. ID Card, Student Card)" 
+                  />
+                  <Button 
+                    type="button"
+                    variant="destructive" 
+                    size="icon" 
+                    @click="removeDocument(index)"
+                    title="Remove this document requirement"
+                  >
+                    <Trash class="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         
         <DialogFooter class="pt-2">
           <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
-          <Button type="submit" :disabled="isSubmitting">
+          <Button type="submit" :disabled="isSubmitting" @click="handleSubmit">
             {{ isSubmitting ? 'Creating...' : 'Create Group' }}
           </Button>
         </DialogFooter>
-      </form>
+      </ScrollArea>
     </DialogContent>
   </Dialog>
 </template>
@@ -166,6 +172,9 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 const emit = defineEmits(['close', 'group-created'])
 
@@ -180,6 +189,7 @@ const form = ref({
   requires_password: false,
   password: '',
   confirmPassword: '',
+  requires_documents: false,
   documents: []
 })
 
@@ -231,8 +241,11 @@ const handleSubmit = async () => {
     }
     
     // Convert documents to the format expected by the backend
-    const requiredDocuments = form.value.documents.map(doc => doc.name)
-    console.log('Required documents array:', requiredDocuments)
+    let requiredDocuments = []
+    if (form.value.requires_documents && form.value.documents.length > 0) {
+      requiredDocuments = form.value.documents.map(doc => doc.name)
+      console.log('Required documents array:', requiredDocuments)
+    }
     
     // Create form data to send to API
     const groupData = {
@@ -242,6 +255,7 @@ const handleSubmit = async () => {
       picture: form.value.picture,
       requires_password: form.value.requires_password,
       password: form.value.requires_password ? form.value.password : '',
+      requires_documents: form.value.requires_documents,
       required_documents: JSON.stringify(requiredDocuments)
     }
     

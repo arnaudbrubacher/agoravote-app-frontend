@@ -1,33 +1,33 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent class="w-full max-w-lg">
+    <DialogContent class="w-full max-w-lg flex flex-col h-[80vh]">
       <DialogHeader>
         <DialogTitle>User Settings</DialogTitle>
       
       </DialogHeader>
 
-      <div class="flex-1 overflow-y-auto p-6"> 
-        <form @submit.prevent="saveSettings" class="space-y-6">
+      <ScrollArea class="flex-1" maxHeight="calc(80vh - 140px)">
+        <div class="p-6 space-y-6">
           <!-- Profile Picture Section -->
-          <div class="flex flex-col items-center pb-6 border-b">
+          <div class="flex flex-col items-center mb-8 pb-4">
             <div class="relative mb-4">
-              <div v-if="!profilePicture" class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
-                <User class="h-10 w-10 text-gray-400" />
+              <div v-if="!profilePicture" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
+                <User class="h-16 w-16 text-gray-400" />
               </div>
               <img 
                 v-else
                 :src="profilePicture" 
                 alt="Profile Picture"
-                class="w-24 h-24 rounded-full object-cover border"
+                class="w-28 h-28 rounded-full object-cover border"
               />
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="icon"
-                class="absolute bottom-0 right-0 rounded-full bg-background border shadow-sm"
+                class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
                 @click="triggerFileInput"
               >
-                <EditIcon class="h-4 w-4" />
+                <Camera class="h-4 w-4" />
               </Button>
             </div>
             <input 
@@ -51,100 +51,61 @@
           <div class="space-y-4">
             
             <!-- Name Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Name</p>
-                <p class="font-medium">{{ userNameEdit }}</p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="editingName = !editingName"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="editingName" class="pb-4">
+            <div class="space-y-2 pb-3">
+              <Label for="name" class="text-sm font-medium">Name</Label>
               <Input
                 id="name"
                 v-model="userNameEdit"
-                class="w-full mb-2"
+                class="w-full"
                 placeholder="Enter display name"
               />
-              <div class="flex justify-end gap-2">
-                <Button variant="outline" size="sm" @click="editingName = false">Cancel</Button>
-                <Button type="button" size="sm" @click="saveUserName">Save</Button>
-              </div>
             </div>
 
             <!-- Email Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Email Address</p>
-                <p class="font-medium">{{ userEmailEdit }}</p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="editingEmail = !editingEmail"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="editingEmail" class="pb-4">
+            <div class="space-y-2 pb-3">
+              <Label for="email" class="text-sm font-medium">Email Address</Label>
               <Input
                 id="email"
                 v-model="userEmailEdit"
-                class="w-full mb-2"
+                class="w-full"
                 placeholder="Enter email address"
               />
-              <p class="text-xs text-muted-foreground mb-2">
-                Changing your email will require verification
-              </p>
-              <div class="flex justify-end gap-2">
-                <Button variant="outline" size="sm" @click="editingEmail = false">Cancel</Button>
-                <Button type="button" size="sm" @click="saveUserEmail">Save</Button>
-              </div>
             </div>
 
             <!-- Email Verification Status -->
-            <div v-if="userData?.email_verified !== undefined" class="flex items-center pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Verification Status</p>
-                <div class="flex items-center">
-                  <span v-if="userData.email_verified" class="text-green-600 flex items-center">
-                    <CheckCircleIcon class="h-4 w-4 mr-1"/> Verified
-                  </span>
-                  <span v-else class="text-amber-600 flex items-center">
-                    <AlertCircleIcon class="h-4 w-4 mr-1"/> Not Verified
-                    <Button 
-                      variant="link" 
-                      class="text-xs pl-1 h-auto p-0"
-                      @click="resendVerificationEmail"
-                    >
-                      Resend Verification
-                    </Button>
-                  </span>
-                </div>
+            <div v-if="userData?.email_verified !== undefined" class="space-y-2 pb-3">
+              <Label class="text-sm font-medium">Verification Status</Label>
+              <div class="flex items-center">
+                <span v-if="userData.email_verified" class="text-green-600 flex items-center">
+                  <CheckCircleIcon class="h-4 w-4 mr-1"/> Verified
+                </span>
+                <span v-else class="text-amber-600 flex items-center">
+                  <AlertCircleIcon class="h-4 w-4 mr-1"/> Not Verified
+                  <Button 
+                    variant="link" 
+                    class="text-xs pl-1 h-auto p-0"
+                    @click="resendVerificationEmail"
+                  >
+                    Resend Verification
+                  </Button>
+                </span>
               </div>
             </div>
 
             <!-- Password Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Password</p>
-                <p class="font-medium">●●●●●●●●</p>
+            <div class="space-y-2 pb-3">
+              <div class="flex items-center justify-between">
+                <Label class="text-sm font-medium">Password</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  @click="showPasswordChange = true"
+                >
+                  Change
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="showPasswordChange = true"
-              >
-                Change
-              </Button>
+              <p class="font-medium">●●●●●●●●</p>
             </div>
           </div>
           
@@ -159,11 +120,11 @@
               Log Out
             </Button>
           </div>
-        </form>
-      </div>
+        </div>
+      </ScrollArea>
       
       <!-- Custom Footer instead of DialogFooter -->
-      <div class="px-6 pb-6 border-t pt-4 mt-4 flex justify-between w-full">
+      <div class="px-6 py-4 border-t mt-4 flex justify-between w-full">
         <Button 
           variant="destructive" 
           size="sm"
@@ -175,7 +136,7 @@
         
         <div class="flex space-x-2">
           <Button variant="outline" @click="$emit('update:open', false)">Cancel</Button>
-          <Button type="submit" @click="saveSettings">Save Changes</Button>
+          <Button type="button" @click="saveSettings">Save Changes</Button>
         </div>
       </div>
     </DialogContent>
@@ -192,18 +153,18 @@
       </DialogHeader>
 
       <div class="grid gap-4 py-4">
-        <div class="grid gap-2">
-          <Label for="current-password">Current Password</Label>
+        <div class="space-y-2">
+          <Label for="current-password" class="text-sm font-medium">Current Password</Label>
           <Input id="current-password" type="password" v-model="currentPassword" />
         </div>
 
-        <div class="grid gap-2">
-          <Label for="new-password">New Password</Label>
+        <div class="space-y-2">
+          <Label for="new-password" class="text-sm font-medium">New Password</Label>
           <Input id="new-password" type="password" v-model="newPassword" />
         </div>
 
-        <div class="grid gap-2">
-          <Label for="confirm-password">Confirm New Password</Label>
+        <div class="space-y-2">
+          <Label for="confirm-password" class="text-sm font-medium">Confirm New Password</Label>
           <Input id="confirm-password" type="password" v-model="confirmPassword" />
           <p v-if="passwordMismatch" class="text-xs text-destructive">
             Passwords do not match
@@ -223,7 +184,7 @@
 import { ref, computed, onMounted, watch } from 'vue' // Add watch import here
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { TrashIcon, LogOutIcon, EditIcon, CheckCircleIcon, AlertCircleIcon, User } from 'lucide-vue-next'
+import { TrashIcon, LogOutIcon, EditIcon, CheckCircleIcon, AlertCircleIcon, User, Camera } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -237,6 +198,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 const router = useRouter()
 const fileInput = ref(null)
@@ -263,8 +225,6 @@ const showPasswordChange = ref(false)
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
-const editingName = ref(false)
-const editingEmail = ref(false)
 const userStats = ref(null)
 
 // Computed props
@@ -317,9 +277,6 @@ watch(() => props.open, (isOpen) => {
     // Reset form values when dialog is opened
     userNameEdit.value = props.userData.name || ''
     userEmailEdit.value = props.userData.email || ''
-    // Reset editing states
-    editingName.value = false
-    editingEmail.value = false
   }
 })
 
@@ -362,86 +319,6 @@ const handleProfilePictureUpload = async (event) => {
   } catch (error) {
     console.error('Failed to upload profile picture:', error)
     alert('Failed to upload profile picture: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-// Save user name
-const saveUserName = async () => {
-  try {
-    const userId = localStorage.getItem('userId')
-    
-    // Update user name
-    await axios.put(`/users/${userId}`, {
-      name: userNameEdit.value
-    })
-    
-    // Update local user data
-    if (props.userData) {
-      props.userData.name = userNameEdit.value
-    }
-    
-    // Hide editing UI
-    editingName.value = false
-    
-    // Emit refresh event
-    emit('refresh-user-data')
-    
-    // Dispatch global event for other components
-    window.dispatchEvent(new CustomEvent('user-data-updated'))
-    
-    return true
-  } catch (error) {
-    console.error('Failed to update user name:', error)
-    throw error
-  }
-}
-
-// Save user email
-const saveUserEmail = async () => {
-  try {
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    console.log('Saving user email:', userEmailEdit.value)
-    console.log('User ID:', userId)
-    console.log('Token available:', !!token)
-    
-    if (!userId || !token) {
-      throw new Error('Authentication required')
-    }
-    
-    // Check if email has changed
-    const emailChanged = userEmailEdit.value !== props.userData?.email
-    
-    if (emailChanged) {
-      // Make API call to update user email
-      console.log('Making PUT request to:', `/users/${userId}`)
-      const response = await axios.put(`/users/${userId}`, {
-        email: userEmailEdit.value
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      console.log('Update user email response:', response.data)
-      
-      // Show verification message
-      alert('A verification email has been sent to your new email address. Please verify to complete the change.')
-    }
-    
-    // Exit edit mode
-    editingEmail.value = false
-    
-    // Emit event to refresh parent data
-    emit('refresh-user-data')
-    
-    // Show success message
-    console.log('User email updated successfully')
-  } catch (error) {
-    console.error('Failed to update user email:', error)
-    console.error('Error response:', error.response)
-    alert('Failed to update user email: ' + (error.response?.data?.error || 'Unknown error'))
   }
 }
 

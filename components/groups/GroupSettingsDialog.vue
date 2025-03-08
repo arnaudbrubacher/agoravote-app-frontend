@@ -1,32 +1,32 @@
 <template>
   <Dialog :open="true" @update:open="$emit('close')">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="sm:max-w-lg flex flex-col h-[80vh]">
       <DialogHeader>
         <DialogTitle>Group Settings</DialogTitle>
       </DialogHeader>
 
-      <div class="flex-1 overflow-y-auto p-6">
-        <div class="space-y-6">
+      <ScrollArea class="flex-1" maxHeight="calc(80vh - 140px)">
+        <div class="p-6 space-y-6">
           <!-- Group Picture Section -->
-          <div class="flex flex-col items-center pb-6 border-b">
+          <div class="flex flex-col items-center mb-8 pb-4">
             <div class="relative mb-4">
-              <div v-if="!group.picture && !previewImage" class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
-                <Users class="h-10 w-10 text-gray-400" />
+              <div v-if="!group.picture && !previewImage" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
+                <Users class="h-16 w-16 text-gray-400" />
               </div>
               <img 
                 v-else
                 :src="previewImage || (group.picture && isFullUrl(group.picture) ? group.picture : `${apiBaseUrl}${group.picture}`)" 
                 alt="Group Picture"
-                class="w-24 h-24 rounded-full object-cover border"
+                class="w-28 h-28 rounded-full object-cover border"
               />
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="icon"
-                class="absolute bottom-0 right-0 rounded-full bg-background border shadow-sm"
+                class="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-md"
                 @click="$refs.fileInput.click()"
               >
-                <EditIcon class="h-4 w-4" />
+                <Camera class="h-4 w-4" />
               </Button>
             </div>
             <input 
@@ -49,174 +49,98 @@
           <!-- Group Information Section -->
           <div class="space-y-4">
             <!-- Group Name Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Name</p>
-                <p class="font-medium">{{ formData.name }}</p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="editingName = !editingName"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="editingName" class="pb-4">
+            <div class="space-y-2 pb-3">
+              <Label for="name" class="text-sm font-medium">Name</Label>
               <Input
                 id="name"
                 v-model="formData.name"
-                class="w-full mb-2"
+                class="w-full"
                 placeholder="Enter group name"
                 required
               />
-              <div class="flex justify-end gap-2">
-                <Button variant="outline" size="sm" @click="cancelNameEdit">Cancel</Button>
-                <Button type="button" size="sm" @click="saveName">Save</Button>
-              </div>
             </div>
 
             <!-- Group Description Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Description</p>
-                <p class="font-medium">{{ formData.description || 'No description' }}</p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="editingDescription = !editingDescription"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="editingDescription" class="pb-4">
+            <div class="space-y-2 pb-3">
+              <Label for="description" class="text-sm font-medium">Description</Label>
               <Textarea
                 id="description"
                 v-model="formData.description"
-                class="w-full mb-2"
+                class="w-full"
                 placeholder="Enter group description"
               />
-              <div class="flex justify-end gap-2">
-                <Button variant="outline" size="sm" @click="cancelDescriptionEdit">Cancel</Button>
-                <Button type="button" size="sm" @click="saveDescription">Save</Button>
-              </div>
             </div>
 
             <!-- Group Privacy Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Privacy Setting</p>
-                <p class="font-medium">{{ formData.isPublic ? 'Public' : 'Private' }}</p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="editingPrivacy = !editingPrivacy"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="editingPrivacy" class="pb-4">
-              <div class="flex space-x-4 mb-2">
-                <label class="flex items-center space-x-2">
-                  <input 
-                    type="radio" 
-                    v-model="formData.isPublic" 
-                    :value="false"
-                  />
-                  <span>Private Group</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                  <input 
-                    type="radio" 
-                    v-model="formData.isPublic" 
-                    :value="true"
-                  />
-                  <span>Public Group</span>
-                </label>
-              </div>
-              <div class="flex justify-end gap-2">
-                <Button variant="outline" size="sm" @click="cancelPrivacyEdit">Cancel</Button>
-                <Button type="button" size="sm" @click="savePrivacy">Save</Button>
+            <div class="space-y-2 pb-3">
+              <Label for="is-private-toggle" class="text-sm font-medium">Privacy</Label>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="is-private-toggle"
+                  v-model:checked="formData.isPrivate"
+                />
+                <Label for="is-private-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.isPrivate ? 'Private Group' : 'Public Group' }}
+                </Label>
               </div>
             </div>
 
             <!-- Password Requirement Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Password Protection</p>
-                <p class="font-medium">{{ formData.requires_password ? 'Password Required' : 'No Password Required' }}</p>
+            <div class="space-y-2 pb-3">
+              <Label for="requires-password" class="text-sm font-medium">Password</Label>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="requires-password-toggle"
+                  v-model:checked="formData.requires_password"
+                />
+                <Label for="requires-password-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.requires_password ? 'Password Required' : 'No Password Required' }}
+                </Label>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="editingPassword = !editingPassword"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="editingPassword" class="pb-4">
-              <div class="space-y-3 mb-2">
-                <div class="flex items-center space-x-2">
-                  <input type="checkbox" id="requires-password" v-model="formData.requires_password" />
-                  <Label for="requires-password">Admission requires a password</Label>
-                </div>
-                
+              
+              <div class="space-y-2 mt-2">
                 <Input 
                   type="password" 
                   v-model="formData.password" 
                   placeholder="Enter password" 
-                  :disabled="!formData.requires_password"
-                  class="mb-2"
+                  id="password"
                 />
                 
                 <Input 
                   type="password" 
                   v-model="formData.confirmPassword" 
-                  placeholder="Confirm password" 
-                  :disabled="!formData.requires_password"
+                  placeholder="Confirm password"
+                  id="confirm-password"
                 />
-              </div>
-              <div class="flex justify-end gap-2">
-                <Button variant="outline" size="sm" @click="cancelPasswordEdit">Cancel</Button>
-                <Button type="button" size="sm" @click="savePassword">Save</Button>
               </div>
             </div>
 
             <!-- Required Documents Field -->
-            <div class="flex items-center justify-between pb-3 border-b">
-              <div>
-                <p class="text-xs text-muted-foreground mb-1">Required Documents</p>
-                <p class="font-medium">
-                  <template v-if="formData.documents.length">
-                    <span v-for="(doc, index) in formData.documents" :key="index">
-                      {{ doc.name }}{{ index < formData.documents.length - 1 ? ', ' : '' }}
-                    </span>
-                  </template>
-                  <template v-else>
-                    No documents required
-                  </template>
-                </p>
+            <div class="space-y-2 pb-3">
+              <Label for="requires-documents" class="text-sm font-medium">Documents</Label>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="requires-documents-toggle"
+                  v-model:checked="formData.requires_documents"
+                />
+                <Label for="requires-documents-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.requires_documents ? 'Documents Required' : 'No Documents Required' }}
+                </Label>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="editingDocuments = !editingDocuments"
-              >
-                <EditIcon class="h-4 w-4" />
-              </Button>
-            </div>
-            <div v-if="editingDocuments" class="pb-4">
-              <div class="space-y-3 mb-2">
-                <p class="text-sm">Documents required from users to join:</p>
+              
+              <div class="space-y-2 mt-2">
+
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  @click="addDocument"
+                  class="flex items-center"
+                >
+                  <LucideIcon name="Plus" class="h-4 w-4 mr-1" />
+                  Add Required Document
+                </Button>
                 
-                <div v-if="formData.documents.length" class="space-y-2">
+                <div class="space-y-2">
                   <div v-for="(doc, index) in formData.documents" :key="index" class="flex items-center space-x-2">
                     <Input 
                       v-model="doc.name" 
@@ -233,20 +157,6 @@
                     </Button>
                   </div>
                 </div>
-                
-                <Button 
-                  type="button"
-                  variant="outline" 
-                  @click="addDocument"
-                  class="flex items-center"
-                >
-                  <LucideIcon name="Plus" class="h-4 w-4 mr-1" />
-                  Add Required Document
-                </Button>
-              </div>
-              <div class="flex justify-end gap-2">
-                <Button variant="outline" size="sm" @click="cancelDocumentsEdit">Cancel</Button>
-                <Button type="button" size="sm" @click="saveDocuments">Save</Button>
               </div>
             </div>
           </div>
@@ -264,10 +174,10 @@
             </Button>
           </div>
         </div>
-      </div>
+      </ScrollArea>
       
       <!-- Custom Footer instead of DialogFooter -->
-      <div class="px-6 pb-6 border-t pt-4 mt-4 flex justify-between w-full">
+      <div class="px-6 py-4 border-t mt-4 flex justify-between w-full">
         <Button 
           variant="destructive" 
           size="sm"
@@ -295,7 +205,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Users, Camera } from 'lucide-vue-next'
-import { EditIcon } from 'lucide-vue-next'
 import axios from '~/src/utils/axios'
 import {
   Dialog,
@@ -305,6 +214,8 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 const props = defineProps({
   group: {
@@ -319,20 +230,18 @@ const previewImage = ref(null)
 const selectedFile = ref(null)
 const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
 
-// Editing states
-const editingName = ref(false)
-const editingDescription = ref(false)
-const editingPrivacy = ref(false)
-const editingPassword = ref(false)
-const editingDocuments = ref(false)
+// Editing states are no longer needed
+// const editingName = ref(false)
+// const editingDescription = ref(false)
 
 const formData = ref({
   name: '',
   description: '',
-  isPublic: true,
+  isPrivate: true,
   requires_password: false,
   password: '',
   confirmPassword: '',
+  requires_documents: false,
   documents: []
 })
 
@@ -387,10 +296,11 @@ onMounted(() => {
   formData.value = {
     name: props.group.name || '',
     description: props.group.description || '',
-    isPublic: !(props.group.isPrivate || props.group.is_private), // Check both possible field names
+    isPrivate: (props.group.isPrivate || props.group.is_private), // Check both possible field names
     requires_password: props.group.requires_password || false,
     password: '',
     confirmPassword: '',
+    requires_documents: props.group.requires_documents || (parsedDocs.length > 0),
     documents: parsedDocs
   }
   
@@ -436,10 +346,11 @@ const refreshFormData = () => {
   formData.value = {
     name: props.group.name || '',
     description: props.group.description || '',
-    isPublic: !(props.group.isPrivate || props.group.is_private), // Check both possible field names
+    isPrivate: (props.group.isPrivate || props.group.is_private), // Check both possible field names
     requires_password: props.group.requires_password || false,
     password: '',
     confirmPassword: '',
+    requires_documents: props.group.requires_documents || (parsedDocs.length > 0),
     documents: parsedDocs
   }
   
@@ -628,17 +539,10 @@ const saveName = async () => {
     }
     
     await updateGroupField(dataToSubmit)
-    editingName.value = false
   } catch (error) {
     console.error('Failed to update group name:', error)
     alert('Failed to update group name: ' + (error.response?.data?.error || 'Unknown error'))
   }
-}
-
-const cancelNameEdit = () => {
-  // Reset to original value
-  formData.value.name = props.group.name || ''
-  editingName.value = false
 }
 
 const saveDescription = async () => {
@@ -648,37 +552,36 @@ const saveDescription = async () => {
     }
     
     await updateGroupField(dataToSubmit)
-    editingDescription.value = false
   } catch (error) {
     console.error('Failed to update group description:', error)
     alert('Failed to update group description: ' + (error.response?.data?.error || 'Unknown error'))
   }
 }
 
-const cancelDescriptionEdit = () => {
-  // Reset to original value
-  formData.value.description = props.group.description || ''
-  editingDescription.value = false
-}
-
 const savePrivacy = async () => {
   try {
     const dataToSubmit = {
-      is_private: !formData.value.isPublic
+      is_private: formData.value.isPrivate
     }
     
     await updateGroupField(dataToSubmit)
-    editingPrivacy.value = false
   } catch (error) {
     console.error('Failed to update group privacy:', error)
     alert('Failed to update group privacy: ' + (error.response?.data?.error || 'Unknown error'))
   }
 }
 
-const cancelPrivacyEdit = () => {
-  // Reset to original value
-  formData.value.isPublic = !(props.group.isPrivate || props.group.is_private)
-  editingPrivacy.value = false
+const togglePasswordRequirement = async () => {
+  try {
+    const dataToSubmit = {
+      requires_password: formData.value.requires_password
+    }
+    
+    await updateGroupField(dataToSubmit)
+  } catch (error) {
+    console.error('Failed to update password requirement:', error)
+    alert('Failed to update password requirement: ' + (error.response?.data?.error || 'Unknown error'))
+  }
 }
 
 const savePassword = async () => {
@@ -706,19 +609,23 @@ const savePassword = async () => {
     }
     
     await updateGroupField(dataToSubmit)
-    editingPassword.value = false
   } catch (error) {
     console.error('Failed to update password settings:', error)
     alert('Failed to update password settings: ' + (error.response?.data?.error || 'Unknown error'))
   }
 }
 
-const cancelPasswordEdit = () => {
-  // Reset to original values
-  formData.value.requires_password = props.group.requires_password || false
-  formData.value.password = ''
-  formData.value.confirmPassword = ''
-  editingPassword.value = false
+const toggleDocumentRequirement = async () => {
+  try {
+    const dataToSubmit = {
+      requires_documents: formData.value.requires_documents
+    }
+    
+    await updateGroupField(dataToSubmit)
+  } catch (error) {
+    console.error('Failed to update document requirements:', error)
+    alert('Failed to update document requirements: ' + (error.response?.data?.error || 'Unknown error'))
+  }
 }
 
 const saveDocuments = async () => {
@@ -740,23 +647,17 @@ const saveDocuments = async () => {
     console.log('Documents as JSON string:', jsonDocuments)
     
     const dataToSubmit = {
+      requires_documents: true,
       required_documents: jsonDocuments
     }
     
     console.log('Submitting documents update:', dataToSubmit)
     
     await updateGroupField(dataToSubmit)
-    editingDocuments.value = false
   } catch (error) {
     console.error('Failed to update required documents:', error)
     alert('Failed to update required documents: ' + (error.response?.data?.error || 'Unknown error'))
   }
-}
-
-const cancelDocumentsEdit = () => {
-  // Reset to original values
-  formData.value.documents = parseRequiredDocuments(props.group.required_documents)
-  editingDocuments.value = false
 }
 
 // Helper function to update a single field
@@ -801,6 +702,28 @@ const updateGroupField = async (fieldData) => {
 
 const handleSubmit = async () => {
   try {
+    // Validate passwords match if password is required
+    if (formData.value.requires_password) {
+      if (!formData.value.password) {
+        alert('Please enter a password')
+        return
+      }
+      
+      if (formData.value.password !== formData.value.confirmPassword) {
+        alert('Passwords do not match')
+        return
+      }
+    }
+    
+    // Validate document names if documents are required
+    if (formData.value.requires_documents && formData.value.documents.length > 0) {
+      const emptyDocs = formData.value.documents.filter(doc => !doc.name.trim())
+      if (emptyDocs.length > 0) {
+        alert('Please provide names for all required documents')
+        return
+      }
+    }
+    
     // First upload the picture if a new one was selected
     let picturePath = null
     if (selectedFile.value) {
@@ -811,30 +734,18 @@ const handleSubmit = async () => {
     const dataToSubmit = { 
       name: formData.value.name,
       description: formData.value.description,
-      is_private: !formData.value.isPublic,
-      requires_password: formData.value.requires_password
+      is_private: formData.value.isPrivate,
+      requires_password: formData.value.requires_password,
+      requires_documents: formData.value.requires_documents
     }
     
     // Only include password if it's required and provided
     if (formData.value.requires_password && formData.value.password) {
-      // Validate passwords match
-      if (formData.value.password !== formData.value.confirmPassword) {
-        alert('Passwords do not match')
-        return
-      }
-      
       dataToSubmit.password = formData.value.password
     }
     
     // Format documents for the backend - simple array of strings
-    if (formData.value.documents.length > 0) {
-      // Validate document names
-      const emptyDocs = formData.value.documents.filter(doc => !doc.name.trim())
-      if (emptyDocs.length > 0) {
-        alert('Please provide names for all required documents')
-        return
-      }
-      
+    if (formData.value.requires_documents && formData.value.documents.length > 0) {
       const requiredDocuments = formData.value.documents.map(doc => doc.name.trim())
       console.log('Documents to submit in handleSubmit (array):', requiredDocuments)
       
