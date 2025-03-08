@@ -7,7 +7,7 @@
           <div 
             v-if="isAuthenticated" 
             class="flex items-center cursor-pointer"
-            @click="navigateToDashboard"
+            @click="openDashboardSidebar"
           >
             <div class="flex-shrink-0 mr-2">
               <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -25,7 +25,7 @@
           <div 
             v-if="isAuthenticated" 
             class="flex items-center cursor-pointer"
-            @click="navigateToProfile"
+            @click="openUserSettings"
           >
             <div class="flex-shrink-0 mr-2">
               <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -52,20 +52,150 @@
         <p>&copy; 2025 Agora Vote. All rights reserved.</p>
       </div>
     </footer>
+
+    <!-- User Settings Sheet Component -->
+    <UserSettingsSheet 
+      v-model:open="isUserSettingsOpen" 
+      :userData="userData"
+      @refresh-user-data="fetchUserData"
+    />
+    
+    <!-- Dashboard Sidebar Component -->
+    <DashboardSidebar
+      v-model:open="isDashboardSidebarOpen"
+      :groups="userGroups"
+      :isLoading="isLoadingGroups"
+      @find-group="showFindGroupDialog = true"
+      @create-group="showCreateGroupDialog = true"
+      @view-group="navigateToGroup"
+    />
+    
+    <!-- Find Group Dialog -->
+    <Dialog :open="showFindGroupDialog" @update:open="showFindGroupDialog = $event">
+      <DialogContent class="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Find a Group</DialogTitle>
+          <DialogDescription>
+            Search for public groups to join
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="space-y-4 py-4">
+          <!-- Search Input -->
+          <div class="relative">
+            <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              v-model="groupSearchQuery"
+              type="text"
+              placeholder="Search for groups..."
+              class="w-full pl-10 pr-4"
+            />
+          </div>
+
+          <!-- Search results would go here -->
+          <div class="text-center py-4 text-muted-foreground">
+            Type to search for public groups
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" @click="showFindGroupDialog = false">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    
+    <!-- Create Group Dialog -->
+    <Dialog :open="showCreateGroupDialog" @update:open="showCreateGroupDialog = $event">
+      <DialogContent class="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Create a New Group</DialogTitle>
+          <DialogDescription>
+            Fill in the details to create your new group
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="space-y-4 py-4">
+          <!-- Group Name -->
+          <div class="space-y-2">
+            <Label for="group-name">Group Name</Label>
+            <Input id="group-name" v-model="newGroupName" placeholder="Enter group name" />
+          </div>
+          
+          <!-- Group Description -->
+          <div class="space-y-2">
+            <Label for="group-description">Description</Label>
+            <Textarea 
+              id="group-description" 
+              v-model="newGroupDescription" 
+              placeholder="Describe your group"
+              rows="3"
+            />
+          </div>
+          
+          <!-- Group Privacy -->
+          <div class="space-y-2">
+            <Label>Privacy</Label>
+            <div class="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="is-public" 
+                v-model="newGroupIsPublic"
+                class="rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label for="is-public" class="text-sm">Make this group public</label>
+            </div>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" @click="showCreateGroupDialog = false">Cancel</Button>
+          <Button type="submit" @click="createGroup">Create Group</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, provide, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, LayoutDashboard } from 'lucide-vue-next'
+import { User, LayoutDashboard, Search } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import axios from '~/src/utils/axios'
+import UserSettingsSheet from '@/components/users/UserSettingsSheet.vue'
+import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 
 const router = useRouter()
 const route = useRoute()
 const userData = ref(null)
 const loading = ref(false)
+const isUserSettingsOpen = ref(false)
+const isDashboardSidebarOpen = ref(false)
+
+// Groups data
+const userGroups = ref([])
+const isLoadingGroups = ref(false)
+
+// Dialog states
+const showFindGroupDialog = ref(false)
+const showCreateGroupDialog = ref(false)
+
+// Form data
+const groupSearchQuery = ref('')
+const newGroupName = ref('')
+const newGroupDescription = ref('')
+const newGroupIsPublic = ref(true)
 
 // Check if user is authenticated
 const isAuthenticated = computed(() => {
@@ -77,12 +207,19 @@ const isOnDashboard = computed(() => {
   return route.path === '/dashboard'
 })
 
-// Navigate to user profile
-const navigateToProfile = () => {
-  const userId = localStorage.getItem('userId')
-  if (userId) {
-    router.push(`/profile`)
+// Open user settings sheet
+const openUserSettings = () => {
+  isUserSettingsOpen.value = true
+}
+
+// Open dashboard sidebar
+const openDashboardSidebar = () => {
+  // Fetch groups if not already loaded
+  if (userGroups.value.length === 0 && !isLoadingGroups.value) {
+    fetchUserGroups()
   }
+  // Toggle the sidebar
+  isDashboardSidebarOpen.value = !isDashboardSidebarOpen.value
 }
 
 // Navigate to dashboard
@@ -90,6 +227,62 @@ const navigateToDashboard = () => {
   // Only navigate if not already on dashboard
   if (!isOnDashboard.value) {
     router.push('/dashboard')
+  }
+}
+
+// Navigate to group page
+const navigateToGroup = (groupId) => {
+  isDashboardSidebarOpen.value = false
+  router.push(`/group/${groupId}`)
+}
+
+// Create a new group
+const createGroup = async () => {
+  if (!newGroupName.value.trim()) {
+    alert('Please enter a group name')
+    return
+  }
+  
+  try {
+    const response = await axios.post('/groups', {
+      name: newGroupName.value,
+      description: newGroupDescription.value,
+      is_public: newGroupIsPublic.value
+    })
+    
+    // Reset form
+    newGroupName.value = ''
+    newGroupDescription.value = ''
+    newGroupIsPublic.value = true
+    
+    // Close dialog
+    showCreateGroupDialog.value = false
+    
+    // Refresh groups
+    await fetchUserGroups()
+    
+    // Navigate to the new group
+    if (response.data && response.data.id) {
+      router.push(`/group/${response.data.id}`)
+    }
+  } catch (error) {
+    console.error('Failed to create group:', error)
+    alert('Failed to create group: ' + (error.response?.data?.message || 'Unknown error'))
+  }
+}
+
+// Fetch user groups
+const fetchUserGroups = async () => {
+  if (!isAuthenticated.value) return
+  
+  try {
+    isLoadingGroups.value = true
+    const response = await axios.get('/user/groups')
+    userGroups.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch user groups:', error)
+  } finally {
+    isLoadingGroups.value = false
   }
 }
 
@@ -115,7 +308,6 @@ const fetchUserData = async () => {
       // Use axios instance with proper configuration
       const response = await axios.get('/users/me')
       userData.value = response.data
-      console.log('User data fetched for layout:', userData.value)
     } catch (error) {
       console.error('Failed to fetch user data:', error)
       if (error.response?.status === 401) {
@@ -149,10 +341,14 @@ onMounted(() => {
   
   // Listen for the global user-data-updated event
   window.addEventListener('user-data-updated', fetchUserData)
+  
+  // Listen for the global group-data-updated event
+  window.addEventListener('group-data-updated', fetchUserGroups)
 })
 
-// Clean up event listener
+// Clean up event listeners
 onBeforeUnmount(() => {
   window.removeEventListener('user-data-updated', fetchUserData)
+  window.removeEventListener('group-data-updated', fetchUserGroups)
 })
 </script>
