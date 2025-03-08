@@ -222,21 +222,18 @@
         <div class="space-y-2">
           <Label for="current-password" class="text-sm font-medium">
             Current Password
-            <span class="text-xs text-muted-foreground ml-2">
-              (Optional - temporarily disabled for debugging)
-            </span>
           </Label>
-          <Input id="current-password" type="password" v-model="currentPassword" />
+          <Input id="current-password" type="password" v-model="currentPassword" required />
         </div>
 
         <div class="space-y-2">
           <Label for="new-password" class="text-sm font-medium">New Password</Label>
-          <Input id="new-password" type="password" v-model="newPassword" />
+          <Input id="new-password" type="password" v-model="newPassword" required />
         </div>
 
         <div class="space-y-2">
           <Label for="confirm-password" class="text-sm font-medium">Confirm New Password</Label>
-          <Input id="confirm-password" type="password" v-model="confirmPassword" />
+          <Input id="confirm-password" type="password" v-model="confirmPassword" required />
           <p v-if="passwordMismatch" class="text-xs text-destructive">
             Passwords do not match
           </p>
@@ -949,6 +946,11 @@ const formModified = computed(() => {
 const changePassword = async () => {
   if (passwordMismatch.value) {
     alert('Passwords do not match')
+    return
+  }
+  
+  if (!currentPassword.value) {
+    alert('Please enter your current password')
     return
   }
   
