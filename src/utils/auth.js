@@ -85,6 +85,12 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
     if (!userId) throw new Error('User ID not found in local storage')
   }
 
+  // Validate userId is not undefined or null
+  if (userId === 'undefined' || userId === 'null') {
+    console.error('Invalid userId:', userId)
+    throw new Error('Invalid user ID')
+  }
+
   console.log(`Changing password for user with ID: ${userId}`)
   console.log(`Current password length: ${currentPassword.length}`)
   console.log(`New password length: ${newPassword.length}`)

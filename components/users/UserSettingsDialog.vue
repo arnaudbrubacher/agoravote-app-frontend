@@ -388,18 +388,18 @@ const changePassword = async () => {
   }
   
   try {
-    const userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
+    // Get user ID from props or localStorage
+    const userId = props.userData?.id || localStorage.getItem('userId')
     
-    if (!userId || !token) {
-      throw new Error('Authentication required')
+    if (!userId) {
+      throw new Error('User ID not found')
     }
     
     console.log('Changing password for user:', userId)
     console.log('Current password length:', currentPassword.value.length)
     console.log('New password length:', newPassword.value.length)
     
-    // Use the new changeUserPassword utility function
+    // Use the changeUserPassword utility function
     await changeUserPassword(userId, currentPassword.value, newPassword.value)
     
     // Reset form and close dialog
