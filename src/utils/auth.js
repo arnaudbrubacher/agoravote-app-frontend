@@ -101,7 +101,7 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
     const token = localStorage.getItem('token')
     if (!token) throw new Error('Authentication token not found')
 
-    // Backend API endpoint: PUT /users/:userId/password
+    // Backend API endpoint: PUT /users/:id/password
     // Required request body:
     // {
     //   current_password: string,
@@ -139,7 +139,7 @@ export const changeGroupPassword = async (groupId, currentPassword, newPassword)
     const token = localStorage.getItem('token')
     if (!token) throw new Error('Authentication token not found')
 
-    // Backend API endpoint: PUT /groups/:groupId/password
+    // Backend API endpoint: PUT /groups/:id/password
     // Required request body:
     // {
     //   current_password: string,
