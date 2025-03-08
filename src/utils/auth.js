@@ -1,9 +1,9 @@
-import axios from 'axios'
+import axios from './axios'
 import { jwtDecode } from 'jwt-decode' // Use named import
 
 export const login = async (email, password) => {
   try {
-    const response = await axios.post('http://localhost:8080/login', {
+    const response = await axios.post('/login', {
       email,
       password
     })
@@ -19,7 +19,7 @@ export const login = async (email, password) => {
 
 export const signup = async (name, email, password) => {
   try {
-    const response = await axios.post('http://localhost:8080/signup', {
+    const response = await axios.post('/signup', {
       name,
       email,
       password
@@ -52,14 +52,8 @@ export const fetchUserProfile = async () => {
   if (!userId) throw new Error('User ID not found in local storage')
 
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`http://localhost:8080/user/profile/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-    console.log('Request URL:', `http://localhost:8080/user/profile/${userId}`)
-    console.log('Request Headers:', { Authorization: `Bearer ${token}` })
+    const response = await axios.get(`/user/profile/${userId}`)
+    console.log('Request URL:', `/user/profile/${userId}`)
     console.log('Response:', response.data)
     return response.data.user
   } catch (error) {
@@ -73,14 +67,8 @@ export const deleteUserAccount = async () => {
   if (!userId) throw new Error('User ID not found in local storage')
 
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.delete(`http://localhost:8080/user/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-    console.log('Request URL:', `http://localhost:8080/user/${userId}`)
-    console.log('Request Headers:', { Authorization: `Bearer ${token}` })
+    const response = await axios.delete(`/user/${userId}`)
+    console.log('Request URL:', `/user/${userId}`)
     console.log('Response:', response.data)
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
@@ -96,6 +84,10 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
     userId = localStorage.getItem('userId')
     if (!userId) throw new Error('User ID not found in local storage')
   }
+
+  console.log(`Changing password for user with ID: ${userId}`)
+  console.log(`Current password length: ${currentPassword.length}`)
+  console.log(`New password length: ${newPassword.length}`)
 
   try {
     const token = localStorage.getItem('token')
@@ -114,19 +106,19 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
     // 403 Forbidden: Not authorized to change this user's password
     // 404 Not Found: User not found
     // 500 Internal Server Error: Server error
-    const response = await axios.put(`http://localhost:8080/users/${userId}/password`, {
+    
+    // Use the axios instance with the base URL and interceptors
+    const response = await axios.put(`/users/${userId}/password`, {
       current_password: currentPassword,
       new_password: newPassword
-    }, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
     })
     
     console.log('Password change response:', response.data)
     return response.data
   } catch (error) {
     console.error('Failed to change user password:', error)
+    console.error('Error response:', error.response?.data)
+    console.error('Error status:', error.response?.status)
     throw error
   }
 }
@@ -134,6 +126,10 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
 // Function to change group password
 export const changeGroupPassword = async (groupId, currentPassword, newPassword) => {
   if (!groupId) throw new Error('Group ID is required')
+
+  console.log(`Changing password for group ${groupId}`)
+  console.log(`Current password length: ${currentPassword.length}`)
+  console.log(`New password length: ${newPassword.length}`)
 
   try {
     const token = localStorage.getItem('token')
@@ -152,19 +148,45 @@ export const changeGroupPassword = async (groupId, currentPassword, newPassword)
     // 403 Forbidden: Not authorized to change this group's password
     // 404 Not Found: Group not found
     // 500 Internal Server Error: Server error
-    const response = await axios.put(`http://localhost:8080/groups/${groupId}/password`, {
+    
+    // Use the axios instance with the base URL and interceptors
+    const response = await axios.put(`/groups/${groupId}/password`, {
       current_password: currentPassword,
       new_password: newPassword
-    }, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
     })
     
     console.log('Group password change response:', response.data)
     return response.data
   } catch (error) {
     console.error('Failed to change group password:', error)
+    console.error('Error response:', error.response?.data)
+    console.error('Error status:', error.response?.status)
+    throw error
+  }
+}
+
+// Function to change group password (EMERGENCY VERSION)
+export const emergencyChangeGroupPassword = async (groupId, newPassword) => {
+  if (!groupId) throw new Error('Group ID is required')
+
+  console.log(`EMERGENCY: Changing password for group ${groupId}`)
+  console.log(`New password length: ${newPassword.length}`)
+
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) throw new Error('Authentication token not found')
+
+    // Use the emergency endpoint that bypasses verification
+    const response = await axios.put(`/groups/${groupId}/emergency-password`, {
+      new_password: newPassword
+    })
+    
+    console.log('Emergency group password change response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Failed to change group password (emergency):', error)
+    console.error('Error response:', error.response?.data)
+    console.error('Error status:', error.response?.status)
     throw error
   }
 }

@@ -395,6 +395,10 @@ const changePassword = async () => {
       throw new Error('Authentication required')
     }
     
+    console.log('Changing password for user:', userId)
+    console.log('Current password length:', currentPassword.value.length)
+    console.log('New password length:', newPassword.value.length)
+    
     // Use the new changeUserPassword utility function
     await changeUserPassword(userId, currentPassword.value, newPassword.value)
     
@@ -411,6 +415,8 @@ const changePassword = async () => {
     alert('Password changed successfully')
   } catch (error) {
     console.error('Failed to change password:', error)
+    console.error('Error response:', error.response?.data)
+    console.error('Error status:', error.response?.status)
     
     // Handle specific error cases
     if (error.response) {
