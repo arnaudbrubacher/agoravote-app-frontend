@@ -63,17 +63,61 @@ export const fetchUserProfile = async () => {
 }
 
 export const deleteUserAccount = async () => {
-  const userId = localStorage.getItem('userId')
-  if (!userId) throw new Error('User ID not found in local storage')
+  let userId = localStorage.getItem('userId')
+  const token = localStorage.getItem('token')
+  
+  console.log('deleteUserAccount called with userId:', userId)
+  console.log('Token available:', !!token)
+  
+  // If userId is missing but token is available, try to extract userId from token
+  if ((!userId || userId === 'undefined') && token) {
+    console.log('Attempting to extract userId from token')
+    try {
+      const decoded = jwtDecode(token)
+      userId = decoded.user_id
+      console.log('Extracted userId from token:', userId)
+      
+      if (userId) {
+        // Update localStorage with the extracted userId
+        localStorage.setItem('userId', userId)
+        console.log('Updated localStorage with userId:', userId)
+      }
+    } catch (error) {
+      console.error('Failed to extract user ID from token:', error)
+    }
+  }
+  
+  if (!userId || userId === 'undefined') throw new Error('User ID not found in local storage')
+  if (!token) throw new Error('Authentication token not found in local storage')
 
   try {
-    const response = await axios.delete(`/user/${userId}`)
+    console.log('Making DELETE request to:', `/user/${userId}`)
+    const response = await axios.delete(`/user/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
     console.log('Request URL:', `/user/${userId}`)
     console.log('Response:', response.data)
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
+    return response.data
   } catch (error) {
     console.error('Failed to delete user account:', error)
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response,
+      request: error.request
+    })
+    
+    // Check for foreign key constraint violation
+    if (error.response?.data?.error && 
+        error.response.data.error.includes('violates foreign key constraint') && 
+        error.response.data.error.includes('posts')) {
+      throw new Error('Cannot delete account because you have posts. Please delete all your posts first and try again.')
+    }
+    
     throw error
   }
 }

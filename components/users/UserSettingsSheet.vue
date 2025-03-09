@@ -430,22 +430,78 @@ const changePassword = async () => {
 
 // Confirm account deletion
 const confirmDeleteAccount = () => {
+  // Debug localStorage values
+  debugLocalStorage();
+  
   if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
     deleteAccount()
+  }
+}
+
+// Debug localStorage values
+const debugLocalStorage = () => {
+  console.log('DEBUG: localStorage contents:');
+  console.log('userId:', localStorage.getItem('userId'));
+  console.log('token:', localStorage.getItem('token')?.substring(0, 20) + '...');
+  
+  // Try to decode the token
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Use window.atob to decode the base64 part of the token
+      const tokenParts = token.split('.');
+      if (tokenParts.length === 3) {
+        const payload = JSON.parse(window.atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        console.log('Decoded token payload:', payload);
+        console.log('Token user_id:', payload.user_id);
+        console.log('Token expiration:', new Date(payload.exp * 1000).toLocaleString());
+      }
+    }
+  } catch (error) {
+    console.error('Error decoding token:', error);
   }
 }
 
 // Delete user account
 const deleteAccount = async () => {
   try {
-    const userId = localStorage.getItem('userId')
+    let userId = localStorage.getItem('userId')
+    const token = localStorage.getItem('token')
     
-    if (!userId) {
-      throw new Error('Authentication required')
+    console.log('Attempting to delete account with userId:', userId)
+    console.log('Token available:', !!token)
+    
+    // If userId is missing but token is available, try to extract userId from token
+    if ((!userId || userId === 'undefined') && token) {
+      console.log('Attempting to extract userId from token')
+      userId = extractUserIdFromToken(token)
+      console.log('Extracted userId from token:', userId)
+      
+      if (userId) {
+        // Update localStorage with the extracted userId
+        localStorage.setItem('userId', userId)
+        console.log('Updated localStorage with userId:', userId)
+      }
     }
     
-    // Make API call to delete account
-    await axios.delete(`/user/${userId}`);
+    if (!userId || userId === 'undefined') {
+      throw new Error('User ID not found. Please log out and log in again.')
+    }
+    
+    if (!token) {
+      throw new Error('Authentication token not found. Please log out and log in again.')
+    }
+    
+    // Make API call to delete account with explicit headers
+    console.log('Making DELETE request to:', `/user/${userId}`)
+    const response = await axios.delete(`/user/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('Delete account response:', response)
     
     // Clear local storage and redirect
     localStorage.removeItem('token')
@@ -453,7 +509,50 @@ const deleteAccount = async () => {
     router.push('/auth')
   } catch (error) {
     console.error('Failed to delete account:', error)
-    alert('Failed to delete account: ' + (error.response?.data?.error || 'Unknown error'))
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response,
+      request: error.request
+    })
+    
+    // More detailed error message
+    let errorMessage = 'Unknown error'
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      errorMessage = error.response.data?.error || `Server error: ${error.response.status}`
+      
+      // Check for foreign key constraint violation
+      if (errorMessage.includes('violates foreign key constraint') && errorMessage.includes('posts')) {
+        errorMessage = 'Cannot delete account because you have posts. Please delete all your posts first and try again.'
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      errorMessage = 'No response from server. Please check your connection.'
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      errorMessage = error.message
+    }
+    
+    alert('Failed to delete account: ' + errorMessage)
+  }
+}
+
+// Extract user ID from JWT token
+const extractUserIdFromToken = (token) => {
+  try {
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.error('Invalid token format')
+      return null
+    }
+    
+    // Decode the payload part (second part) of the token
+    const payload = JSON.parse(window.atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload.user_id || null
+  } catch (error) {
+    console.error('Failed to extract user ID from token:', error)
+    return null
   }
 }
 

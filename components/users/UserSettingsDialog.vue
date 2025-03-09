@@ -446,11 +446,40 @@ const confirmDeleteAccount = () => {
 // Delete user account
 const deleteAccount = async () => {
   try {
-    const userId = localStorage.getItem('userId')
+    let userId = localStorage.getItem('userId')
     const token = localStorage.getItem('token')
     
-    if (!userId || !token) {
-      throw new Error('Authentication required')
+    console.log('Attempting to delete account with userId:', userId)
+    console.log('Token available:', !!token)
+    
+    // If userId is missing but token is available, try to extract userId from token
+    if ((!userId || userId === 'undefined') && token) {
+      console.log('Attempting to extract userId from token')
+      try {
+        // Use window.atob to decode the base64 part of the token
+        const tokenParts = token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(window.atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          userId = payload.user_id
+          console.log('Extracted userId from token:', userId)
+          
+          if (userId) {
+            // Update localStorage with the extracted userId
+            localStorage.setItem('userId', userId)
+            console.log('Updated localStorage with userId:', userId)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to extract user ID from token:', error)
+      }
+    }
+    
+    if (!userId || userId === 'undefined') {
+      throw new Error('User ID not found. Please log out and log in again.')
+    }
+    
+    if (!token) {
+      throw new Error('Authentication required. Please log out and log in again.')
     }
     
     const headers = {
@@ -458,6 +487,7 @@ const deleteAccount = async () => {
     };
     
     // Make API call to delete account - use the singular form /user/:id
+    console.log('Making DELETE request to:', `/user/${userId}`)
     await axios.delete(`/user/${userId}`, { headers });
     
     // Clear local storage and redirect
@@ -466,7 +496,32 @@ const deleteAccount = async () => {
     router.push('/auth')
   } catch (error) {
     console.error('Failed to delete account:', error)
-    alert('Failed to delete account: ' + (error.response?.data?.error || 'Unknown error'))
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response,
+      request: error.request
+    })
+    
+    // More detailed error message
+    let errorMessage = 'Unknown error'
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      errorMessage = error.response.data?.error || `Server error: ${error.response.status}`
+      
+      // Check for foreign key constraint violation
+      if (errorMessage.includes('violates foreign key constraint') && errorMessage.includes('posts')) {
+        errorMessage = 'Cannot delete account because you have posts. Please delete all your posts first and try again.'
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      errorMessage = 'No response from server. Please check your connection.'
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      errorMessage = error.message
+    }
+    
+    alert('Failed to delete account: ' + errorMessage)
   }
 }
 

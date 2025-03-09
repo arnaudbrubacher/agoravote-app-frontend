@@ -78,6 +78,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import axios from '~/src/utils/axios'
 
 const router = useRouter()
 const activeTab = ref('login')
@@ -89,10 +90,54 @@ const signupPassword = ref('')
 const signupPasswordConfirm = ref('')
 const passwordError = ref(false)
 
+// Check if user has any groups
+const checkUserGroups = async () => {
+  try {
+    const response = await axios.get('/user/groups')
+    return response.data && response.data.length > 0
+  } catch (error) {
+    console.error('Failed to fetch user groups:', error)
+    return false
+  }
+}
+
+// Get last used group ID
+const getLastUsedGroupId = () => {
+  return localStorage.getItem('lastUsedGroupId')
+}
+
+// Handle post-authentication navigation
+const handlePostAuthNavigation = async (isNewUser = false) => {
+  // For new users (signup), always go to profile
+  if (isNewUser) {
+    router.push('/profile')
+    return
+  }
+  
+  // For existing users (login), check if they have groups
+  const hasGroups = await checkUserGroups()
+  
+  if (!hasGroups) {
+    // If no groups, go to profile
+    router.push('/profile')
+  } else {
+    // If they have groups, check for last used group
+    const lastUsedGroupId = getLastUsedGroupId()
+    
+    if (lastUsedGroupId) {
+      // Navigate to last used group
+      router.push(`/group/${lastUsedGroupId}`)
+    } else {
+      // If no last used group is stored, go to dashboard
+      router.push('/dashboard')
+    }
+  }
+}
+
 const handleLogin = async () => {
   try {
     await login(loginEmail.value, loginPassword.value)
-    router.push('/dashboard') // Redirect to the dashboard after successful login
+    await handlePostAuthNavigation(false) // Not a new user
   } catch (error) {
     console.error('Login failed:', error)
   }
@@ -106,7 +151,7 @@ const handleSignup = async () => {
   passwordError.value = false
   try {
     await signup(signupName.value, signupEmail.value, signupPassword.value)
-    router.push('/dashboard') // Redirect to the dashboard after successful signup
+    await handlePostAuthNavigation(true) // New user
   } catch (error) {
     console.error('Signup failed:', error)
   }

@@ -3,18 +3,26 @@
     <header class="border-b">
       <div class="container mx-auto flex h-16 items-center px-4">
         <div class="flex w-full items-center justify-between">
-          <!-- Dashboard Button (always shown when authenticated) -->
+          <!-- Last Used Group Card (replaces Dashboard button) -->
           <div 
             v-if="isAuthenticated" 
             class="flex items-center cursor-pointer"
             @click="openDashboardSidebar"
           >
             <div class="flex-shrink-0 mr-2">
-              <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <LayoutDashboard class="h-5 w-5 text-gray-600" />
+              <div v-if="!lastUsedGroup?.picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <Users class="h-5 w-5 text-gray-600" />
               </div>
+              <img 
+                v-else
+                :src="lastUsedGroup.picture" 
+                alt="Group Picture"
+                class="w-8 h-8 rounded-full object-cover"
+              />
             </div>
-            <span class="text-sm font-medium">Dashboard</span>
+            <div>
+              <span class="text-sm font-medium truncate max-w-[120px]">{{ lastUsedGroup?.name || 'Groups' }}</span>
+            </div>
           </div>
           
           
@@ -159,7 +167,7 @@
 <script setup>
 import { ref, computed, onMounted, provide, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, LayoutDashboard, Search } from 'lucide-vue-next'
+import { User, Users, Search } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -186,6 +194,20 @@ const isDashboardSidebarOpen = ref(false)
 // Groups data
 const userGroups = ref([])
 const isLoadingGroups = ref(false)
+const lastUsedGroupId = ref(localStorage.getItem('lastUsedGroupId') || null)
+
+// Computed property for the last used group
+const lastUsedGroup = computed(() => {
+  if (!lastUsedGroupId.value || userGroups.value.length === 0) {
+    return userGroups.value[0] || null // Return first group or null if no groups
+  }
+  
+  // Find the group with the matching ID
+  const group = userGroups.value.find(g => g.id === lastUsedGroupId.value)
+  
+  // Return the found group or the first group as fallback
+  return group || userGroups.value[0] || null
+})
 
 // Dialog states
 const showFindGroupDialog = ref(false)
@@ -232,6 +254,11 @@ const navigateToDashboard = () => {
 
 // Navigate to group page
 const navigateToGroup = (groupId) => {
+  // Store the last used group ID
+  lastUsedGroupId.value = groupId
+  localStorage.setItem('lastUsedGroupId', groupId)
+  
+  // Close the sidebar and navigate
   isDashboardSidebarOpen.value = false
   router.push(`/group/${groupId}`)
 }
@@ -261,8 +288,10 @@ const createGroup = async () => {
     // Refresh groups
     await fetchUserGroups()
     
-    // Navigate to the new group
+    // Navigate to the new group and set as last used
     if (response.data && response.data.id) {
+      lastUsedGroupId.value = response.data.id
+      localStorage.setItem('lastUsedGroupId', response.data.id)
       router.push(`/group/${response.data.id}`)
     }
   } catch (error) {
@@ -279,6 +308,20 @@ const fetchUserGroups = async () => {
     isLoadingGroups.value = true
     const response = await axios.get('/user/groups')
     userGroups.value = response.data
+    
+    // After fetching groups, check if we need to update the last used group
+    if (userGroups.value.length > 0) {
+      // If there's no last used group but we have groups, set the first one as last used
+      if (!lastUsedGroupId.value) {
+        lastUsedGroupId.value = userGroups.value[0].id
+        localStorage.setItem('lastUsedGroupId', userGroups.value[0].id)
+      } 
+      // If the last used group doesn't exist in the current groups, update it
+      else if (!userGroups.value.some(g => g.id === lastUsedGroupId.value)) {
+        lastUsedGroupId.value = userGroups.value[0].id
+        localStorage.setItem('lastUsedGroupId', userGroups.value[0].id)
+      }
+    }
   } catch (error) {
     console.error('Failed to fetch user groups:', error)
   } finally {
@@ -336,8 +379,23 @@ watch(
   }
 )
 
+// Watch for route changes to update last used group
+watch(
+  () => route.path,
+  (newPath) => {
+    // Check if the current route is a group page
+    const groupMatch = newPath.match(/\/group\/([^/]+)/)
+    if (groupMatch && groupMatch[1]) {
+      // Update last used group ID
+      lastUsedGroupId.value = groupMatch[1]
+      localStorage.setItem('lastUsedGroupId', groupMatch[1])
+    }
+  }
+)
+
 onMounted(() => {
   fetchUserData()
+  fetchUserGroups()
   
   // Listen for the global user-data-updated event
   window.addEventListener('user-data-updated', fetchUserData)
