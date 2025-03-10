@@ -6,6 +6,7 @@
     <GroupSettingsDialog 
       v-if="showSettingsDialog && group"
       :group="group"
+      :is-current-user-admin="isCurrentUserAdmin"
       @close="$emit('close-settings')"
       @submit="$emit('group-updated', $event)"
       @delete="$emit('group-deleted')"
@@ -84,7 +85,11 @@ const props = defineProps({
   selectedPost: Object,
   selectedVote: Object,
   group: Object,
-  currentUser: Object
+  currentUser: Object,
+  isCurrentUserAdmin: {
+    type: Boolean,
+    default: false
+  }
 })
 
 defineEmits([

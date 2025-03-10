@@ -12,7 +12,6 @@
         <div class="flex-1 overflow-y-auto p-6 space-y-6">
           <!-- Section 1: Group Details -->
           <div class="space-y-4 border-b pb-4">
-            <h3 class="text-md font-medium">Group Information</h3>
             
             <div class="space-y-1">
               <Label class="text-sm text-muted-foreground">Name</Label>
@@ -43,28 +42,41 @@
               </div>
 
               <!-- Documents Required -->
-              <div v-if="group.documents && group.documents.length" class="space-y-4">
+              <div v-if="documentsRequired" class="space-y-4">
                 <div class="space-y-1">
-                  <Label class="text-sm text-muted-foreground">Required Documents</Label>
+                  <Label class="text-sm font-medium">Required Documents</Label>
+                  <p class="text-sm text-muted-foreground">The following documents are required to join this group:</p>
                 </div>
-                <div v-for="(doc, index) in group.documents" :key="index" class="space-y-1">
-                  <Label class="text-sm text-muted-foreground" :for="'document-' + index">{{ doc.name }}</Label>
-                  <div class="flex items-center space-x-2">
-                    <input 
-                      :id="'document-' + index" 
-                      type="file" 
-                      class="hidden" 
-                      @change="handleDocumentChange(index, $event)" 
-                      ref="fileInputs"
-                    />
-                    <Button variant="outline" @click="triggerFileInput(index)">Upload</Button>
-                    <span v-if="form.documents[index]">{{ form.documents[index].name }}</span>
+                <div v-for="(doc, index) in requiredDocuments" :key="index" class="p-3 border rounded-md space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                      <Label class="text-sm font-medium" :for="'document-' + index">{{ doc.name }}</Label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span v-if="form.documents[index]" class="text-sm text-green-600 truncate max-w-[150px]">
+                        {{ form.documents[index].name }}
+                      </span>
+                      <span v-else class="text-sm text-muted-foreground">No file selected</span>
+                      <Button variant="outline" size="sm" @click="triggerFileInput(index)">
+                        {{ form.documents[index] ? 'Replace' : 'Upload' }}
+                      </Button>
+                    </div>
                   </div>
+                  
+                  <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
+                  
+                  <input 
+                    :id="'document-' + index" 
+                    type="file" 
+                    class="hidden" 
+                    @change="handleDocumentChange(index, $event)" 
+                    ref="fileInputs"
+                  />
                 </div>
               </div>
 
               <!-- No Requirements Message -->
-              <div v-if="!passwordRequired && (!group.documents || !group.documents.length)" class="text-sm text-muted-foreground">
+              <div v-if="!passwordRequired && !documentsRequired" class="text-sm text-muted-foreground">
                 This group has no special admission requirements.
               </div>
 
@@ -109,6 +121,82 @@ const passwordRequired = computed(() => {
   return props.group.requiresPassword === true || props.group.requires_password === true
 })
 
+// Computed property to handle document requirements
+const documentsRequired = computed(() => {
+  // Check if the group requires documents
+  const requiresDocuments = props.group.requiresDocuments === true || props.group.requires_documents === true;
+  
+  // Check if there are any required documents
+  let hasRequiredDocuments = false;
+  
+  // Check both camelCase and snake_case versions
+  if (props.group.requiredDocuments || props.group.required_documents) {
+    const documents = props.group.requiredDocuments || props.group.required_documents;
+    
+    // If it's a string (JSON), parse it
+    if (typeof documents === 'string') {
+      try {
+        const parsedDocs = JSON.parse(documents);
+        hasRequiredDocuments = Array.isArray(parsedDocs) && parsedDocs.length > 0;
+      } catch (e) {
+        console.error('Error parsing required documents:', e);
+      }
+    } 
+    // If it's already an array
+    else if (Array.isArray(documents)) {
+      hasRequiredDocuments = documents.length > 0;
+    }
+  }
+  
+  return requiresDocuments && hasRequiredDocuments;
+})
+
+// Computed property to get the required documents array
+const requiredDocuments = computed(() => {
+  // Get the documents from either camelCase or snake_case property
+  const documents = props.group.requiredDocuments || props.group.required_documents;
+  
+  // If no documents, return empty array
+  if (!documents) return [];
+  
+  let parsedDocs = [];
+  
+  // If it's a string (JSON), parse it
+  if (typeof documents === 'string') {
+    try {
+      parsedDocs = JSON.parse(documents);
+    } catch (e) {
+      console.error('Error parsing required documents:', e);
+      return [];
+    }
+  }
+  // If it's already an array, use it
+  else if (Array.isArray(documents)) {
+    parsedDocs = documents;
+  }
+  // If it's neither, return empty array
+  else {
+    return [];
+  }
+  
+  // Normalize the documents to ensure each has name and description
+  return parsedDocs.map(doc => {
+    // If doc is a string, treat it as the name
+    if (typeof doc === 'string') {
+      return { name: doc, description: '' };
+    }
+    // If doc is an object, ensure it has name and description properties
+    else if (typeof doc === 'object' && doc !== null) {
+      return {
+        name: doc.name || 'Unnamed Document',
+        description: doc.description || ''
+      };
+    }
+    // Default fallback
+    return { name: 'Document', description: '' };
+  });
+})
+
 // Watch for error changes to update the passwordError
 watch(() => props.error, (newError) => {
   if (newError && passwordRequired.value) {
@@ -130,11 +218,19 @@ const form = ref({
 // Initialize form fields based on group requirements
 watch(() => props.group, (newGroup) => {
   form.value.password = ''
-  form.value.documents = newGroup.documents ? newGroup.documents.map(() => null) : []
+  
+  // Initialize documents array based on required documents
+  if (documentsRequired.value) {
+    form.value.documents = requiredDocuments.value.map(() => null)
+  } else {
+    form.value.documents = []
+  }
   
   // Log group data for debugging
   console.log('Group data received:', newGroup)
   console.log('Password required:', passwordRequired.value)
+  console.log('Documents required:', documentsRequired.value)
+  console.log('Required documents:', requiredDocuments.value)
 }, { immediate: true })
 
 // Dispatch a custom event to close the DashboardSidebar when the component mounts

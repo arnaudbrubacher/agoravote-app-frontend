@@ -81,6 +81,7 @@
       :selected-vote="selectedVote"
       :group="group"
       :current-user="currentUser"
+      :is-current-user-admin="isCurrentUserAdmin"
       @close-settings="showSettingsDialog = false"
       @close-new-post="showNewPostDialog = false"
       @close-new-vote="showNewVoteDialog = false"

@@ -3,6 +3,9 @@
     <DialogContent class="sm:max-w-lg flex flex-col h-[80vh]">
       <DialogHeader>
         <DialogTitle>Group Settings</DialogTitle>
+        <DialogDescription v-if="!isCurrentUserAdmin" class="text-amber-600">
+          View-only mode. Only group admins can modify settings.
+        </DialogDescription>
       </DialogHeader>
 
       <ScrollArea class="flex-1" maxHeight="calc(80vh - 140px)">
@@ -20,6 +23,7 @@
                 class="w-28 h-28 rounded-full object-cover border"
               />
               <Button
+                v-if="isCurrentUserAdmin"
                 type="button"
                 variant="secondary"
                 size="icon"
@@ -37,6 +41,7 @@
               @change="handleFileChange"
             />
             <Button
+              v-if="isCurrentUserAdmin"
               type="button"
               variant="ghost"
               size="sm"
@@ -57,6 +62,7 @@
                 class="w-full"
                 placeholder="Enter group name"
                 required
+                :disabled="!isCurrentUserAdmin"
               />
             </div>
 
@@ -68,6 +74,7 @@
                 v-model="formData.description"
                 class="w-full"
                 placeholder="Enter group description"
+                :disabled="!isCurrentUserAdmin"
               />
             </div>
 
@@ -79,6 +86,7 @@
                   id="is-private-toggle"
                   v-model="formData.isPrivate"
                   @update:modelValue="savePrivacy"
+                  :disabled="!isCurrentUserAdmin"
                 />
                 <Label for="is-private-toggle" class="text-sm text-muted-foreground">
                   {{ formData.isPrivate ? 'Private Group' : 'Public Group' }}
@@ -94,6 +102,7 @@
                   id="requires-password-toggle"
                   v-model="formData.requires_password"
                   @update:modelValue="togglePasswordRequirement"
+                  :disabled="!isCurrentUserAdmin"
                 />
                 <Label for="requires-password-toggle" class="text-sm text-muted-foreground">
                   {{ formData.requires_password ? 'Password Required' : 'No Password Required' }}
@@ -103,6 +112,7 @@
               <div v-if="formData.requires_password" class="space-y-2 mt-2">
                 <div class="h-10 flex items-center">
                   <Button
+                    v-if="isCurrentUserAdmin"
                     type="button"
                     variant="outline"
                     size="sm"
@@ -110,6 +120,9 @@
                   >
                     Change Password
                   </Button>
+                  <p v-else class="text-sm text-muted-foreground">
+                    Password is required to join this group.
+                  </p>
                 </div>
               </div>
               
@@ -130,6 +143,7 @@
                   id="requires-documents-toggle"
                   v-model="formData.requires_documents"
                   @update:modelValue="toggleDocumentRequirement"
+                  :disabled="!isCurrentUserAdmin"
                 />
                 <Label for="requires-documents-toggle" class="text-sm text-muted-foreground">
                   {{ formData.requires_documents ? 'Documents Required' : 'No Documents Required' }}
@@ -142,8 +156,8 @@
                   variant="outline" 
                   @click="addDocument"
                   class="flex items-center"
-                  :disabled="!formData.requires_documents"
-                  :class="{ 'opacity-50': !formData.requires_documents }"
+                  :disabled="!isCurrentUserAdmin || !formData.requires_documents"
+                  :class="{ 'opacity-50': !formData.requires_documents || !isCurrentUserAdmin }"
                 >
                   <LucideIcon name="Plus" class="h-4 w-4 mr-1" />
                   Add Required Document
@@ -154,8 +168,8 @@
                     <Input 
                       v-model="doc.name" 
                       placeholder="Document name (e.g. ID Card, Student Card)" 
-                      :disabled="!formData.requires_documents"
-                      :class="{ 'opacity-50': !formData.requires_documents }"
+                      :disabled="!isCurrentUserAdmin || !formData.requires_documents"
+                      :class="{ 'opacity-50': !formData.requires_documents || !isCurrentUserAdmin }"
                     />
                     <Button
                       type="button"
@@ -163,8 +177,8 @@
                       size="icon" 
                       @click="removeDocument(index)"
                       title="Remove this document requirement"
-                      :disabled="!formData.requires_documents"
-                      :class="{ 'opacity-50': !formData.requires_documents }"
+                      :disabled="!isCurrentUserAdmin || !formData.requires_documents"
+                      :class="{ 'opacity-50': !formData.requires_documents || !isCurrentUserAdmin }"
                     >
                       <LucideIcon name="Trash" class="h-4 w-4" />
                     </Button>
@@ -184,14 +198,24 @@
           variant="destructive" 
           size="sm"
           @click="handleDelete"
+          :disabled="!isCurrentUserAdmin"
+          v-if="isCurrentUserAdmin"
         >
           <LucideIcon name="Trash" class="mr-2 h-4 w-4" />
           Delete Group
         </Button>
+        <div v-else></div>
         
         <div class="flex space-x-2">
-          <Button variant="outline" @click="handleCancel">Cancel</Button>
-          <Button type="button" @click="handleSubmit" :disabled="!formModified">Save All Changes</Button>
+          <Button variant="outline" @click="handleCancel">Close</Button>
+          <Button 
+            v-if="isCurrentUserAdmin" 
+            type="button" 
+            @click="handleSubmit" 
+            :disabled="!formModified"
+          >
+            Save All Changes
+          </Button>
         </div>
       </div>
     </DialogContent>
@@ -264,6 +288,10 @@ const props = defineProps({
   group: {
     type: Object,
     required: true
+  },
+  isCurrentUserAdmin: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -323,6 +351,7 @@ onMounted(async () => {
   console.log('Required documents (raw):', props.group.required_documents);
   console.log('Required documents type:', typeof props.group.required_documents);
   console.log('Requires documents flag:', props.group.requires_documents);
+  console.log('Is current user admin:', props.isCurrentUserAdmin);
   
   // Make a direct API call to fetch the latest group data
   try {
@@ -809,6 +838,12 @@ const updateGroupField = async (fieldData) => {
 
 const handleSubmit = async () => {
   try {
+    // Check if user is admin before proceeding
+    if (!props.isCurrentUserAdmin) {
+      console.warn('Non-admin user attempted to submit group settings changes');
+      return;
+    }
+
     // We no longer need to validate passwords here since we're using a separate dialog
     // Just make sure to clear password fields if password is not required
     if (!formData.value.requires_password) {
@@ -893,6 +928,12 @@ const handleSubmit = async () => {
 }
 
 const handleDelete = () => {
+  // Check if user is admin before proceeding
+  if (!props.isCurrentUserAdmin) {
+    console.warn('Non-admin user attempted to delete group');
+    return;
+  }
+
   if (confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
     emit('delete')
   }
@@ -915,7 +956,10 @@ const resetForm = () => {
 
 // Cancel button handler
 const handleCancel = () => {
-  resetForm()
+  // Only reset the form if the user is an admin
+  if (props.isCurrentUserAdmin) {
+    resetForm()
+  }
   emit('close')
 }
 
@@ -927,6 +971,12 @@ const formModified = computed(() => {
 
 // Change password function
 const changePassword = async () => {
+  // Check if user is admin before proceeding
+  if (!props.isCurrentUserAdmin) {
+    console.warn('Non-admin user attempted to change group password');
+    return;
+  }
+
   if (passwordMismatch.value) {
     alert('Passwords do not match')
     return
