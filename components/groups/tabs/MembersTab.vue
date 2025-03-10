@@ -35,7 +35,7 @@
           <PendingMembersList
             :group-id="group.id"
             :current-user="currentUser"
-            @refresh="fetchPendingMembers"
+            @refresh="handlePendingMembersRefresh"
           />
         </TabsContent>
       </Tabs>
@@ -376,6 +376,21 @@ const declinePendingMember = async (member) => {
   } catch (error) {
     console.error('Failed to decline pending member:', error)
     alert('Failed to decline member: ' + (error.response?.data?.error || error.message))
+  }
+}
+
+const handlePendingMembersRefresh = (data) => {
+  console.log('Handling refresh from PendingMembersList', data);
+  
+  // Refresh pending members
+  fetchPendingMembers();
+  
+  // Also refresh the entire group data to update active members
+  emit('refresh-group');
+  
+  // If we have data about an approved member, log it
+  if (data && data.action === 'approve') {
+    console.log(`Member approved: ${data.member.user?.name || 'Unknown member'}`);
   }
 }
 </script>

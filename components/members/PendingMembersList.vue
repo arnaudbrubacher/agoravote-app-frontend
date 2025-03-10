@@ -208,7 +208,12 @@ const approveMember = async (member) => {
     }
     
     // Emit refresh event to update the members list
-    emit('refresh')
+    // Include information about the approved member
+    emit('refresh', { 
+      action: 'approve', 
+      member: member,
+      message: `${member.user?.name || 'Member'} has been approved`
+    })
     
     // Show success message
     alert(`${member.user?.name || 'Member'} has been approved`)
@@ -235,6 +240,13 @@ const declineMember = async (member) => {
     if (selectedMember.value && selectedMember.value.user_id === member.user_id) {
       selectedMember.value = null
     }
+    
+    // Emit refresh event with information about the declined member
+    emit('refresh', { 
+      action: 'decline', 
+      member: member,
+      message: `${member.user?.name || 'Member'} has been declined`
+    })
     
     // Show success message
     alert(`${member.user?.name || 'Member'} has been declined`)
