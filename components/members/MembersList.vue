@@ -89,7 +89,7 @@
         :key="member.id || index" 
         :member="member" 
         :current-user="currentUser"
-        :is-current-user-admin="isEditMode || isCurrentUserAdmin"
+        :is-current-user-admin="isCurrentUserAdmin || isEditMode"
         @promote="$emit('promote', member)"
         @demote="$emit('demote', member)"
         @remove="handleMemberRemove(member)"
