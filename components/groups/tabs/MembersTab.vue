@@ -134,8 +134,7 @@ const handleFileChange = (event) => {
 
 const promoteMember = async (member) => {
   try {
-    // In the Go backend with Gin framework, the API likely follows RESTful conventions
-    // The member ID in the database is likely the user_id field
+    // Get the correct member ID for the backend
     const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
     
     console.log('MembersTab - Promoting member with details:', {
@@ -144,11 +143,27 @@ const promoteMember = async (member) => {
       groupId: props.group.id
     });
     
-    // Based on the backend's domain-driven design, the endpoint should be:
-    // PUT /groups/{groupId}/members/{memberId}/role with { role: "admin" }
-    await axios.put(`/groups/${props.group.id}/members/${memberId}/role`, { 
-      role: "admin" 
+    // Debug: Log the token being used
+    const token = localStorage.getItem('token');
+    console.log('Token being used (first 20 chars):', token ? token.substring(0, 20) + '...' : 'No token found');
+    
+    // Debug: Make a direct fetch call to see the raw response
+    const response = await fetch(`http://localhost:8080/groups/${props.group.id}/members/${memberId}/role`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ role: "admin" })
     });
+    
+    console.log('Raw response status:', response.status);
+    const responseData = await response.json();
+    console.log('Raw response data:', responseData);
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to promote member');
+    }
     
     // Show success message
     alert(`${member.name} is now an admin`);
@@ -175,11 +190,27 @@ const demoteMember = async (member) => {
       groupId: props.group.id
     });
     
-    // Based on the backend's domain-driven design, the endpoint should be:
-    // PUT /groups/{groupId}/members/{memberId}/role with { role: "member" }
-    await axios.put(`/groups/${props.group.id}/members/${memberId}/role`, { 
-      role: "member" 
+    // Debug: Log the token being used
+    const token = localStorage.getItem('token');
+    console.log('Token being used (first 20 chars):', token ? token.substring(0, 20) + '...' : 'No token found');
+    
+    // Debug: Make a direct fetch call to see the raw response
+    const response = await fetch(`http://localhost:8080/groups/${props.group.id}/members/${memberId}/role`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ role: "member" })
     });
+    
+    console.log('Raw response status:', response.status);
+    const responseData = await response.json();
+    console.log('Raw response data:', responseData);
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to demote member');
+    }
     
     // Show success message
     alert(`${member.name} is no longer an admin`);

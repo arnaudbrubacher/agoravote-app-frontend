@@ -105,40 +105,58 @@ export function useGroupMembers(groupId, group, fetchGroup) {
   // Promote member to admin
   const promoteMember = async (member) => {
     try {
-      // Call API to promote member
-      await axios.put(`/groups/${groupId}/members/${member.id}`, { 
-        isAdmin: true 
-      })
+      // Get the correct member ID for the backend
+      const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+      
+      console.log('useGroupMembers - Promoting member with details:', {
+        member,
+        memberId,
+        groupId
+      });
+      
+      // Use the correct URL path with consistent parameter names
+      await axios.put(`/groups/${groupId}/members/${memberId}/role`, { 
+        role: "admin" 
+      });
       
       // Show success message
-      alert(`${member.name} is now an admin`)
+      alert(`${member.name} is now an admin`);
       
       // Refresh group data to update members list
-      await fetchGroup()
+      await fetchGroup();
     } catch (err) {
-      console.error('Failed to promote member:', err)
-      alert('Failed to promote member: ' + (err.response?.data?.error || err.message))
-      throw err
+      console.error('Failed to promote member:', err);
+      alert('Failed to promote member: ' + (err.response?.data?.error || err.message));
+      throw err;
     }
   }
 
   // Demote member from admin
   const demoteMember = async (member) => {
     try {
-      // Call API to demote member
-      await axios.put(`/groups/${groupId}/members/${member.id}`, { 
-        isAdmin: false 
-      })
+      // Get the correct member ID for the backend
+      const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+      
+      console.log('useGroupMembers - Demoting member with details:', {
+        member,
+        memberId,
+        groupId
+      });
+      
+      // Use the correct URL path with consistent parameter names
+      await axios.put(`/groups/${groupId}/members/${memberId}/role`, { 
+        role: "member" 
+      });
       
       // Show success message
-      alert(`${member.name} is no longer an admin`)
+      alert(`${member.name} is no longer an admin`);
       
       // Refresh group data to update members list
-      await fetchGroup()
+      await fetchGroup();
     } catch (err) {
-      console.error('Failed to demote member:', err)
-      alert('Failed to demote member: ' + (err.response?.data?.error || err.message))
-      throw err
+      console.error('Failed to demote member:', err);
+      alert('Failed to demote member: ' + (err.response?.data?.error || err.message));
+      throw err;
     }
   }
 
