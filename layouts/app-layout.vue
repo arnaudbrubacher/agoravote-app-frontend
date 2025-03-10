@@ -79,38 +79,12 @@
     />
     
     <!-- Find Group Dialog -->
-    <Dialog :open="showFindGroupDialog" @update:open="showFindGroupDialog = $event">
-      <DialogContent class="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Find a Group</DialogTitle>
-          <DialogDescription>
-            Search for public groups to join
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div class="space-y-4 py-4">
-          <!-- Search Input -->
-          <div class="relative">
-            <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              v-model="groupSearchQuery"
-              type="text"
-              placeholder="Search for groups..."
-              class="w-full pl-10 pr-4"
-            />
-          </div>
-
-          <!-- Search results would go here -->
-          <div class="text-center py-4 text-muted-foreground">
-            Type to search for public groups
-          </div>
-        </div>
-        
-        <DialogFooter>
-          <Button variant="outline" @click="showFindGroupDialog = false">Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <FindGroupDialog
+      v-model:open="showFindGroupDialog"
+      :userGroups="userGroups"
+      @view-group="navigateToGroup"
+      @join-group="joinGroup"
+    />
     
     <!-- Create Group Dialog -->
     <Dialog :open="showCreateGroupDialog" @update:open="showCreateGroupDialog = $event">
@@ -183,6 +157,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import FindGroupDialog from '@/components/groups/FindGroupDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -214,7 +189,6 @@ const showFindGroupDialog = ref(false)
 const showCreateGroupDialog = ref(false)
 
 // Form data
-const groupSearchQuery = ref('')
 const newGroupName = ref('')
 const newGroupDescription = ref('')
 const newGroupIsPublic = ref(true)

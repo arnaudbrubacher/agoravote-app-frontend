@@ -1,4 +1,6 @@
-<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/dashboard/UserGroupsTab.vue -->
+<!-- discontinued, now in DashboardSidebar.vue -->
+
+
 <template>
   <Card>
     <CardHeader class="flex flex-row items-center justify-between">
@@ -24,12 +26,12 @@
         No groups yet. Create your first group!
       </div>
       <div v-else class="space-y-4">
-        <UserGroupCard 
+        <GroupCard 
           v-for="group in groups" 
           :key="group.id" 
           :group="group" 
+          :showActions="false"
           @click="$emit('view-group', group.id)"
-          @view="$emit('view-group', group.id)"
         />
       </div>
     </CardContent>
@@ -42,7 +44,7 @@ import { PlusIcon, Search as SearchIcon } from 'lucide-vue-next'
 import { Loader2 as SpinnerIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import UserGroupCard from '~/components/groups/UserGroupCard.vue'
+import GroupCard from '@/components/groups/GroupCard.vue'
 
 const props = defineProps({
   groups: {

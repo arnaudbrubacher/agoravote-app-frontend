@@ -1,9 +1,11 @@
-<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/dashboard/groups/UserGroupCard.vue -->
+<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/groups/GroupCard.vue -->
 <template>
   <div 
-    class="flex items-center p-4 border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
-    @click="$emit('click')"
+    class="flex items-center p-4 border rounded-lg hover:bg-accent/5 transition-colors"
+    :class="{ 'cursor-pointer': clickable }"
+    @click="clickable ? $emit('click') : null"
   >
+    <!-- Group Avatar -->
     <div class="flex-shrink-0 mr-4">
       <div v-if="!group.picture" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
         <Users class="h-6 w-6 text-gray-400" />
@@ -15,14 +17,23 @@
         class="w-12 h-12 rounded-full object-cover border"
       />
     </div>
+    
+    <!-- Group Info -->
     <div class="flex-grow">
       <h3 class="font-medium">{{ group.name }}</h3>
-      <p class="text-sm text-muted-foreground truncate">{{ group.description }}</p>
+      <p class="text-sm text-muted-foreground truncate">{{ group.description || 'No description' }}</p>
     </div>
-    <div class="flex-shrink-0 ml-2">
-      <Button v-if="group.is_private" size="sm" variant="outline" class="text-xs">
+    
+    <!-- Private Badge -->
+    <div v-if="showPrivateBadge && group.is_private" class="flex-shrink-0 ml-2">
+      <Button size="sm" variant="outline" class="text-xs">
         Private
       </Button>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div v-if="showActions" class="flex-shrink-0 ml-2 flex items-center space-x-2">
+      <slot name="actions"></slot>
     </div>
   </div>
 </template>
@@ -36,10 +47,22 @@ const props = defineProps({
   group: {
     type: Object,
     required: true
+  },
+  showActions: {
+    type: Boolean,
+    default: false
+  },
+  showPrivateBadge: {
+    type: Boolean,
+    default: true
+  },
+  clickable: {
+    type: Boolean,
+    default: true
   }
 })
 
-defineEmits(['click', 'view'])
+defineEmits(['click'])
 
 // Compute the proper URL for the group picture
 const groupPictureUrl = computed(() => {
@@ -51,7 +74,7 @@ const groupPictureUrl = computed(() => {
   }
   
   // Otherwise, prepend the API base URL
-  const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
   return `${apiBaseUrl}${props.group.picture}`
 })
 </script> 

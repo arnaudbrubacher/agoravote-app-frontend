@@ -48,31 +48,13 @@
         
         <!-- Groups List -->
         <div v-else class="space-y-3">
-          <div 
+          <GroupCard 
             v-for="group in groups" 
             :key="group.id" 
-            class="flex items-center p-3 rounded-md hover:bg-accent/50 transition-colors cursor-pointer"
+            :group="group"
+            :showActions="false"
             @click="$emit('view-group', group.id)"
-          >
-            <!-- Group Avatar -->
-            <div class="flex-shrink-0 mr-3">
-              <div v-if="!getGroupPictureUrl(group)" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                <Users class="h-5 w-5 text-gray-600" />
-              </div>
-              <img 
-                v-else
-                :src="getGroupPictureUrl(group)" 
-                alt="Group Picture"
-                class="w-10 h-10 rounded-full object-cover"
-              />
-            </div>
-            
-            <!-- Group Info -->
-            <div class="flex-grow min-w-0">
-              <div class="font-medium truncate">{{ group.name }}</div>
-              <div class="text-xs text-muted-foreground truncate">{{ group.description || 'No description' }}</div>
-            </div>
-          </div>
+          />
         </div>
       </div>
     </SheetContent>
@@ -94,6 +76,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import GroupCard from '@/components/groups/GroupCard.vue'
 
 // Props
 const props = defineProps({
@@ -122,16 +105,4 @@ const isOpen = computed({
 })
 
 // Helper function to properly format group picture URLs
-const getGroupPictureUrl = (group) => {
-  if (!group.picture) return null
-  
-  // If the picture is a full URL, return it as is
-  if (group.picture.startsWith('http')) {
-    return group.picture
-  }
-  
-  // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-  return `${baseUrl}/${group.picture}`
-}
 </script> 
