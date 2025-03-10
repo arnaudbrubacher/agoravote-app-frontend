@@ -9,7 +9,6 @@
       @close="$emit('close-settings')"
       @submit="$emit('group-updated', $event)"
       @delete="$emit('group-deleted')"
-      @leave="$emit('group-left')"
     />
 
     <!-- New Vote Dialog -->
@@ -98,7 +97,6 @@ defineEmits([
   'close-vote-details',
   'group-updated',
   'group-deleted',
-  'group-left',
   'vote-created',
   'post-created',
   'member-added',

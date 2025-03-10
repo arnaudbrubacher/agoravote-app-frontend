@@ -77,6 +77,7 @@
   <GroupAdmissionForm
     v-if="showAdmissionForm"
     :group="selectedGroup"
+    :error="admissionError"
     @close="showAdmissionForm = false"
     @submit="handleAdmissionSubmit"
   />
@@ -123,6 +124,7 @@ let searchTimeout = null
 // Group admission state
 const showAdmissionForm = ref(false)
 const selectedGroup = ref(null)
+const admissionError = ref('')
 
 // Debounce search function
 const debounceSearch = () => {
@@ -182,6 +184,9 @@ watch(() => props.open, (newValue) => {
 const openAdmissionForm = (group) => {
   selectedGroup.value = group
   showAdmissionForm.value = true
+  admissionError.value = ''
+  // Close the FindGroupDialog when opening the admission form
+  emit('update:open', false)
 }
 
 const handleAdmissionSubmit = async (admissionData) => {
@@ -199,7 +204,26 @@ const handleAdmissionSubmit = async (admissionData) => {
     alert('Successfully joined the group');
   } catch (error) {
     console.error('Failed to join group:', error);
-    alert('Failed to join group: ' + (error.response?.data?.message || 'Unknown error'));
+    
+    // Check for specific error types
+    if (error.response) {
+      const status = error.response.status;
+      const errorMessage = error.response.data?.error || error.response.data?.message || 'Unknown error';
+      
+      // Handle password-related errors (401 Unauthorized, 400 Bad Request with "password required")
+      if (status === 401 || (status === 400 && errorMessage.includes('password'))) {
+        // Set the admission error for the form to display
+        admissionError.value = errorMessage;
+      } else {
+        // For other errors, show an alert
+        admissionError.value = errorMessage;
+        alert('Failed to join group: ' + errorMessage);
+      }
+    } else {
+      // Network error or other unexpected error
+      admissionError.value = 'Network error. Please try again.';
+      alert('Failed to join group: Network error');
+    }
   }
 }
 </script> 

@@ -157,8 +157,8 @@
                       :disabled="!formData.requires_documents"
                       :class="{ 'opacity-50': !formData.requires_documents }"
                     />
-              <Button
-                type="button"
+                    <Button
+                      type="button"
                       variant="destructive" 
                       size="icon" 
                       @click="removeDocument(index)"
@@ -167,25 +167,14 @@
                       :class="{ 'opacity-50': !formData.requires_documents }"
                     >
                       <LucideIcon name="Trash" class="h-4 w-4" />
-              </Button>
-            </div>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <!-- Actions -->
-          <div class="flex justify-center pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              @click="handleLeave"
-              class="mx-auto"
-            >
-              <LucideIcon name="LogOut" size="4" class="mr-2 h-4 w-4" />
-              Leave Group
-            </Button>
-          </div>
+          <!-- Remove the Leave Group button and its container -->
         </div>
       </ScrollArea>
       
@@ -278,7 +267,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'submit', 'delete', 'leave'])
+const emit = defineEmits(['close', 'submit', 'delete'])
 const fileInput = ref(null)
 const previewImage = ref(null)
 const selectedFile = ref(null)
@@ -906,12 +895,6 @@ const handleSubmit = async () => {
 const handleDelete = () => {
   if (confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
     emit('delete')
-  }
-}
-
-const handleLeave = () => {
-  if (confirm('Are you sure you want to leave this group?')) {
-    emit('leave')
   }
 }
 

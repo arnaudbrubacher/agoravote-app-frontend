@@ -10,8 +10,10 @@
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 space-y-6">
-          <!-- Group Details -->
-          <div class="space-y-6">
+          <!-- Section 1: Group Details -->
+          <div class="space-y-4 border-b pb-4">
+            <h3 class="text-md font-medium">Group Information</h3>
+            
             <div class="space-y-1">
               <Label class="text-sm text-muted-foreground">Name</Label>
               <p class="text-lg font-medium">{{ group.name }}</p>
@@ -26,23 +28,24 @@
               <Label class="text-sm text-muted-foreground">Privacy</Label>
               <p class="text-lg font-medium">{{ group.isPrivate ? 'Private' : 'Public' }}</p>
             </div>
+          </div>
 
-            <div class="space-y-1">
-              <Label class="text-sm text-muted-foreground">Group ID</Label>
-              <p class="text-lg font-medium">{{ group.id }}</p>
-            </div>
-
+          <!-- Section 2: Admission Requirements -->
+          <div class="space-y-4">
+            <h3 class="text-md font-medium">Admission Requirements</h3>
+            
             <form @submit.prevent="handleSubmit" class="space-y-6">
               <!-- Group Password -->
-              <div v-if="group.requiresPassword" class="space-y-1">
+              <div v-if="passwordRequired" class="space-y-1">
                 <Label class="text-sm text-muted-foreground" for="password">Password</Label>
-                <Input id="password" type="password" v-model="form.password" required />
+                <Input id="password" type="password" v-model="form.password" required :class="{ 'border-red-500': passwordError }" />
+                <p v-if="passwordError" class="text-sm text-red-500 mt-1">{{ passwordError }}</p>
               </div>
 
               <!-- Documents Required -->
               <div v-if="group.documents && group.documents.length" class="space-y-4">
                 <div class="space-y-1">
-                  <Label class="text-sm text-muted-foreground">Documents Required for Admission</Label>
+                  <Label class="text-sm text-muted-foreground">Required Documents</Label>
                 </div>
                 <div v-for="(doc, index) in group.documents" :key="index" class="space-y-1">
                   <Label class="text-sm text-muted-foreground" :for="'document-' + index">{{ doc.name }}</Label>
@@ -58,6 +61,11 @@
                     <span v-if="form.documents[index]">{{ form.documents[index].name }}</span>
                   </div>
                 </div>
+              </div>
+
+              <!-- No Requirements Message -->
+              <div v-if="!passwordRequired && (!group.documents || !group.documents.length)" class="text-sm text-muted-foreground">
+                This group has no special admission requirements.
               </div>
 
               <!-- Form Actions -->
@@ -77,21 +85,42 @@
 
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
 import Icon from '@/components/Icon.vue'
+import axios from '~/src/utils/axios'
 
 const props = defineProps({
   group: {
     type: Object,
     required: true
+  },
+  error: {
+    type: String,
+    default: ''
+  }
+})
+
+// Computed property to handle both camelCase and snake_case versions of requiresPassword
+const passwordRequired = computed(() => {
+  // Check for both camelCase and snake_case versions
+  return props.group.requiresPassword === true || props.group.requires_password === true
+})
+
+// Watch for error changes to update the passwordError
+watch(() => props.error, (newError) => {
+  if (newError && passwordRequired.value) {
+    passwordError.value = newError
+  } else {
+    passwordError.value = ''
   }
 })
 
 const isSubmitting = ref(false)
 const fileInputs = ref([])
+const passwordError = ref('')
 
 const form = ref({
   password: '',
@@ -102,7 +131,17 @@ const form = ref({
 watch(() => props.group, (newGroup) => {
   form.value.password = ''
   form.value.documents = newGroup.documents ? newGroup.documents.map(() => null) : []
+  
+  // Log group data for debugging
+  console.log('Group data received:', newGroup)
+  console.log('Password required:', passwordRequired.value)
 }, { immediate: true })
+
+// Dispatch a custom event to close the DashboardSidebar when the component mounts
+onMounted(() => {
+  // Dispatch a custom event to close the DashboardSidebar
+  window.dispatchEvent(new CustomEvent('close-dashboard-sidebar'))
+})
 
 const handleDocumentChange = (index, event) => {
   form.value.documents[index] = event.target.files[0]
@@ -114,12 +153,18 @@ const triggerFileInput = (index) => {
 
 const handleSubmit = async () => {
   isSubmitting.value = true
+  passwordError.value = ''
+  
   try {
     const admissionData = {
       password: form.value.password,
       documents: form.value.documents
     }
-    await emit('submit', admissionData)
+    
+    // Emit the submit event with the admission data
+    // The parent component (FindGroupDialog) will handle the API call
+    // and any errors that might occur
+    emit('submit', admissionData)
   } catch (error) {
     console.error('Failed to submit admission form:', error)
   } finally {
@@ -127,5 +172,5 @@ const handleSubmit = async () => {
   }
 }
 
-defineEmits(['close', 'submit'])
+const emit = defineEmits(['close', 'submit'])
 </script>

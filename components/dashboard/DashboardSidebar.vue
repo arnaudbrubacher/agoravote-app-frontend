@@ -111,14 +111,21 @@ const handleUserLeftGroup = (event) => {
   emit('refresh-groups')
 }
 
+// Handle the close-dashboard-sidebar event
+const handleCloseDashboardSidebar = () => {
+  isOpen.value = false
+}
+
 // Set up event listeners
 onMounted(() => {
   window.addEventListener('user-left-group', handleUserLeftGroup)
+  window.addEventListener('close-dashboard-sidebar', handleCloseDashboardSidebar)
 })
 
 // Clean up event listeners
 onBeforeUnmount(() => {
   window.removeEventListener('user-left-group', handleUserLeftGroup)
+  window.removeEventListener('close-dashboard-sidebar', handleCloseDashboardSidebar)
 })
 
 // Helper function to properly format group picture URLs

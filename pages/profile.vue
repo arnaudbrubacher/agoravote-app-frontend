@@ -17,19 +17,6 @@
         </div>
         <h1 class="text-xl font-semibold">{{ userData?.name || 'User' }}</h1>
       </div>
-      
-      <!-- Settings button (right-aligned) -->
-      <div class="flex items-center">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="showUserSettings = true"
-          class="flex items-center gap-1"
-        >
-          <Settings class="h-4 w-4" />
-          <span>Settings</span>
-        </Button>
-      </div>
     </div>
     
     <!-- Loading state -->
@@ -83,13 +70,6 @@
     />
 
     <!-- Dialogs -->
-    <UserSettingsDialog
-      :open="showUserSettings"
-      :userData="userData"
-      @update:open="showUserSettings = $event"
-      @refresh-user-data="handleUserDataRefresh"
-    />
-
     <NewPostDialog
       v-if="showNewPostDialog"
       @close="showNewPostDialog = false"
@@ -115,11 +95,10 @@ definePageMeta({
 
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Settings } from 'lucide-vue-next'
+import { User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
-import UserSettingsDialog from '@/components/users/UserSettingsDialog.vue'
 import NewPostDialog from '@/components/posts/NewPostDialog.vue'
 import PostDetailsDialog from '@/components/posts/PostDetailsDialog.vue'
 import UserProfileCard from '@/components/users/UserCard.vue'
@@ -129,7 +108,6 @@ import { useUserProfile } from '@/composables/useUserProfile'
 
 const router = useRouter()
 const fileInput = ref(null)
-const showUserSettings = ref(false)
 const showNewPostDialog = ref(false)
 const selectedPost = ref(null)
 

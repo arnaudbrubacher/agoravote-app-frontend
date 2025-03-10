@@ -31,6 +31,15 @@
         <Button 
           variant="outline" 
           size="sm" 
+          @click="handleLeaveGroup"
+          class="flex items-center gap-1"
+        >
+          <LogOut class="h-4 w-4" />
+          <span>Leave</span>
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
           @click="showSettingsDialog = true"
           class="flex items-center gap-1"
         >
@@ -81,7 +90,6 @@
       @close-vote-details="selectedVote = null"
       @group-updated="handleGroupUpdated"
       @group-deleted="handleGroupDeleted"
-      @group-left="handleGroupLeft"
       @vote-created="handleVoteCreated"
       @post-created="handlePostCreated"
       @member-added="handleMemberAdded"
@@ -97,7 +105,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Users, Settings } from 'lucide-vue-next'
+import { Users, Settings, LogOut } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import LoadingError from '@/components/group/core/LoadingError.vue'
 import GroupTabs from '@/components/group/core/GroupTabs.vue'
@@ -282,16 +290,6 @@ const handleGroupDeleted = async () => {
   }
 }
 
-const handleGroupLeft = async () => {
-  try {
-    await leaveGroup()
-    // Navigation is handled in the leaveGroup function
-  } catch (err) {
-    console.error('Failed to leave group:', err)
-    alert('Failed to leave group: ' + (err.response?.data?.error || err.message))
-  }
-}
-
 const handleVoteCreated = async (voteData) => {
   try {
     await createNewVote(voteData)
@@ -438,6 +436,19 @@ const handleAdminStatusUpdate = (isAdmin) => {
     
     // Dispatch an event to notify components that group data has been updated
     window.dispatchEvent(new CustomEvent('group-data-updated'))
+  }
+}
+
+// New function to handle leaving the group
+const handleLeaveGroup = async () => {
+  if (confirm('Are you sure you want to leave this group?')) {
+    try {
+      await leaveGroup()
+      // Navigation is handled in the leaveGroup function
+    } catch (err) {
+      console.error('Failed to leave group:', err)
+      alert('Failed to leave group: ' + (err.response?.data?.error || err.message))
+    }
   }
 }
 </script>

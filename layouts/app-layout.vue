@@ -275,6 +275,20 @@ const createGroup = async () => {
   }
 }
 
+// Join a group
+const joinGroup = async (groupId) => {
+  try {
+    // Refresh groups after joining
+    await fetchUserGroups()
+    
+    // Navigate to the group page
+    navigateToGroup(groupId)
+  } catch (error) {
+    console.error('Failed to join group:', error)
+    alert('Failed to join group: ' + (error.response?.data?.message || 'Unknown error'))
+  }
+}
+
 // Fetch user groups
 const fetchUserGroups = async () => {
   if (!isAuthenticated.value) return
@@ -414,11 +428,19 @@ onMounted(async () => {
   
   // Listen for the global group-data-updated event
   window.addEventListener('group-data-updated', fetchUserGroups)
+  
+  // Listen for the close-dashboard-sidebar event to also close the FindGroupDialog
+  window.addEventListener('close-dashboard-sidebar', () => {
+    showFindGroupDialog.value = false
+  })
 })
 
 // Clean up event listeners
 onBeforeUnmount(() => {
   window.removeEventListener('user-data-updated', fetchUserData)
   window.removeEventListener('group-data-updated', fetchUserGroups)
+  window.removeEventListener('close-dashboard-sidebar', () => {
+    showFindGroupDialog.value = false
+  })
 })
 </script>
