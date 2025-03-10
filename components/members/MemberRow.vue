@@ -26,7 +26,7 @@
             {{ member.name || 'Unknown Member' }}
           </router-link>
           <span v-else class="font-medium">
-            {{ member.name || 'Unknown Member' }}
+            {{ getMemberName(member) }}
           </span>
           <span v-if="isCurrentMember(member)" class="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
             You
@@ -35,7 +35,7 @@
             Pending
           </span>
         </div>
-        <span class="text-sm text-muted-foreground">{{ member.email || 'No email available' }}</span>
+        <span class="text-sm text-muted-foreground">{{ getMemberEmail(member) }}</span>
       </div>
     </div>
     
@@ -212,9 +212,17 @@ const memberAvatarUrl = computed(() => {
   return `${baseUrl}/${avatarUrl}`
 })
 
+const getMemberName = (member) => {
+  // Try to get the name from various possible locations
+  return member.name || 
+         (member.user && member.user.name) || 
+         'Unknown Member';
+}
+
 const getMemberInitial = (member) => {
-  if (!member || !member.name || member.name === 'Unknown Member') return 'U'
-  return member.name.charAt(0).toUpperCase()
+  const name = getMemberName(member);
+  if (name === 'Unknown Member') return 'U';
+  return name.charAt(0).toUpperCase();
 }
 
 const isCurrentMember = (member) => {
@@ -248,5 +256,12 @@ const handleMemberRemove = (member) => {
     user: member.user && member.user.id
   });
   emit('remove', member);
+}
+
+const getMemberEmail = (member) => {
+  // Try to get the email from various possible locations
+  return member.email || 
+         (member.user && member.user.email) || 
+         'No email available';
 }
 </script>

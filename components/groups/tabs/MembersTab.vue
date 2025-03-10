@@ -89,16 +89,47 @@ const props = defineProps({
 const activeMembers = computed(() => {
   if (!props.group || !props.group.members) return [];
   
-  return props.group.members.filter(member => {
-    // Check if the member has a status property and it's not 'pending'
-    return !member.status || member.status.toLowerCase() !== 'pending';
+  console.log('Filtering active members from:', props.group.members);
+  
+  // Log all members with their status before filtering
+  console.log('All members with status before filtering:');
+  props.group.members.forEach(member => {
+    console.log(`Member ${member.name || member.user?.name || 'Unknown'}: status=${member.status}, isPending=${member.status === 'pending'}`);
   });
+  
+  const filtered = props.group.members.filter(member => {
+    // Debug log each member's status
+    console.log('Member status check:', {
+      name: member.name || member.user?.name || 'Unknown',
+      status: member.status,
+      isPending: member.status === 'pending'
+    });
+    
+    // Check if the member has a status property and it's 'pending'
+    if (member.status === 'pending') {
+      console.log(`Filtering out pending member: ${member.name || member.user?.name || 'Unknown'}`);
+      return false; // Filter out pending members
+    }
+    
+    return true; // Keep all other members
+  });
+  
+  console.log('Filtered active members:', filtered);
+  return filtered;
 });
 
 // Debug admin status
 onMounted(() => {
   console.log('MembersTab - isCurrentUserAdmin:', props.isCurrentUserAdmin)
   console.log('MembersTab - group:', props.group)
+  
+  // Add additional debugging to check if members have status field
+  if (props.group && props.group.members) {
+    console.log('MembersTab - Checking member status fields:');
+    props.group.members.forEach(member => {
+      console.log(`Member ${member.name || member.user?.name || 'Unknown'}: has status field = ${member.status !== undefined}, status = ${member.status}`);
+    });
+  }
   
   // Fetch pending members when component mounts
   fetchPendingMembers()

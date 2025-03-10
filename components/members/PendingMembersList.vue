@@ -25,8 +25,12 @@
     <div v-else class="space-y-4">
       <MemberRow 
         v-for="(member, index) in pendingMembers" 
-        :key="member.id || index" 
-        :member="member"
+        :key="member.id || member.user_id || index" 
+        :member="{
+          ...member,
+          name: member.name || (member.user && member.user.name),
+          email: member.email || (member.user && member.user.email)
+        }"
         :current-user="currentUser"
         :is-pending="true"
         :is-current-user-admin="true"
@@ -146,10 +150,24 @@ const fetchPendingMembers = async () => {
   
   try {
     const response = await axios.get(`/groups/${props.groupId}/pending-members`)
+    console.log('Pending members response:', response.data)
+    
     pendingMembers.value = response.data
     
-    // Add hasDocuments property to each member
+    // Add hasDocuments property to each member and ensure user info is available
     pendingMembers.value.forEach(member => {
+      console.log('Processing pending member:', member)
+      
+      // Ensure user info is available
+      if (!member.name && member.user) {
+        member.name = member.user.name
+      }
+      
+      if (!member.email && member.user) {
+        member.email = member.user.email
+      }
+      
+      // Process documents
       let docs = member.documents_submitted
       
       // If docs is a string, try to parse it as JSON

@@ -138,7 +138,10 @@ export function useGroupData(groupId) {
         name: member.name || member.username || userData.name || userData.username || 'Unknown Member',
         email: member.email || userData.email || '',
         avatar: member.avatar || member.profilePicture || userData.avatar || userData.profilePicture,
-        isAdmin: member.isAdmin || member.is_admin || member.role === 'admin' || userData.role === 'admin'
+        isAdmin: member.isAdmin || member.is_admin || member.role === 'admin' || userData.role === 'admin',
+        status: member.status || 'approved', // Preserve the status field, default to 'approved' if not present
+        user_id: member.user_id || member.userId || userData.id, // Preserve user_id for API calls
+        user: member.user // Preserve the original user object
       }
     })
   }
