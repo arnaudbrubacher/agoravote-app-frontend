@@ -33,46 +33,47 @@
           <div class="space-y-4">
             <h3 class="text-md font-medium">Admission Requirements</h3>
             
+            <!-- File inputs outside the form -->
+            <div v-if="documentsRequired" class="space-y-4 mb-4">
+              <div class="space-y-1">
+                <Label class="text-sm font-medium">Required Documents</Label>
+                <p class="text-sm text-muted-foreground">The following documents are required to join this group:</p>
+              </div>
+              <div v-for="(doc, index) in requiredDocuments" :key="index" class="p-3 border rounded-md space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <Label class="text-sm font-medium" :for="'document-' + index">{{ doc.name }}</Label>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span v-if="form.documents[index]" class="text-sm text-green-600 truncate max-w-[150px]">
+                      {{ form.documents[index].name }}
+                    </span>
+                    <span v-else class="text-sm text-muted-foreground">No file selected</span>
+                    <Button type="button" variant="outline" size="sm" @click="(event) => triggerFileInput(index, event)">
+                      {{ form.documents[index] ? 'Replace' : 'Upload' }}
+                    </Button>
+                  </div>
+                </div>
+                
+                <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
+                
+                <input 
+                  :id="'document-' + index" 
+                  type="file" 
+                  class="hidden" 
+                  @change="handleDocumentChange(index, $event)" 
+                  ref="fileInputs"
+                  accept="image/*,.pdf,.doc,.docx"
+                />
+              </div>
+            </div>
+            
             <form @submit.prevent="handleSubmit" class="space-y-6">
               <!-- Group Password -->
               <div v-if="passwordRequired" class="space-y-1">
                 <Label class="text-sm text-muted-foreground" for="password">Password</Label>
                 <Input id="password" type="password" v-model="form.password" required :class="{ 'border-red-500': passwordError }" />
                 <p v-if="passwordError" class="text-sm text-red-500 mt-1">{{ passwordError }}</p>
-              </div>
-
-              <!-- Documents Required -->
-              <div v-if="documentsRequired" class="space-y-4">
-                <div class="space-y-1">
-                  <Label class="text-sm font-medium">Required Documents</Label>
-                  <p class="text-sm text-muted-foreground">The following documents are required to join this group:</p>
-                </div>
-                <div v-for="(doc, index) in requiredDocuments" :key="index" class="p-3 border rounded-md space-y-2">
-                  <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                      <Label class="text-sm font-medium" :for="'document-' + index">{{ doc.name }}</Label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span v-if="form.documents[index]" class="text-sm text-green-600 truncate max-w-[150px]">
-                        {{ form.documents[index].name }}
-                      </span>
-                      <span v-else class="text-sm text-muted-foreground">No file selected</span>
-                      <Button variant="outline" size="sm" @click="triggerFileInput(index)">
-                        {{ form.documents[index] ? 'Replace' : 'Upload' }}
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
-                  
-                  <input 
-                    :id="'document-' + index" 
-                    type="file" 
-                    class="hidden" 
-                    @change="handleDocumentChange(index, $event)" 
-                    ref="fileInputs"
-                  />
-                </div>
               </div>
 
               <!-- No Requirements Message -->
@@ -240,11 +241,27 @@ onMounted(() => {
 })
 
 const handleDocumentChange = (index, event) => {
-  form.value.documents[index] = event.target.files[0]
+  // Prevent default behavior to ensure it doesn't trigger form submission
+  event.preventDefault();
+  
+  // Store the file in the form data
+  form.value.documents[index] = event.target.files[0];
+  
+  // Log for debugging
+  console.log(`Document ${index} selected:`, event.target.files[0]?.name);
 }
 
-const triggerFileInput = (index) => {
-  fileInputs.value[index].click()
+const triggerFileInput = (index, event) => {
+  // Prevent any form submission
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
+  // Click the file input
+  if (fileInputs.value && fileInputs.value[index]) {
+    fileInputs.value[index].click();
+  }
 }
 
 const handleSubmit = async () => {

@@ -13,7 +13,7 @@
         <TabsContent value="active">
           <!-- Use the shared MembersList component which handles lists of members -->
           <MembersList
-            :members="group.members"
+            :members="activeMembers"
             :loading="isLoadingMembers"
             :current-user="currentUser"
             :is-current-user-admin="isCurrentUserAdmin"
@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import MembersList from '~/components/members/MembersList.vue'
@@ -84,6 +84,16 @@ const props = defineProps({
     default: false
   }
 })
+
+// Compute active members - filter out pending members
+const activeMembers = computed(() => {
+  if (!props.group || !props.group.members) return [];
+  
+  return props.group.members.filter(member => {
+    // Check if the member has a status property and it's not 'pending'
+    return !member.status || member.status.toLowerCase() !== 'pending';
+  });
+});
 
 // Debug admin status
 onMounted(() => {
