@@ -33,12 +33,9 @@
         <!-- Pending Members Tab -->
         <TabsContent value="pending">
           <PendingMembersList
-            :pending-members="pendingMembers"
-            :loading="isLoadingPendingMembers"
+            :group-id="group.id"
             :current-user="currentUser"
-            @review-documents="showReviewDocumentsDialog"
-            @accept="acceptPendingMember"
-            @decline="declinePendingMember"
+            @refresh="fetchPendingMembers"
           />
         </TabsContent>
       </Tabs>
@@ -55,6 +52,7 @@
       <ReviewDocumentsDialog
         v-if="showReviewDialog"
         :member="selectedPendingMember"
+        :group-id="group.id"
         @close="showReviewDialog = false"
         @accept="acceptPendingMember"
         @decline="declinePendingMember"
@@ -245,6 +243,12 @@ const handleAdminStatusUpdate = (isAdmin) => {
 const fetchPendingMembers = async () => {
   if (!props.isCurrentUserAdmin) return
   
+  // Check if group ID is valid
+  if (!props.group || !props.group.id) {
+    console.error('Cannot fetch pending members: Invalid group ID')
+    return
+  }
+  
   isLoadingPendingMembers.value = true
   try {
     // Call API to get pending members
@@ -253,20 +257,7 @@ const fetchPendingMembers = async () => {
   } catch (error) {
     console.error('Failed to fetch pending members:', error)
     // Mock data for development
-    pendingMembers.value = [
-      {
-        id: 1,
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        hasDocuments: true
-      },
-      {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane.smith@example.com',
-        hasDocuments: true
-      }
-    ]
+    pendingMembers.value = []
   } finally {
     isLoadingPendingMembers.value = false
   }
@@ -284,17 +275,30 @@ const acceptPendingMember = async (member) => {
     // Close the dialog if it's open
     showReviewDialog.value = false
     
+    // Get the member ID - prioritize user_id since that's the column name in the database
+    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id
+    
+    // Check if we have valid IDs
+    if (!memberId || !props.group || !props.group.id) {
+      console.error('Cannot accept member: Missing member ID or group ID', { memberId, groupId: props.group?.id })
+      return
+    }
+    
     // Call API to accept the pending member
-    await axios.post(`/groups/${props.group.id}/pending-members/${member.id}/accept`)
+    await axios.post(`/groups/${props.group.id}/members/${memberId}/approve`)
     
     // Remove the member from the pending list
-    pendingMembers.value = pendingMembers.value.filter(m => m.id !== member.id)
+    pendingMembers.value = pendingMembers.value.filter(m => {
+      const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id
+      return mId !== memberId
+    })
     
     // Refresh the group data to update the members list
     emit('refresh-group')
     
     // Show success message
-    alert(`${member.name} has been accepted to the group`)
+    const memberName = member.name || member.user?.name || 'Member'
+    alert(`${memberName} has been accepted to the group`)
   } catch (error) {
     console.error('Failed to accept pending member:', error)
     alert('Failed to accept member: ' + (error.response?.data?.error || error.message))
@@ -307,14 +311,27 @@ const declinePendingMember = async (member) => {
     // Close the dialog if it's open
     showReviewDialog.value = false
     
+    // Get the member ID - prioritize user_id since that's the column name in the database
+    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id
+    
+    // Check if we have valid IDs
+    if (!memberId || !props.group || !props.group.id) {
+      console.error('Cannot decline member: Missing member ID or group ID', { memberId, groupId: props.group?.id })
+      return
+    }
+    
     // Call API to decline the pending member
-    await axios.post(`/groups/${props.group.id}/pending-members/${member.id}/decline`)
+    await axios.post(`/groups/${props.group.id}/members/${memberId}/decline`)
     
     // Remove the member from the pending list
-    pendingMembers.value = pendingMembers.value.filter(m => m.id !== member.id)
+    pendingMembers.value = pendingMembers.value.filter(m => {
+      const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id
+      return mId !== memberId
+    })
     
     // Show success message
-    alert(`${member.name}'s request to join has been declined`)
+    const memberName = member.name || member.user?.name || 'Member'
+    alert(`${memberName}'s request to join has been declined`)
   } catch (error) {
     console.error('Failed to decline pending member:', error)
     alert('Failed to decline member: ' + (error.response?.data?.error || error.message))

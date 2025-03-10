@@ -136,6 +136,12 @@ const parsedDocuments = computed(() => {
 
 // Fetch pending members from the API
 const fetchPendingMembers = async () => {
+  // Check if groupId is valid (not undefined, null, or empty string)
+  if (!props.groupId || props.groupId === 'undefined') {
+    console.error('Cannot fetch pending members: Invalid group ID', props.groupId)
+    return
+  }
+  
   loading.value = true
   
   try {

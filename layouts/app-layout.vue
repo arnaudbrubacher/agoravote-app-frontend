@@ -281,8 +281,15 @@ const joinGroup = async (groupId) => {
     // Refresh groups after joining
     await fetchUserGroups()
     
-    // Navigate to the group page
-    navigateToGroup(groupId)
+    // Check if the user is actually a member of the group with approved status
+    const isMember = userGroups.value.some(group => group.id === groupId);
+    
+    if (isMember) {
+      // Only navigate to the group if the user is a member
+      navigateToGroup(groupId)
+    } else {
+      console.log('Group join request is pending approval. You will be able to access the group once approved.')
+    }
   } catch (error) {
     console.error('Failed to join group:', error)
     alert('Failed to join group: ' + (error.response?.data?.message || 'Unknown error'))

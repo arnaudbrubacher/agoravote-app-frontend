@@ -92,6 +92,10 @@ const props = defineProps({
   member: {
     type: Object,
     required: true
+  },
+  groupId: {
+    type: String,
+    required: true
   }
 })
 
@@ -122,33 +126,29 @@ onMounted(async () => {
 })
 
 const fetchDocuments = async () => {
+  if (!props.member) return
+  
   loading.value = true
   try {
     // Get the member ID - prioritize user_id since that's the column name in the database
     const memberId = props.member.user_id || props.member.userId || (props.member.user && props.member.user.id) || props.member.id
     
+    // Get the group ID
+    const groupId = props.groupId
+    
+    // Check if we have valid IDs
+    if (!memberId || !groupId) {
+      console.error('Cannot fetch documents: Missing member ID or group ID', { memberId, groupId })
+      return
+    }
+    
     // Fetch documents from the API
-    const response = await axios.get(`/groups/pending-members/${memberId}/documents`)
+    const response = await axios.get(`/groups/${groupId}/pending-members/${memberId}/documents`)
     documents.value = response.data
   } catch (error) {
     console.error('Failed to fetch documents:', error)
     // Mock data for development
-    documents.value = [
-      {
-        id: 1,
-        name: 'ID Document',
-        description: 'Government-issued ID',
-        url: '#',
-        uploadedAt: new Date().toISOString()
-      },
-      {
-        id: 2,
-        name: 'Proof of Address',
-        description: 'Utility bill or bank statement',
-        url: '#',
-        uploadedAt: new Date().toISOString()
-      }
-    ]
+    documents.value = []
   } finally {
     loading.value = false
   }

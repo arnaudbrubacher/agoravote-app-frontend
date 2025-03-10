@@ -192,16 +192,26 @@ const openAdmissionForm = (group) => {
 const handleAdmissionSubmit = async (admissionData) => {
   try {
     // Call the API to join the group with the admission data
-    await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
+    const response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
     
-    // Refresh the user's groups
-    emit('join-group', selectedGroup.value.id);
+    // Get the success message from the API response
+    const successMessage = response.data?.message || 'Request processed successfully';
     
     // Close the admission form
     showAdmissionForm.value = false;
     
-    // Show success message
-    alert('Successfully joined the group');
+    // Check if the user was immediately approved or if their request is pending
+    const isPending = successMessage.toLowerCase().includes('awaiting approval') || 
+                      successMessage.toLowerCase().includes('pending');
+    
+    // Only refresh user groups and navigate to the group if the user was immediately approved
+    if (!isPending) {
+      // Refresh the user's groups and navigate to the group
+      emit('join-group', selectedGroup.value.id);
+    }
+    
+    // Show success message from the API response
+    alert(successMessage);
   } catch (error) {
     console.error('Failed to join group:', error);
     
@@ -220,8 +230,7 @@ const handleAdmissionSubmit = async (admissionData) => {
         alert('Failed to join group: ' + errorMessage);
       }
     } else {
-      // Network error or other unexpected error
-      admissionError.value = 'Network error. Please try again.';
+      // Network error or other client-side error
       alert('Failed to join group: Network error');
     }
   }
