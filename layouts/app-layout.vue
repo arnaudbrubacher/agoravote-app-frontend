@@ -76,6 +76,7 @@
       @find-group="showFindGroupDialog = true"
       @create-group="showCreateGroupDialog = true"
       @view-group="navigateToGroup"
+      @refresh-groups="fetchUserGroups"
     />
     
     <!-- Find Group Dialog -->
@@ -285,16 +286,34 @@ const fetchUserGroups = async () => {
     
     // After fetching groups, check if we need to update the last used group
     if (userGroups.value.length > 0) {
-      // If there's no last used group but we have groups, set the first one as last used
-      if (!lastUsedGroupId.value) {
+      // Get the last used group ID from localStorage
+      const storedLastUsedGroupId = localStorage.getItem('lastUsedGroupId')
+      
+      // Check if the last used group still exists in the user's groups
+      const lastGroupExists = storedLastUsedGroupId && userGroups.value.some(g => g.id === storedLastUsedGroupId)
+      
+      if (!lastGroupExists) {
+        // If the last used group doesn't exist in the current groups, update it to the first available group
         lastUsedGroupId.value = userGroups.value[0].id
         localStorage.setItem('lastUsedGroupId', userGroups.value[0].id)
-      } 
-      // If the last used group doesn't exist in the current groups, update it
-      else if (!userGroups.value.some(g => g.id === lastUsedGroupId.value)) {
-        lastUsedGroupId.value = userGroups.value[0].id
-        localStorage.setItem('lastUsedGroupId', userGroups.value[0].id)
+        
+        // If we're currently on the group page of a group that no longer exists in the user's groups,
+        // redirect to the profile page
+        const currentPath = route.path
+        const groupMatch = currentPath.match(/\/group\/([^/]+)/)
+        
+        if (groupMatch && groupMatch[1] === storedLastUsedGroupId) {
+          console.log('User is on a group page they no longer belong to, redirecting to profile')
+          router.push('/profile')
+        }
+      } else {
+        // If the last used group still exists, update the lastUsedGroupId ref
+        lastUsedGroupId.value = storedLastUsedGroupId
       }
+    } else {
+      // If the user has no groups, clear the last used group ID
+      lastUsedGroupId.value = null
+      localStorage.removeItem('lastUsedGroupId')
     }
   } catch (error) {
     console.error('Failed to fetch user groups:', error)
@@ -367,9 +386,28 @@ watch(
   }
 )
 
-onMounted(() => {
-  fetchUserData()
-  fetchUserGroups()
+onMounted(async () => {
+  // First fetch user data
+  await fetchUserData()
+  
+  // Then fetch user groups
+  await fetchUserGroups()
+  
+  // Check if the current route is a group page
+  const currentPath = route.path
+  const groupMatch = currentPath.match(/\/group\/([^/]+)/)
+  
+  if (groupMatch && groupMatch[1]) {
+    const groupId = groupMatch[1]
+    
+    // Check if the user is a member of this group
+    const isMember = userGroups.value.some(g => g.id === groupId)
+    
+    if (!isMember) {
+      console.log('User is not a member of the current group, redirecting to profile')
+      router.push('/profile')
+    }
+  }
   
   // Listen for the global user-data-updated event
   window.addEventListener('user-data-updated', fetchUserData)

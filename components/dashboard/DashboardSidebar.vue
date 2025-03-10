@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { 
   Search, 
   Plus, 
@@ -96,12 +96,29 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group'])
+const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups'])
 
 // Computed property for two-way binding of open state
 const isOpen = computed({
   get: () => props.open,
   set: (value) => emit('update:open', value)
+})
+
+// Listen for the user-left-group event
+const handleUserLeftGroup = (event) => {
+  console.log('User left group event received in DashboardSidebar:', event.detail)
+  // Emit an event to refresh the groups list
+  emit('refresh-groups')
+}
+
+// Set up event listeners
+onMounted(() => {
+  window.addEventListener('user-left-group', handleUserLeftGroup)
+})
+
+// Clean up event listeners
+onBeforeUnmount(() => {
+  window.removeEventListener('user-left-group', handleUserLeftGroup)
 })
 
 // Helper function to properly format group picture URLs

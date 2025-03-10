@@ -40,15 +40,6 @@
                   v-if="!isUserInGroup(group.id)"
                   variant="default" 
                   size="sm"
-                  @click.stop="$emit('join-group', group.id)"
-                >
-                  Join
-                </Button>
-
-                <Button 
-                  v-if="!isUserInGroup(group.id)"
-                  variant="default" 
-                  size="sm"
                   @click.stop="openAdmissionForm(group)"
                 >
                   Join
@@ -81,6 +72,14 @@
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  
+  <!-- Group Admission Form -->
+  <GroupAdmissionForm
+    v-if="showAdmissionForm"
+    :group="selectedGroup"
+    @close="showAdmissionForm = false"
+    @submit="handleAdmissionSubmit"
+  />
 </template>
 
 <script setup>
@@ -98,6 +97,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 
 // Props
 const props = defineProps({
@@ -119,6 +119,10 @@ const searchQuery = ref('')
 const searchResults = ref([])
 const isSearching = ref(false)
 let searchTimeout = null
+
+// Group admission state
+const showAdmissionForm = ref(false)
+const selectedGroup = ref(null)
 
 // Debounce search function
 const debounceSearch = () => {
@@ -173,4 +177,29 @@ watch(() => props.open, (newValue) => {
     resetSearch()
   }
 })
+
+// Group admission methods
+const openAdmissionForm = (group) => {
+  selectedGroup.value = group
+  showAdmissionForm.value = true
+}
+
+const handleAdmissionSubmit = async (admissionData) => {
+  try {
+    // Call the API to join the group with the admission data
+    await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
+    
+    // Refresh the user's groups
+    emit('join-group', selectedGroup.value.id);
+    
+    // Close the admission form
+    showAdmissionForm.value = false;
+    
+    // Show success message
+    alert('Successfully joined the group');
+  } catch (error) {
+    console.error('Failed to join group:', error);
+    alert('Failed to join group: ' + (error.response?.data?.message || 'Unknown error'));
+  }
+}
 </script> 
