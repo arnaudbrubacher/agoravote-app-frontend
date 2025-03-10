@@ -4,6 +4,10 @@
     <!-- Header with title -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">Pending Members ({{ pendingMembers.length || 0 }})</h3>
+      <Button v-if="pendingMembers.length > 0" variant="outline" size="sm" @click="fetchPendingMembers">
+        <LucideIcon name="RefreshCw" size="4" class="h-4 w-4 mr-1" />
+        Refresh
+      </Button>
     </div>
     
     <!-- Loading state -->
@@ -26,27 +30,69 @@
         :current-user="currentUser"
         :is-pending="true"
         :is-current-user-admin="true"
-        @review-documents="$emit('review-documents', member)"
-        @accept="$emit('accept', member)"
-        @decline="$emit('decline', member)"
+        @review-documents="reviewDocuments(member)"
+        @accept="approveMember(member)"
+        @decline="declineMember(member)"
       />
     </div>
+    
+    <!-- Document Review Dialog -->
+    <Dialog :open="!!selectedMember" @update:open="selectedMember = null">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Review Documents</DialogTitle>
+          <DialogDescription>
+            Documents submitted by {{ selectedMember?.user?.name || 'the member' }}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="space-y-4 max-h-[60vh] overflow-y-auto">
+          <div v-if="!selectedMember?.documents_submitted || selectedMember?.documents_submitted.length === 0" 
+               class="text-center py-4 text-muted-foreground">
+            No documents submitted
+          </div>
+          
+          <div v-else v-for="(doc, index) in parsedDocuments" :key="index" class="border rounded-md p-4">
+            <h4 class="font-medium">{{ doc.name || `Document ${index + 1}` }}</h4>
+            <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
+            <div class="mt-2">
+              <a v-if="doc.url" :href="doc.url" target="_blank" class="text-blue-600 hover:underline">
+                View Document
+              </a>
+              <p v-else class="text-sm text-muted-foreground">Document data: {{ doc.data || 'No data' }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" @click="selectedMember = null">Close</Button>
+          <Button variant="default" @click="approveMember(selectedMember)">Approve Member</Button>
+          <Button variant="destructive" @click="declineMember(selectedMember)">Decline Member</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from '~/src/utils/axios'
 import LucideIcon from '@/components/LucideIcon.vue'
 import MemberRow from '~/components/members/MemberRow.vue'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog'
 
 const props = defineProps({
-  pendingMembers: {
-    type: Array,
-    default: () => []
-  },
-  loading: {
-    type: Boolean,
-    default: false
+  groupId: {
+    type: String,
+    required: true
   },
   currentUser: {
     type: Object,
@@ -55,8 +101,127 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'review-documents',
-  'accept',
-  'decline'
+  'refresh'
 ])
+
+const pendingMembers = ref([])
+const loading = ref(false)
+const selectedMember = ref(null)
+
+// Computed property to parse documents from the selected member
+const parsedDocuments = computed(() => {
+  if (!selectedMember.value || !selectedMember.value.documents_submitted) {
+    return []
+  }
+  
+  let documents = selectedMember.value.documents_submitted
+  
+  // If documents is a string, try to parse it as JSON
+  if (typeof documents === 'string') {
+    try {
+      documents = JSON.parse(documents)
+    } catch (e) {
+      console.error('Error parsing documents:', e)
+      return []
+    }
+  }
+  
+  // If documents is not an array, return empty array
+  if (!Array.isArray(documents)) {
+    return []
+  }
+  
+  return documents
+})
+
+// Fetch pending members from the API
+const fetchPendingMembers = async () => {
+  loading.value = true
+  
+  try {
+    const response = await axios.get(`/groups/${props.groupId}/pending-members`)
+    pendingMembers.value = response.data
+    
+    // Add hasDocuments property to each member
+    pendingMembers.value.forEach(member => {
+      let docs = member.documents_submitted
+      
+      // If docs is a string, try to parse it as JSON
+      if (typeof docs === 'string') {
+        try {
+          docs = JSON.parse(docs)
+        } catch (e) {
+          docs = []
+        }
+      }
+      
+      // Set hasDocuments based on whether there are any documents
+      member.hasDocuments = Array.isArray(docs) && docs.length > 0
+    })
+  } catch (error) {
+    console.error('Failed to fetch pending members:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Review documents for a member
+const reviewDocuments = (member) => {
+  selectedMember.value = member
+}
+
+// Approve a pending member
+const approveMember = async (member) => {
+  try {
+    await axios.post(`/groups/${props.groupId}/members/${member.user_id}/approve`)
+    
+    // Remove the member from the list
+    pendingMembers.value = pendingMembers.value.filter(m => m.user_id !== member.user_id)
+    
+    // Close the dialog if it's open
+    if (selectedMember.value && selectedMember.value.user_id === member.user_id) {
+      selectedMember.value = null
+    }
+    
+    // Emit refresh event to update the members list
+    emit('refresh')
+    
+    // Show success message
+    alert(`${member.user?.name || 'Member'} has been approved`)
+  } catch (error) {
+    console.error('Failed to approve member:', error)
+    alert('Failed to approve member: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
+// Decline a pending member
+const declineMember = async (member) => {
+  // Confirm before declining
+  if (!confirm(`Are you sure you want to decline ${member.user?.name || 'this member'}?`)) {
+    return
+  }
+  
+  try {
+    await axios.post(`/groups/${props.groupId}/members/${member.user_id}/decline`)
+    
+    // Remove the member from the list
+    pendingMembers.value = pendingMembers.value.filter(m => m.user_id !== member.user_id)
+    
+    // Close the dialog if it's open
+    if (selectedMember.value && selectedMember.value.user_id === member.user_id) {
+      selectedMember.value = null
+    }
+    
+    // Show success message
+    alert(`${member.user?.name || 'Member'} has been declined`)
+  } catch (error) {
+    console.error('Failed to decline member:', error)
+    alert('Failed to decline member: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
+// Fetch pending members when the component is mounted
+onMounted(() => {
+  fetchPendingMembers()
+})
 </script> 

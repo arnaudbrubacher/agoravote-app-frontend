@@ -252,9 +252,32 @@ const handleSubmit = async () => {
   passwordError.value = ''
   
   try {
+    // Prepare documents data
+    let documentsData = []
+    
+    if (documentsRequired.value && form.value.documents.length > 0) {
+      // For each document, create an object with name and data
+      documentsData = form.value.documents.map((file, index) => {
+        if (!file) return null
+        
+        const docInfo = requiredDocuments.value[index] || { name: `Document ${index + 1}` }
+        
+        return {
+          name: docInfo.name,
+          description: docInfo.description || '',
+          fileName: file.name,
+          fileType: file.type,
+          // In a real implementation, you would upload the file to a server
+          // and store the URL or file ID here. For now, we'll just indicate
+          // that a file was provided.
+          data: `File provided: ${file.name}`
+        }
+      }).filter(doc => doc !== null)
+    }
+    
     const admissionData = {
       password: form.value.password,
-      documents: form.value.documents
+      documents: documentsData
     }
     
     // Emit the submit event with the admission data
