@@ -106,8 +106,60 @@ export function useGroupData(groupId) {
     }
     
     try {
+      // Store the current group ID before deletion
+      const currentGroupId = groupId
+      
+      // Delete the group
       await axios.delete(`/groups/${groupId}`)
-      router.push('/dashboard')
+      
+      // Get all user groups to find a valid group to navigate to
+      const groupsResponse = await axios.get('/user/groups')
+      const userGroups = groupsResponse.data
+      
+      // Get the last visited group ID from localStorage
+      let lastVisitedGroupId = localStorage.getItem('lastVisitedGroupId')
+      
+      // If the last visited group is the one being deleted, set it to null
+      if (lastVisitedGroupId === currentGroupId) {
+        lastVisitedGroupId = null
+      }
+      
+      // Filter out the deleted group and get approved groups
+      const availableGroups = userGroups.filter(group => {
+        // Skip the deleted group
+        if (group.id === currentGroupId) return false
+        
+        // Skip pending groups
+        if (group.membership && group.membership.status === 'pending') return false
+        if (group.membership_status === 'pending') return false
+        if (group.status === 'pending') return false
+        
+        return true
+      })
+      
+      // Dispatch an event to update the dashboard sidebar
+      window.dispatchEvent(new CustomEvent('group-data-updated'))
+      
+      // Navigate to the appropriate page
+      if (availableGroups.length > 0) {
+        // If we have a valid last visited group that's not the deleted one
+        if (lastVisitedGroupId && availableGroups.some(g => g.id === lastVisitedGroupId)) {
+          console.log('Navigating to last visited group:', lastVisitedGroupId)
+          router.push(`/group/${lastVisitedGroupId}`)
+        } else {
+          // Otherwise, navigate to the first available group
+          console.log('Navigating to first available group:', availableGroups[0].id)
+          
+          // Update the last visited group ID
+          localStorage.setItem('lastVisitedGroupId', availableGroups[0].id)
+          
+          router.push(`/group/${availableGroups[0].id}`)
+        }
+      } else {
+        // If no groups are available, navigate to the profile page
+        console.log('No available groups, navigating to profile page')
+        router.push('/profile')
+      }
     } catch (error) {
       console.error('Failed to delete group:', error)
       throw error

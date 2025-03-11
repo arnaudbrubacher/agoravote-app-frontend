@@ -308,22 +308,36 @@ const handleSubmit = async () => {
       }).filter(doc => doc !== null)
     }
     
-    const admissionData = {
-      password: form.value.password,
-      documents: documentsData
+    // Create the admission data object based on what's required
+    let admissionData = {};
+    
+    // Only include password if it's required and provided
+    if (passwordRequired.value && form.value.password) {
+      admissionData.password = form.value.password;
+    }
+    
+    // Only include documents if they're required and provided
+    if (documentsRequired.value && documentsData.length > 0) {
+      admissionData.documents = documentsData;
+    }
+    
+    // If no data was provided but requirements exist, show an error
+    if ((passwordRequired.value && !form.value.password) || 
+        (documentsRequired.value && documentsData.length === 0)) {
+      throw new Error('Please provide all required information');
     }
     
     // Log the admission data for debugging
     console.log('GroupAdmissionForm - Submitting admission data:', JSON.stringify(admissionData));
-    console.log('GroupAdmissionForm - Password provided:', form.value.password);
+    console.log('GroupAdmissionForm - Password provided:', !!form.value.password);
+    console.log('GroupAdmissionForm - Documents provided:', documentsData.length);
     console.log('GroupAdmissionForm - Group:', props.group);
     
     // Emit the submit event with the admission data
-    // The parent component (FindGroupDialog) will handle the API call
-    // and any errors that might occur
     emit('submit', admissionData)
   } catch (error) {
     console.error('Failed to submit admission form:', error)
+    alert(error.message || 'Failed to submit form')
   } finally {
     isSubmitting.value = false
   }

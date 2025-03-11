@@ -65,6 +65,18 @@
                 Cancel
               </Button>
               <Button 
+                v-if="group.membership && group.membership.documents_submitted && 
+                     (typeof group.membership.documents_submitted === 'string' ? 
+                      group.membership.documents_submitted !== '[]' && group.membership.documents_submitted !== '{}' : 
+                      Array.isArray(group.membership.documents_submitted) && group.membership.documents_submitted.length > 0)"
+                variant="default" 
+                size="sm"
+                @click.stop="reviewDocuments(group)"
+              >
+                Review
+              </Button>
+              <Button 
+                v-else
                 variant="default" 
                 size="sm"
                 @click.stop="acceptPendingGroup(group)"
@@ -144,7 +156,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups', 'join-group'])
+const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups', 'join-group', 'review-documents'])
 
 // Computed property for two-way binding of open state
 const isOpen = computed({
@@ -190,18 +202,18 @@ const pendingGroups = computed(() => {
   return props.groups.filter(group => {
     // Check if the group has a membership property with status
     if (group.membership && group.membership.status === 'pending') {
-      console.log(`Including group with pending membership.status in Group Invitations: ${group.name}`)
+      console.log(`Including group with pending membership.status in Pending Groups: ${group.name}`)
       return true
     }
     
     // Legacy checks for backward compatibility
     if (group.membership_status === 'pending') {
-      console.log(`Including group with pending membership_status in Group Invitations: ${group.name}`)
+      console.log(`Including group with pending membership_status in Pending Groups: ${group.name}`)
       return true
     }
     
     if (group.status === 'pending') {
-      console.log(`Including group with pending status in Group Invitations: ${group.name}`)
+      console.log(`Including group with pending status in Pending Groups: ${group.name}`)
       return true
     }
     
@@ -221,10 +233,18 @@ const handleCloseDashboardSidebar = () => {
   isOpen.value = false
 }
 
+// Handle the group-data-updated event
+const handleGroupDataUpdated = () => {
+  console.log('Group data updated event received in DashboardSidebar')
+  // Emit an event to refresh the groups list
+  emit('refresh-groups')
+}
+
 // Set up event listeners
 onMounted(() => {
   window.addEventListener('user-left-group', handleUserLeftGroup)
   window.addEventListener('close-dashboard-sidebar', handleCloseDashboardSidebar)
+  window.addEventListener('group-data-updated', handleGroupDataUpdated)
   
   // Log the groups that are being displayed
   console.log('DashboardSidebar - All groups:', props.groups)
@@ -235,6 +255,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('user-left-group', handleUserLeftGroup)
   window.removeEventListener('close-dashboard-sidebar', handleCloseDashboardSidebar)
+  window.removeEventListener('group-data-updated', handleGroupDataUpdated)
 })
 
 // Watch for changes in the groups prop
@@ -248,12 +269,43 @@ watch(() => props.groups, (newGroups) => {
 // Accept a pending group membership
 const acceptPendingGroup = async (group) => {
   try {
-    // Check if the group requires a password or documents
+    // Check if the group requires a password
     const requiresPassword = group.requiresPassword === true || group.requires_password === true;
-    const requiresDocuments = group.requiresDocuments === true || group.requires_documents === true;
+    
+    // More robust check for document requirements
+    let requiresDocuments = false;
+    
+    // Check both camelCase and snake_case versions
+    const documents = group.requiredDocuments || group.required_documents;
+    
+    if (documents) {
+      // If it's a string (JSON), parse it
+      if (typeof documents === 'string') {
+        try {
+          const parsedDocs = JSON.parse(documents);
+          requiresDocuments = Array.isArray(parsedDocs) && parsedDocs.length > 0;
+        } catch (e) {
+          console.error('Error parsing required documents:', e);
+        }
+      } 
+      // If it's already an array
+      else if (Array.isArray(documents)) {
+        requiresDocuments = documents.length > 0;
+      }
+    }
+    
+    // Also check the requiresDocuments flag
+    const hasRequiresDocumentsFlag = group.requiresDocuments === true || group.requires_documents === true;
+    
+    console.log('Group acceptance requirements:', {
+      requiresPassword,
+      requiresDocuments,
+      hasRequiresDocumentsFlag,
+      groupName: group.name
+    });
     
     // If the group requires a password or documents, use the existing join-group flow
-    if (requiresPassword || requiresDocuments) {
+    if (requiresPassword || (hasRequiresDocumentsFlag && requiresDocuments)) {
       console.log('Group requires password or documents, using join-group flow');
       // Emit the join-group event to reuse the existing flow
       emit('join-group', group.id, true); // Pass true to indicate this is an invitation acceptance
@@ -289,5 +341,11 @@ const cancelPendingGroup = async (group) => {
     console.error('Failed to cancel group membership:', error);
     alert('Failed to cancel group membership: ' + (error.response?.data?.error || 'Unknown error'));
   }
+}
+
+// Review documents for a group
+const reviewDocuments = (group) => {
+  // Emit an event to show the GroupAdmissionForm in review mode
+  emit('review-documents', group.id)
 }
 </script> 

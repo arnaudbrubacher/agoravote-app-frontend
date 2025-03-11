@@ -78,6 +78,7 @@
       @view-group="navigateToGroup"
       @refresh-groups="fetchUserGroups"
       @join-group="joinGroup"
+      @review-documents="reviewDocuments"
     />
     
     <!-- Find Group Dialog -->
@@ -93,59 +94,17 @@
       v-if="showAdmissionForm && selectedGroup"
       :group="selectedGroup"
       :error="admissionError"
+      :review-mode="isReviewMode"
       @close="showAdmissionForm = false"
       @submit="handleAdmissionSubmit"
     />
     
     <!-- Create Group Dialog -->
-    <Dialog :open="showCreateGroupDialog" @update:open="showCreateGroupDialog = $event">
-      <DialogContent class="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Create a New Group</DialogTitle>
-          <DialogDescription>
-            Fill in the details to create your new group
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div class="space-y-4 py-4">
-          <!-- Group Name -->
-          <div class="space-y-2">
-            <Label for="group-name">Group Name</Label>
-            <Input id="group-name" v-model="newGroupName" placeholder="Enter group name" />
-          </div>
-          
-          <!-- Group Description -->
-          <div class="space-y-2">
-            <Label for="group-description">Description</Label>
-            <Textarea 
-              id="group-description" 
-              v-model="newGroupDescription" 
-              placeholder="Describe your group"
-              rows="3"
-            />
-          </div>
-          
-          <!-- Group Privacy -->
-          <div class="space-y-2">
-            <Label>Privacy</Label>
-            <div class="flex items-center space-x-2">
-              <input 
-                type="checkbox" 
-                id="is-public" 
-                v-model="newGroupIsPublic"
-                class="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <label for="is-public" class="text-sm">Make this group public</label>
-            </div>
-          </div>
-        </div>
-        
-        <DialogFooter>
-          <Button variant="outline" @click="showCreateGroupDialog = false">Cancel</Button>
-          <Button type="submit" @click="createGroup">Create Group</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <NewGroupDialog
+      v-if="showCreateGroupDialog"
+      @close="showCreateGroupDialog = false"
+      @group-created="handleGroupCreated"
+    />
   </div>
 </template>
 
@@ -170,6 +129,7 @@ import {
 } from '@/components/ui/dialog'
 import FindGroupDialog from '@/components/groups/FindGroupDialog.vue'
 import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
+import NewGroupDialog from '@/components/groups/NewGroupDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -202,11 +162,7 @@ const showCreateGroupDialog = ref(false)
 const showAdmissionForm = ref(false)
 const selectedGroup = ref(null)
 const admissionError = ref('')
-
-// Form data
-const newGroupName = ref('')
-const newGroupDescription = ref('')
-const newGroupIsPublic = ref(true)
+const isReviewMode = ref(false)
 
 // Check if user is authenticated
 const isAuthenticated = computed(() => {
@@ -252,40 +208,19 @@ const navigateToGroup = (groupId) => {
   router.push(`/group/${groupId}`)
 }
 
-// Create a new group
-const createGroup = async () => {
-  if (!newGroupName.value.trim()) {
-    alert('Please enter a group name')
-    return
-  }
+// Handle group created event from NewGroupDialog
+const handleGroupCreated = async (newGroup) => {
+  // Close dialog
+  showCreateGroupDialog.value = false
   
-  try {
-    const response = await axios.post('/groups', {
-      name: newGroupName.value,
-      description: newGroupDescription.value,
-      is_public: newGroupIsPublic.value
-    })
-    
-    // Reset form
-    newGroupName.value = ''
-    newGroupDescription.value = ''
-    newGroupIsPublic.value = true
-    
-    // Close dialog
-    showCreateGroupDialog.value = false
-    
-    // Refresh groups
-    await fetchUserGroups()
-    
-    // Navigate to the new group and set as last used
-    if (response.data && response.data.id) {
-      lastUsedGroupId.value = response.data.id
-      localStorage.setItem('lastUsedGroupId', response.data.id)
-      router.push(`/group/${response.data.id}`)
-    }
-  } catch (error) {
-    console.error('Failed to create group:', error)
-    alert('Failed to create group: ' + (error.response?.data?.message || 'Unknown error'))
+  // Refresh groups
+  await fetchUserGroups()
+  
+  // Navigate to the new group and set as last used
+  if (newGroup && newGroup.id) {
+    lastUsedGroupId.value = newGroup.id
+    localStorage.setItem('lastUsedGroupId', newGroup.id)
+    router.push(`/group/${newGroup.id}`)
   }
 }
 
@@ -318,32 +253,48 @@ const joinGroup = async (groupId, isInvitation = false) => {
     
     // More robust check for required documents
     let requiresDocuments = false;
-    if (group?.requiredDocuments) {
+    let requiredDocumentsArray = [];
+    
+    // Check both camelCase and snake_case versions
+    const documents = group?.requiredDocuments || group?.required_documents;
+    
+    if (documents) {
       // If it's a string (JSON), parse it
-      if (typeof group.requiredDocuments === 'string') {
+      if (typeof documents === 'string') {
         try {
-          const parsedDocs = JSON.parse(group.requiredDocuments);
-          requiresDocuments = Array.isArray(parsedDocs) && parsedDocs.length > 0;
+          requiredDocumentsArray = JSON.parse(documents);
+          requiresDocuments = Array.isArray(requiredDocumentsArray) && requiredDocumentsArray.length > 0;
         } catch (e) {
           console.error('Error parsing required documents:', e);
         }
       } 
       // If it's already an array
-      else if (Array.isArray(group.requiredDocuments)) {
-        requiresDocuments = group.requiredDocuments.length > 0;
+      else if (Array.isArray(documents)) {
+        requiredDocumentsArray = documents;
+        requiresDocuments = documents.length > 0;
       }
     }
+    
+    // Also check the requiresDocuments flag
+    const hasRequiresDocumentsFlag = group?.requiresDocuments === true || group?.requires_documents === true;
     
     console.log('Group join requirements:', {
       requiresPassword,
       requiresDocuments,
+      hasRequiresDocumentsFlag,
+      requiredDocumentsArray,
       groupId,
       isInvitation
     });
     
-    if (requiresPassword || requiresDocuments) {
+    // Only show the admission form if there are actual requirements
+    if ((requiresPassword) || (hasRequiresDocumentsFlag && requiresDocuments)) {
       // Show the admission form
-      selectedGroup.value = group;
+      selectedGroup.value = {
+        ...group,
+        // Ensure the required documents are properly set
+        requiredDocuments: requiredDocumentsArray
+      };
       showAdmissionForm.value = true;
       admissionError.value = '';
       
@@ -510,29 +461,44 @@ const handleAdmissionSubmit = async (admissionData) => {
     console.log('Group ID:', selectedGroup.value.id);
     console.log('Is invitation:', isInvitation);
     
+    // Ensure we have a valid object to send
+    if (!admissionData || Object.keys(admissionData).length === 0) {
+      console.error('No admission data provided');
+      alert('Please provide the required information');
+      return;
+    }
+    
     // Send the admission data to the server
     let response;
     if (isInvitation) {
       // This is an invitation acceptance
       response = await axios.post(`/groups/${selectedGroup.value.id}/accept`, admissionData);
+      
+      // Check if the response indicates documents are pending review
+      if (response.data && response.data.status === 'pending') {
+        alert('Your documents have been submitted for review. You will be notified when your membership is approved.');
+      } else {
+        alert(`You have successfully accepted the invitation to join ${selectedGroup.value.name || 'the group'}`);
+      }
     } else {
       // This is a regular join
       response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
+      
+      // Check if the response indicates documents are pending review
+      if (response.data && response.data.status === 'pending') {
+        alert('Your documents have been submitted for review. You will be notified when your membership is approved.');
+      } else {
+        alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
+      }
     }
     
     // Log the response
     console.log('Server response:', response.data);
     
-    // Show success message
-    if (isInvitation) {
-      alert(`You have successfully accepted the invitation to join ${selectedGroup.value.name || 'the group'}`);
-    } else {
-      alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
-    }
-    
     // Close the admission form
     showAdmissionForm.value = false;
     selectedGroup.value = null;
+    isReviewMode.value = false;
     
     // Refresh the groups list
     fetchUserGroups();
@@ -543,10 +509,40 @@ const handleAdmissionSubmit = async (admissionData) => {
     // Check if the error is related to password
     if (error.response?.data?.error?.includes('password')) {
       admissionError.value = error.response.data.error;
+    } else if (error.response?.data?.error?.includes('document')) {
+      // Handle document-related errors
+      admissionError.value = error.response.data.error;
+      alert('Document error: ' + error.response.data.error);
     } else {
       const actionText = selectedGroup.value.isInvitation ? 'accept invitation' : 'join group';
       alert(`Failed to ${actionText}: ${error.response?.data?.error || 'Unknown error'}`);
     }
+  }
+}
+
+// Function to handle reviewing documents
+const reviewDocuments = async (groupId) => {
+  try {
+    // Get the group details
+    const group = userGroups.value.find(g => g.id === groupId);
+    
+    if (!group) {
+      console.error('Group not found:', groupId);
+      alert('Group not found');
+      return;
+    }
+    
+    // Set the selected group and show the admission form in review mode
+    selectedGroup.value = group;
+    isReviewMode.value = true;
+    showAdmissionForm.value = true;
+    admissionError.value = '';
+    
+    // Close the dashboard sidebar
+    isDashboardSidebarOpen.value = false;
+  } catch (error) {
+    console.error('Failed to review documents:', error);
+    alert('Failed to review documents: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
 

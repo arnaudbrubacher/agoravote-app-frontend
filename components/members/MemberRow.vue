@@ -166,6 +166,10 @@ const props = defineProps({
   isPending: {
     type: Boolean,
     default: false
+  },
+  hasDocuments: {
+    type: Boolean,
+    default: false
   }
 })
 

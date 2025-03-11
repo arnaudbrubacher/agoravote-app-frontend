@@ -34,6 +34,7 @@
         :current-user="currentUser"
         :is-pending="true"
         :is-current-user-admin="true"
+        :has-documents="member.hasDocuments"
         @review-documents="reviewDocuments(member)"
         @accept="approveMember(member)"
         @decline="declineMember(member)"
@@ -63,6 +64,10 @@
               <a v-if="doc.url" :href="doc.url" target="_blank" class="text-blue-600 hover:underline">
                 View Document
               </a>
+              <p v-else-if="doc.fileName" class="text-sm">
+                File: {{ doc.fileName }}
+                <span v-if="doc.fileType" class="text-muted-foreground">({{ doc.fileType }})</span>
+              </p>
               <p v-else class="text-sm text-muted-foreground">Document data: {{ doc.data || 'No data' }}</p>
             </div>
           </div>
@@ -70,7 +75,7 @@
         
         <DialogFooter>
           <Button variant="outline" @click="selectedMember = null">Close</Button>
-          <Button variant="default" @click="approveMember(selectedMember)">Approve Member</Button>
+          <Button variant="default" @click="approveWithDocuments(selectedMember)">Approve Member</Button>
           <Button variant="destructive" @click="declineMember(selectedMember)">Decline Member</Button>
         </DialogFooter>
       </DialogContent>
@@ -219,6 +224,32 @@ const approveMember = async (member) => {
     alert(`${member.user?.name || 'Member'} has been approved`)
   } catch (error) {
     console.error('Failed to approve member:', error)
+    alert('Failed to approve member: ' + (error.response?.data?.error || 'Unknown error'))
+  }
+}
+
+// Approve a member with documents
+const approveWithDocuments = async (member) => {
+  try {
+    await axios.post(`/groups/${props.groupId}/members/${member.user_id}/approve-documents`)
+    
+    // Remove the member from the list
+    pendingMembers.value = pendingMembers.value.filter(m => m.user_id !== member.user_id)
+    
+    // Close the dialog
+    selectedMember.value = null
+    
+    // Emit refresh event to update the members list
+    emit('refresh', { 
+      action: 'approve', 
+      member: member,
+      message: `${member.user?.name || 'Member'} has been approved with documents`
+    })
+    
+    // Show success message
+    alert(`${member.user?.name || 'Member'} has been approved with documents`)
+  } catch (error) {
+    console.error('Failed to approve member with documents:', error)
     alert('Failed to approve member: ' + (error.response?.data?.error || 'Unknown error'))
   }
 }
