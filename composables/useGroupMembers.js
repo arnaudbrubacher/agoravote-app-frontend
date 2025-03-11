@@ -98,6 +98,15 @@ export function useGroupMembers(groupId, group, fetchGroup) {
   const handleUserAdded = async (user) => {
     console.log('User added via search:', user)
     
+    // Check if the user was added as pending
+    if (user.status === 'pending') {
+      console.log('User was invited with pending status')
+      alert(`Invitation sent to ${user.name || user.email}. They will need to accept it.`)
+    } else {
+      console.log('User was added directly')
+      alert(`${user.name || user.email} added to the group successfully`)
+    }
+    
     // Refresh the group data to update the members list
     await fetchGroup()
   }

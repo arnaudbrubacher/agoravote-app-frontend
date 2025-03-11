@@ -191,16 +191,15 @@ const addUser = async (user) => {
   try {
     isLoading.value = true
     
-    // Updated request format to match backend expectations
-    const response = await axios.post(`/groups/${props.groupId}/members`, {
-      userId: user.id,
-      email: user.email,
-      isAdmin: false // Default to regular member, change if needed
+    // Send invitation request to create a pending membership
+    const response = await axios.post(`/groups/${props.groupId}/invite`, {
+      email: user.email
     })
     
     // Emit success event with user data
     emit('user-added', {
       ...user,
+      status: 'pending', // Mark as pending
       ...response.data // Merge with any additional data returned from API
     })
     
@@ -208,10 +207,10 @@ const addUser = async (user) => {
     searchResults.value = searchResults.value.filter(u => u.id !== user.id)
     
     // Show success message
-    alert(`${user.name || user.email} added to the group successfully`)
+    alert(`Invitation sent to ${user.name || user.email}`)
   } catch (err) {
-    console.error('Failed to add user to group:', err)
-    alert('Failed to add user: ' + (err.response?.data?.error || err.message))
+    console.error('Failed to invite user to group:', err)
+    alert('Failed to send invitation: ' + (err.response?.data?.error || err.message))
   } finally {
     isLoading.value = false
   }

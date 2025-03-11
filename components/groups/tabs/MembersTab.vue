@@ -148,7 +148,8 @@ const emit = defineEmits([
   'member-demoted',
   'member-removed',
   'refresh-group',
-  'admin-status-update'
+  'admin-status-update',
+  'user-invited'
 ])
 
 const csvFileInput = ref(null)
@@ -392,5 +393,16 @@ const handlePendingMembersRefresh = (data) => {
   if (data && data.action === 'approve') {
     console.log(`Member approved: ${data.member.user?.name || 'Unknown member'}`);
   }
+}
+
+// Handle user invitation from UserSearchDialog
+const handleUserInvited = (userData) => {
+  console.log('User invited to group:', userData);
+  
+  // Refresh pending members list
+  fetchPendingMembers();
+  
+  // Emit event to parent component
+  emit('user-invited', userData);
 }
 </script>
