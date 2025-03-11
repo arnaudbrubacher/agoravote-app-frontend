@@ -29,24 +29,25 @@
         </div>
       </div>
       
-      <!-- Group Invitations Section -->
+      <!-- Pending Groups Section (formerly Group Invitations) -->
       <SheetHeader class="pb-4">
-        <SheetTitle>Group Invitations</SheetTitle>
+        <SheetTitle>Pending Groups</SheetTitle>
+        <p class="text-sm text-muted-foreground">Groups you've been invited to or are waiting for approval</p>
       </SheetHeader>
       
       <div class="p-4 pt-0 space-y-4">
         <!-- Loading State -->
         <div v-if="isLoading" class="text-center py-8">
           <Loader2 class="h-6 w-6 animate-spin inline-block" />
-          <span class="ml-2 text-sm text-muted-foreground">Loading invitations...</span>
+          <span class="ml-2 text-sm text-muted-foreground">Loading pending groups...</span>
         </div>
         
         <!-- Empty State -->
         <div v-else-if="pendingGroups.length === 0" class="text-center py-6 text-sm text-muted-foreground">
-          No pending invitations
+          No pending invitations or join requests
         </div>
         
-        <!-- Invitations List -->
+        <!-- Pending Groups List -->
         <div v-else class="space-y-3">
           <GroupCard 
             v-for="group in pendingGroups" 
@@ -59,14 +60,14 @@
               <Button 
                 variant="outline" 
                 size="sm"
-                @click.stop="declineGroupInvitation(group)"
+                @click.stop="cancelPendingGroup(group)"
               >
-                Decline
+                Cancel
               </Button>
               <Button 
                 variant="default" 
                 size="sm"
-                @click.stop="acceptGroupInvitation(group)"
+                @click.stop="acceptPendingGroup(group)"
               >
                 Accept
               </Button>
@@ -244,8 +245,8 @@ watch(() => props.groups, (newGroups) => {
 
 // Helper function to properly format group picture URLs
 
-// Accept a group invitation
-const acceptGroupInvitation = async (group) => {
+// Accept a pending group membership
+const acceptPendingGroup = async (group) => {
   try {
     // Check if the group requires a password or documents
     const requiresPassword = group.requiresPassword === true || group.requires_password === true;
@@ -268,25 +269,25 @@ const acceptGroupInvitation = async (group) => {
     // Refresh the groups list to show the newly joined group
     emit('refresh-groups');
   } catch (error) {
-    console.error('Failed to accept group invitation:', error);
-    alert('Failed to accept invitation: ' + (error.response?.data?.error || 'Unknown error'));
+    console.error('Failed to accept group membership:', error);
+    alert('Failed to accept group membership: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
 
-// Decline a group invitation
-const declineGroupInvitation = async (group) => {
-  if (!confirm(`Are you sure you want to decline the invitation to join ${group.name || 'this group'}?`)) {
-    return
+// Cancel a pending group membership
+const cancelPendingGroup = async (group) => {
+  if (!confirm(`Are you sure you want to cancel your pending membership for ${group.name || 'this group'}?`)) {
+    return;
   }
   
   try {
-    await axios.post(`/groups/${group.id}/decline`)
+    await axios.post(`/groups/${group.id}/decline`);
     
     // Refresh the groups list
-    emit('refresh-groups')
+    emit('refresh-groups');
   } catch (error) {
-    console.error('Failed to decline group invitation:', error)
-    alert('Failed to decline invitation: ' + (error.response?.data?.error || 'Unknown error'))
+    console.error('Failed to cancel group membership:', error);
+    alert('Failed to cancel group membership: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
 </script> 

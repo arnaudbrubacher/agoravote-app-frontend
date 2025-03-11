@@ -293,7 +293,25 @@ const createGroup = async () => {
 const joinGroup = async (groupId, isInvitation = false) => {
   try {
     // Get the group details
-    const group = userGroups.value.find(g => g.id === groupId);
+    let group = userGroups.value.find(g => g.id === groupId);
+    
+    // If the group wasn't found in userGroups, it might be a pending group
+    // In that case, we need to set isInvitation to true
+    if (!group) {
+      console.log('Group not found in userGroups, checking if it is a pending group');
+      // Try to find the group in the pendingGroups (groups with pending membership)
+      const pendingGroup = userGroups.value.find(g => g.id === groupId && g.membership?.status === 'pending');
+      if (pendingGroup) {
+        group = pendingGroup;
+        isInvitation = true; // Override the isInvitation parameter since this is a pending group
+      }
+    }
+    
+    if (!group) {
+      console.error('Group not found:', groupId);
+      alert('Group not found');
+      return;
+    }
     
     // Check if the group requires password or documents
     const requiresPassword = group?.requiresPassword === true || group?.requires_password === true;
@@ -480,8 +498,8 @@ const handleAdmissionSubmit = async (admissionData) => {
   try {
     // Make sure we have a selected group
     if (!selectedGroup.value) {
-      console.error('No group selected for admission')
-      return
+      console.error('No group selected for admission');
+      return;
     }
     
     // Determine if this is an invitation acceptance or a regular join
@@ -506,7 +524,11 @@ const handleAdmissionSubmit = async (admissionData) => {
     console.log('Server response:', response.data);
     
     // Show success message
-    alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
+    if (isInvitation) {
+      alert(`You have successfully accepted the invitation to join ${selectedGroup.value.name || 'the group'}`);
+    } else {
+      alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
+    }
     
     // Close the admission form
     showAdmissionForm.value = false;
@@ -522,7 +544,8 @@ const handleAdmissionSubmit = async (admissionData) => {
     if (error.response?.data?.error?.includes('password')) {
       admissionError.value = error.response.data.error;
     } else {
-      alert('Failed to join group: ' + (error.response?.data?.error || 'Unknown error'));
+      const actionText = selectedGroup.value.isInvitation ? 'accept invitation' : 'join group';
+      alert(`Failed to ${actionText}: ${error.response?.data?.error || 'Unknown error'}`);
     }
   }
 }
