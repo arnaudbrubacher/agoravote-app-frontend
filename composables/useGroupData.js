@@ -26,6 +26,22 @@ export function useGroupData(groupId) {
       console.log('Admin ID:', group.value?.admin_id)
       console.log('Current user ID from API:', group.value?.currentUser?.id)
       
+      // Check if the user has pending status
+      if (group.value && (
+        (group.value.membership && group.value.membership.status === 'pending') ||
+        group.value.membership_status === 'pending' ||
+        group.value.status === 'pending'
+      )) {
+        console.error('User has pending status for this group')
+        
+        // This will be handled by the component that calls this function
+        throw new Error('You cannot access this group until your membership is approved.')
+      }
+      
+      // If we got here, the user has access to the group
+      // Save this group as the last visited group
+      localStorage.setItem('lastVisitedGroupId', groupId)
+      
       // If currentUserIsAdmin is not set but we have admin_id, check if current user is the admin
       if (group.value && group.value.currentUserIsAdmin === undefined) {
         // Get current user ID from local storage or auth store
@@ -49,6 +65,18 @@ export function useGroupData(groupId) {
       return group.value
     } catch (error) {
       console.error('Failed to fetch group:', error)
+      
+      // Check if this is a pending membership error
+      if (error.response?.data?.pending_membership) {
+        // Add the active groups to the error object so the component can handle it
+        if (error.response?.data?.active_groups) {
+          error.activeGroups = error.response.data.active_groups
+        }
+        
+        // Add a flag to indicate this is a pending membership error
+        error.isPendingMembership = true
+      }
+      
       throw error
     } finally {
       isLoading.value = false

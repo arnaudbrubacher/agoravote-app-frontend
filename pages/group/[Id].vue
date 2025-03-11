@@ -214,6 +214,34 @@ onMounted(async () => {
       fetchVotes()
     ])
 
+    // Check if the user has pending status and redirect if needed
+    if (group.value && (
+      (group.value.membership && group.value.membership.status === 'pending') ||
+      group.value.membership_status === 'pending' ||
+      group.value.status === 'pending'
+    )) {
+      console.log('User has pending status for this group, redirecting to last active group')
+      
+      // Get the last visited group ID from localStorage
+      const lastVisitedGroupId = localStorage.getItem('lastVisitedGroupId')
+      
+      if (lastVisitedGroupId && lastVisitedGroupId !== groupId) {
+        // Redirect to the last visited group
+        console.log('Redirecting to last visited group:', lastVisitedGroupId)
+        router.push(`/group/${lastVisitedGroupId}`)
+      } else {
+        // If no last visited group, redirect to profile
+        console.log('No last visited group found, redirecting to profile')
+        alert('You cannot access this group until your membership is approved.')
+        router.push('/profile')
+      }
+      return
+    }
+
+    // If we got here, the user has access to the group
+    // Save this group as the last visited group
+    localStorage.setItem('lastVisitedGroupId', groupId)
+    
     // Debug admin status
     console.log('Group page - isCurrentUserAdmin:', isCurrentUserAdmin.value)
     console.log('Group data:', group.value)
@@ -255,6 +283,30 @@ onMounted(async () => {
   } catch (err) {
     console.error('Error initializing page:', err)
     error.value = err.response?.data?.error || 'Failed to initialize page'
+    
+    // Check if this is a pending membership error with active groups
+    if (err.response?.data?.pending_membership) {
+      if (err.response?.data?.active_groups?.length > 0) {
+        const activeGroups = err.response.data.active_groups
+        console.log('User has active memberships in these groups:', activeGroups)
+        
+        // Redirect to the first active group
+        const firstActiveGroup = activeGroups[0]
+        console.log('Redirecting to active group:', firstActiveGroup.name, firstActiveGroup.id)
+        
+        // Save this as the last visited group
+        localStorage.setItem('lastVisitedGroupId', firstActiveGroup.id)
+        
+        // Show a message and redirect
+        alert(`You cannot access this group until your membership is approved. Redirecting you to ${firstActiveGroup.name}.`)
+        router.push(`/group/${firstActiveGroup.id}`)
+      } else {
+        // No active groups available, redirect to profile
+        console.log('No active groups available, redirecting to profile')
+        alert('You cannot access this group until your membership is approved.')
+        router.push('/profile')
+      }
+    }
   } finally {
     loading.value = false
   }

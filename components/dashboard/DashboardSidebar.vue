@@ -175,6 +175,7 @@ const activeGroups = computed(() => {
       return false
     }
     
+    // Only include groups with approved status (or no status specified)
     return true
   })
 })
