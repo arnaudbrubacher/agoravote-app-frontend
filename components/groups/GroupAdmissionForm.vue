@@ -335,6 +335,9 @@ const handleSubmit = async () => {
     
     // Emit the submit event with the admission data
     emit('submit', admissionData)
+    
+    // Dispatch a custom event to refresh the dashboard sidebar
+    window.dispatchEvent(new CustomEvent('group-data-updated'));
   } catch (error) {
     console.error('Failed to submit admission form:', error)
     alert(error.message || 'Failed to submit form')

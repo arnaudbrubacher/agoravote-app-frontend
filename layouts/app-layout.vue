@@ -326,6 +326,8 @@ const joinGroup = async (groupId, isInvitation = false) => {
       navigateToGroup(groupId);
     } else {
       console.log('Group join request is pending approval. You will be able to access the group once approved.');
+      // Dispatch a custom event to refresh the dashboard sidebar
+      window.dispatchEvent(new CustomEvent('group-data-updated'));
     }
   } catch (error) {
     console.error('Failed to join group:', error);
@@ -477,6 +479,8 @@ const handleAdmissionSubmit = async (admissionData) => {
       // Check if the response indicates documents are pending review
       if (response.data && response.data.status === 'pending') {
         alert('Your documents have been submitted for review. You will be notified when your membership is approved.');
+        // Dispatch a custom event to refresh the dashboard sidebar
+        window.dispatchEvent(new CustomEvent('group-data-updated'));
       } else {
         alert(`You have successfully accepted the invitation to join ${selectedGroup.value.name || 'the group'}`);
       }
@@ -487,6 +491,8 @@ const handleAdmissionSubmit = async (admissionData) => {
       // Check if the response indicates documents are pending review
       if (response.data && response.data.status === 'pending') {
         alert('Your documents have been submitted for review. You will be notified when your membership is approved.');
+        // Dispatch a custom event to refresh the dashboard sidebar
+        window.dispatchEvent(new CustomEvent('group-data-updated'));
       } else {
         alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
       }

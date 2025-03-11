@@ -208,6 +208,9 @@ const handleAdmissionSubmit = async (admissionData) => {
     if (!isPending) {
       // Refresh the user's groups and navigate to the group
       emit('join-group', selectedGroup.value.id);
+    } else {
+      // If the request is pending, dispatch a custom event to refresh the dashboard sidebar
+      window.dispatchEvent(new CustomEvent('group-data-updated'));
     }
     
     // Show success message from the API response
