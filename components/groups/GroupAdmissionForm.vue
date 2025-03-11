@@ -127,6 +127,12 @@ const documentsRequired = computed(() => {
   // Check if the group requires documents
   const requiresDocuments = props.group.requiresDocuments === true || props.group.requires_documents === true;
   
+  // If the group doesn't require documents, return false immediately
+  if (!requiresDocuments) {
+    console.log('Group does not require documents (requiresDocuments flag is false)');
+    return false;
+  }
+  
   // Check if there are any required documents
   let hasRequiredDocuments = false;
   
@@ -138,6 +144,11 @@ const documentsRequired = computed(() => {
     if (typeof documents === 'string') {
       try {
         const parsedDocs = JSON.parse(documents);
+        // Check if it's an empty array
+        if (Array.isArray(parsedDocs) && parsedDocs.length === 0) {
+          console.log('Group has empty requiredDocuments array');
+          return false;
+        }
         hasRequiredDocuments = Array.isArray(parsedDocs) && parsedDocs.length > 0;
       } catch (e) {
         console.error('Error parsing required documents:', e);
@@ -145,10 +156,15 @@ const documentsRequired = computed(() => {
     } 
     // If it's already an array
     else if (Array.isArray(documents)) {
+      if (documents.length === 0) {
+        console.log('Group has empty requiredDocuments array');
+        return false;
+      }
       hasRequiredDocuments = documents.length > 0;
     }
   }
   
+  console.log('Group documents required:', hasRequiredDocuments);
   return requiresDocuments && hasRequiredDocuments;
 })
 
@@ -296,6 +312,11 @@ const handleSubmit = async () => {
       password: form.value.password,
       documents: documentsData
     }
+    
+    // Log the admission data for debugging
+    console.log('GroupAdmissionForm - Submitting admission data:', JSON.stringify(admissionData));
+    console.log('GroupAdmissionForm - Password provided:', form.value.password);
+    console.log('GroupAdmissionForm - Group:', props.group);
     
     // Emit the submit event with the admission data
     // The parent component (FindGroupDialog) will handle the API call

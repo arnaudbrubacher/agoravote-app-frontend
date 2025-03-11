@@ -77,6 +77,7 @@
       @create-group="showCreateGroupDialog = true"
       @view-group="navigateToGroup"
       @refresh-groups="fetchUserGroups"
+      @join-group="joinGroup"
     />
     
     <!-- Find Group Dialog -->
@@ -85,6 +86,15 @@
       :userGroups="userGroups"
       @view-group="navigateToGroup"
       @join-group="joinGroup"
+    />
+    
+    <!-- Group Admission Form -->
+    <GroupAdmissionForm
+      v-if="showAdmissionForm && selectedGroup"
+      :group="selectedGroup"
+      :error="admissionError"
+      @close="showAdmissionForm = false"
+      @submit="handleAdmissionSubmit"
     />
     
     <!-- Create Group Dialog -->
@@ -159,6 +169,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import FindGroupDialog from '@/components/groups/FindGroupDialog.vue'
+import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -188,6 +199,9 @@ const lastUsedGroup = computed(() => {
 // Dialog states
 const showFindGroupDialog = ref(false)
 const showCreateGroupDialog = ref(false)
+const showAdmissionForm = ref(false)
+const selectedGroup = ref(null)
+const admissionError = ref('')
 
 // Form data
 const newGroupName = ref('')
@@ -276,23 +290,77 @@ const createGroup = async () => {
 }
 
 // Join a group
-const joinGroup = async (groupId) => {
+const joinGroup = async (groupId, isInvitation = false) => {
   try {
+    // Get the group details
+    const group = userGroups.value.find(g => g.id === groupId);
+    
+    // Check if the group requires password or documents
+    const requiresPassword = group?.requiresPassword === true || group?.requires_password === true;
+    
+    // More robust check for required documents
+    let requiresDocuments = false;
+    if (group?.requiredDocuments) {
+      // If it's a string (JSON), parse it
+      if (typeof group.requiredDocuments === 'string') {
+        try {
+          const parsedDocs = JSON.parse(group.requiredDocuments);
+          requiresDocuments = Array.isArray(parsedDocs) && parsedDocs.length > 0;
+        } catch (e) {
+          console.error('Error parsing required documents:', e);
+        }
+      } 
+      // If it's already an array
+      else if (Array.isArray(group.requiredDocuments)) {
+        requiresDocuments = group.requiredDocuments.length > 0;
+      }
+    }
+    
+    console.log('Group join requirements:', {
+      requiresPassword,
+      requiresDocuments,
+      groupId,
+      isInvitation
+    });
+    
+    if (requiresPassword || requiresDocuments) {
+      // Show the admission form
+      selectedGroup.value = group;
+      showAdmissionForm.value = true;
+      admissionError.value = '';
+      
+      // Store whether this is an invitation acceptance
+      selectedGroup.value.isInvitation = isInvitation;
+      
+      // Close the dashboard sidebar
+      isDashboardSidebarOpen.value = false;
+      return;
+    }
+    
+    // If no special requirements, proceed with direct join/accept
+    if (isInvitation) {
+      // This is an invitation acceptance
+      await axios.post(`/groups/${groupId}/accept`);
+    } else {
+      // This is a regular join
+      await axios.post(`/groups/${groupId}/join`);
+    }
+    
     // Refresh groups after joining
-    await fetchUserGroups()
+    await fetchUserGroups();
     
     // Check if the user is actually a member of the group with approved status
     const isMember = userGroups.value.some(group => group.id === groupId);
     
     if (isMember) {
       // Only navigate to the group if the user is a member
-      navigateToGroup(groupId)
+      navigateToGroup(groupId);
     } else {
-      console.log('Group join request is pending approval. You will be able to access the group once approved.')
+      console.log('Group join request is pending approval. You will be able to access the group once approved.');
     }
   } catch (error) {
-    console.error('Failed to join group:', error)
-    alert('Failed to join group: ' + (error.response?.data?.message || 'Unknown error'))
+    console.error('Failed to join group:', error);
+    alert('Failed to join group: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
 
@@ -406,6 +474,58 @@ watch(
     }
   }
 )
+
+// Handle admission form submission
+const handleAdmissionSubmit = async (admissionData) => {
+  try {
+    // Make sure we have a selected group
+    if (!selectedGroup.value) {
+      console.error('No group selected for admission')
+      return
+    }
+    
+    // Determine if this is an invitation acceptance or a regular join
+    const isInvitation = selectedGroup.value.isInvitation === true;
+    
+    // Log the admission data being sent
+    console.log('Sending admission data:', JSON.stringify(admissionData));
+    console.log('Group ID:', selectedGroup.value.id);
+    console.log('Is invitation:', isInvitation);
+    
+    // Send the admission data to the server
+    let response;
+    if (isInvitation) {
+      // This is an invitation acceptance
+      response = await axios.post(`/groups/${selectedGroup.value.id}/accept`, admissionData);
+    } else {
+      // This is a regular join
+      response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
+    }
+    
+    // Log the response
+    console.log('Server response:', response.data);
+    
+    // Show success message
+    alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
+    
+    // Close the admission form
+    showAdmissionForm.value = false;
+    selectedGroup.value = null;
+    
+    // Refresh the groups list
+    fetchUserGroups();
+  } catch (error) {
+    console.error('Failed to submit admission form:', error);
+    console.error('Error response:', error.response?.data);
+    
+    // Check if the error is related to password
+    if (error.response?.data?.error?.includes('password')) {
+      admissionError.value = error.response.data.error;
+    } else {
+      alert('Failed to join group: ' + (error.response?.data?.error || 'Unknown error'));
+    }
+  }
+}
 
 onMounted(async () => {
   // First fetch user data

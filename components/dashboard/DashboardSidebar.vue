@@ -143,7 +143,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups'])
+const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups', 'join-group'])
 
 // Computed property for two-way binding of open state
 const isOpen = computed({
@@ -247,16 +247,29 @@ watch(() => props.groups, (newGroups) => {
 // Accept a group invitation
 const acceptGroupInvitation = async (group) => {
   try {
-    await axios.post(`/groups/${group.id}/accept`)
+    // Check if the group requires a password or documents
+    const requiresPassword = group.requiresPassword === true || group.requires_password === true;
+    const requiresDocuments = group.requiresDocuments === true || group.requires_documents === true;
+    
+    // If the group requires a password or documents, use the existing join-group flow
+    if (requiresPassword || requiresDocuments) {
+      console.log('Group requires password or documents, using join-group flow');
+      // Emit the join-group event to reuse the existing flow
+      emit('join-group', group.id, true); // Pass true to indicate this is an invitation acceptance
+      return;
+    }
+    
+    // If no special requirements, proceed with direct acceptance
+    await axios.post(`/groups/${group.id}/accept`);
     
     // Show success message
-    alert(`You have successfully joined ${group.name || 'the group'}`)
+    alert(`You have successfully joined ${group.name || 'the group'}`);
     
     // Refresh the groups list to show the newly joined group
-    emit('refresh-groups')
+    emit('refresh-groups');
   } catch (error) {
-    console.error('Failed to accept group invitation:', error)
-    alert('Failed to accept invitation: ' + (error.response?.data?.error || 'Unknown error'))
+    console.error('Failed to accept group invitation:', error);
+    alert('Failed to accept invitation: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
 
