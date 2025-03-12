@@ -417,14 +417,6 @@ onMounted(async () => {
       console.log('requires_admin_approval not found in API response, setting to default (true)');
       props.group.requires_admin_approval = true;
     }
-
-    // Check if we have a stored value in localStorage
-    const storedRequiresAdminApproval = localStorage.getItem(`group_${props.group.id}_requires_admin_approval`);
-    if (storedRequiresAdminApproval !== null) {
-      console.log('Found stored requires_admin_approval value:', storedRequiresAdminApproval);
-      props.group.requires_admin_approval = storedRequiresAdminApproval === 'true';
-      console.log('Using stored value for requires_admin_approval:', props.group.requires_admin_approval);
-    }
   } catch (error) {
     console.error('Error fetching group data directly:', error);
   }
@@ -549,14 +541,6 @@ const refreshFormData = async () => {
     if (props.group.requires_admin_approval === undefined) {
       console.log('requires_admin_approval not found in API response on refresh, setting to default (true)');
       props.group.requires_admin_approval = true;
-    }
-
-    // Check if we have a stored value in localStorage
-    const storedRequiresAdminApproval = localStorage.getItem(`group_${props.group.id}_requires_admin_approval`);
-    if (storedRequiresAdminApproval !== null) {
-      console.log('Found stored requires_admin_approval value on refresh:', storedRequiresAdminApproval);
-      props.group.requires_admin_approval = storedRequiresAdminApproval === 'true';
-      console.log('Using stored value for requires_admin_approval on refresh:', props.group.requires_admin_approval);
     }
   } catch (error) {
     console.error('Error fetching group data directly on refresh:', error);
@@ -934,11 +918,6 @@ const handleSubmit = async () => {
     // Log the requires_admin_approval value before preparing the data
     console.log('Submitting requires_admin_approval value:', formData.value.requires_admin_approval);
 
-    // Store the requires_admin_approval value in localStorage
-    // This is a workaround for the backend always setting it to true
-    localStorage.setItem(`group_${props.group.id}_requires_admin_approval`, 
-      formData.value.requires_admin_approval.toString());
-
     // Prepare the data to submit
     const dataToSubmit = { 
       name: formData.value.name,
@@ -1129,11 +1108,6 @@ const toggleAdminApprovalRequirement = () => {
   // Just update local state, don't make API call
   console.log('Admin approval requirement toggled from', !formData.value.requires_admin_approval, 'to', formData.value.requires_admin_approval);
   console.log('Current formData state:', formData.value);
-  
-  // Store the value in localStorage
-  localStorage.setItem(`group_${props.group.id}_requires_admin_approval`, 
-    formData.value.requires_admin_approval.toString());
-  console.log('Stored requires_admin_approval value in localStorage:', formData.value.requires_admin_approval);
   
   // Update the original form data to track changes
   if (JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)) {
