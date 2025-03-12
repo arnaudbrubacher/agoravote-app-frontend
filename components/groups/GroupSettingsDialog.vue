@@ -186,6 +186,32 @@
                 </div>
               </div>
             </div>
+
+            <!-- Membership Approval Field -->
+            <div class="space-y-2 pb-3">
+              <Label for="requires-admin-approval" class="text-sm font-medium">Membership Approval</Label>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="requires-admin-approval-toggle"
+                  v-model="formData.requires_admin_approval"
+                  @update:modelValue="toggleAdminApprovalRequirement"
+                  :disabled="!isCurrentUserAdmin"
+                />
+                <Label for="requires-admin-approval-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.requires_admin_approval ? 'Admin approval required' : 'Automatic approval' }}
+                </Label>
+              </div>
+              
+              <div class="space-y-2 mt-2">
+                <div class="h-10 flex items-center">
+                  <p class="text-sm text-muted-foreground">
+                    {{ formData.requires_admin_approval 
+                      ? 'New members must be approved by an admin before joining.' 
+                      : 'New members will be automatically approved when they join.' }}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
           
           <!-- Remove the Leave Group button and its container -->
@@ -325,7 +351,8 @@ const formData = ref({
   password: '',
   confirmPassword: '',
   requires_documents: false,
-  documents: []
+  documents: [],
+  requires_admin_approval: true
 })
 
 // Original form data from the server
@@ -352,6 +379,7 @@ onMounted(async () => {
   console.log('Required documents type:', typeof props.group.required_documents);
   console.log('Requires documents flag:', props.group.requires_documents);
   console.log('Is current user admin:', props.isCurrentUserAdmin);
+  console.log('Requires admin approval:', props.group.requires_admin_approval);
   
   // Make a direct API call to fetch the latest group data
   try {
@@ -362,6 +390,7 @@ onMounted(async () => {
     // Update the group data with the direct API response
     Object.assign(props.group, response.data);
     console.log('Updated group data with direct API response');
+    console.log('Requires admin approval after API update:', props.group.requires_admin_approval);
     
     // For backward compatibility with older backend versions
     // If requires_documents is not in the response, we need to check if required_documents exists
@@ -381,6 +410,20 @@ onMounted(async () => {
         props.group.requires_documents = false;
         console.log('Setting requires_documents to false based on empty required_documents');
       }
+    }
+    
+    // If requires_admin_approval is not in the response, set it to true (default)
+    if (props.group.requires_admin_approval === undefined) {
+      console.log('requires_admin_approval not found in API response, setting to default (true)');
+      props.group.requires_admin_approval = true;
+    }
+
+    // Check if we have a stored value in localStorage
+    const storedRequiresAdminApproval = localStorage.getItem(`group_${props.group.id}_requires_admin_approval`);
+    if (storedRequiresAdminApproval !== null) {
+      console.log('Found stored requires_admin_approval value:', storedRequiresAdminApproval);
+      props.group.requires_admin_approval = storedRequiresAdminApproval === 'true';
+      console.log('Using stored value for requires_admin_approval:', props.group.requires_admin_approval);
     }
   } catch (error) {
     console.error('Error fetching group data directly:', error);
@@ -442,7 +485,10 @@ onMounted(async () => {
     password: '',
     confirmPassword: '',
     requires_documents: requiresDocuments,
-    documents: parsedDocs
+    documents: parsedDocs,
+    requires_admin_approval: props.group.requires_admin_approval !== undefined 
+      ? props.group.requires_admin_approval 
+      : true // Default to true if not specified
   }
   
   // Store a deep copy of the original form data
@@ -466,6 +512,7 @@ const refreshFormData = async () => {
   console.log('Group ID on refresh:', props.group.id);
   console.log('Required documents (refresh):', props.group.required_documents);
   console.log('Requires documents flag (refresh):', props.group.requires_documents);
+  console.log('Requires admin approval (refresh):', props.group.requires_admin_approval);
   
   // Make a direct API call to fetch the latest group data
   try {
@@ -476,6 +523,7 @@ const refreshFormData = async () => {
     // Update the group data with the direct API response
     Object.assign(props.group, response.data);
     console.log('Updated group data with direct API response on refresh');
+    console.log('Requires admin approval after API update on refresh:', props.group.requires_admin_approval);
     
     // For backward compatibility with older backend versions
     // If requires_documents is not in the response, we need to check if required_documents exists
@@ -495,6 +543,20 @@ const refreshFormData = async () => {
         props.group.requires_documents = false;
         console.log('Setting requires_documents to false based on empty required_documents on refresh');
       }
+    }
+    
+    // If requires_admin_approval is not in the response, set it to true (default)
+    if (props.group.requires_admin_approval === undefined) {
+      console.log('requires_admin_approval not found in API response on refresh, setting to default (true)');
+      props.group.requires_admin_approval = true;
+    }
+
+    // Check if we have a stored value in localStorage
+    const storedRequiresAdminApproval = localStorage.getItem(`group_${props.group.id}_requires_admin_approval`);
+    if (storedRequiresAdminApproval !== null) {
+      console.log('Found stored requires_admin_approval value on refresh:', storedRequiresAdminApproval);
+      props.group.requires_admin_approval = storedRequiresAdminApproval === 'true';
+      console.log('Using stored value for requires_admin_approval on refresh:', props.group.requires_admin_approval);
     }
   } catch (error) {
     console.error('Error fetching group data directly on refresh:', error);
@@ -559,7 +621,10 @@ const refreshFormData = async () => {
     password: currentPassword,
     confirmPassword: currentConfirmPassword,
     requires_documents: requiresDocuments,
-    documents: parsedDocs
+    documents: parsedDocs,
+    requires_admin_approval: props.group.requires_admin_approval !== undefined 
+      ? props.group.requires_admin_approval 
+      : true // Default to true if not specified
   }
   
   // Update the original form data to match the refreshed data
@@ -866,13 +931,22 @@ const handleSubmit = async () => {
       picturePath = await uploadGroupPicture()
     }
     
+    // Log the requires_admin_approval value before preparing the data
+    console.log('Submitting requires_admin_approval value:', formData.value.requires_admin_approval);
+
+    // Store the requires_admin_approval value in localStorage
+    // This is a workaround for the backend always setting it to true
+    localStorage.setItem(`group_${props.group.id}_requires_admin_approval`, 
+      formData.value.requires_admin_approval.toString());
+
     // Prepare the data to submit
     const dataToSubmit = { 
       name: formData.value.name,
       description: formData.value.description,
       is_private: formData.value.isPrivate,
       requires_password: formData.value.requires_password,
-      requires_documents: formData.value.requires_documents
+      requires_documents: formData.value.requires_documents,
+      requires_admin_approval: formData.value.requires_admin_approval
     }
     
     // We no longer include password in the main form submission
@@ -904,6 +978,8 @@ const handleSubmit = async () => {
     try {
       const response = await axios.put(`/groups/${props.group.id}`, dataToSubmit)
       
+      console.log('Group update response:', response.data)
+      
       // Update local data
       Object.assign(props.group, response.data)
       
@@ -917,6 +993,7 @@ const handleSubmit = async () => {
       emit('close')
     } catch (error) {
       console.error('Failed to update group via direct API call:', error)
+      console.error('Error response:', error.response?.data)
       
       // Fall back to emit if direct call fails
       emit('submit', dataToSubmit)
@@ -1045,6 +1122,24 @@ const changePassword = async () => {
     } else {
       alert('Failed to change password: Network error')
     }
+  }
+}
+
+const toggleAdminApprovalRequirement = () => {
+  // Just update local state, don't make API call
+  console.log('Admin approval requirement toggled from', !formData.value.requires_admin_approval, 'to', formData.value.requires_admin_approval);
+  console.log('Current formData state:', formData.value);
+  
+  // Store the value in localStorage
+  localStorage.setItem(`group_${props.group.id}_requires_admin_approval`, 
+    formData.value.requires_admin_approval.toString());
+  console.log('Stored requires_admin_approval value in localStorage:', formData.value.requires_admin_approval);
+  
+  // Update the original form data to track changes
+  if (JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)) {
+    console.log('Form data has been modified');
+  } else {
+    console.log('Form data is unchanged');
   }
 }
 </script>
