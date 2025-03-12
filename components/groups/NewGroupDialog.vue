@@ -154,6 +154,30 @@
               </div>
             </div>
           </div>
+          
+          <!-- Membership Approval Setting -->
+          <div class="space-y-2 pb-3">
+            <Label for="requires-admin-approval" class="text-sm font-medium">Membership Approval</Label>
+            <div class="flex items-center space-x-2">
+              <Switch
+                id="requires-admin-approval-toggle"
+                v-model="form.requires_admin_approval"
+              />
+              <Label for="requires-admin-approval-toggle" class="text-sm text-muted-foreground">
+                {{ form.requires_admin_approval ? 'Admin approval required' : 'Automatic approval' }}
+              </Label>
+            </div>
+            
+            <div class="space-y-2 mt-2">
+              <div class="h-10 flex items-center">
+                <p class="text-sm text-muted-foreground">
+                  {{ form.requires_admin_approval 
+                    ? 'New members must be approved by an admin before joining.' 
+                    : 'New members will be automatically approved when they join.' }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
         
         <DialogFooter class="pt-2">
@@ -202,7 +226,8 @@ const initialForm = {
   password: '',
   confirmPassword: '',
   requires_documents: false,
-  documents: []
+  documents: [],
+  requires_admin_approval: true // Default to requiring admin approval
 }
 
 // Create the form ref with initial values
@@ -281,7 +306,8 @@ const handleSubmit = async () => {
       requires_password: form.value.requires_password,
       password: form.value.requires_password ? form.value.password : '',
       requires_documents: form.value.requires_documents,
-      required_documents: JSON.stringify(requiredDocuments)
+      required_documents: JSON.stringify(requiredDocuments),
+      requires_admin_approval: form.value.requires_admin_approval
     }
     
     // Log the exact data being sent (without the picture for brevity)
@@ -326,5 +352,9 @@ watch(() => form.value.requires_password, (newValue) => {
 
 watch(() => form.value.requires_documents, (newValue) => {
   console.log('Document requirement toggled locally:', newValue)
+})
+
+watch(() => form.value.requires_admin_approval, (newValue) => {
+  console.log('Admin approval requirement toggled locally:', newValue)
 })
 </script>

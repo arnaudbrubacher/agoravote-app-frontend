@@ -34,6 +34,9 @@
           <span v-if="isPending" class="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
             Pending
           </span>
+          <span v-if="isPending && !invitationAccepted" class="ml-2 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
+            Awaiting Acceptance
+          </span>
         </div>
         <span class="text-sm text-muted-foreground">{{ getMemberEmail(member) }}</span>
       </div>
@@ -56,7 +59,11 @@
                 <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-2" />
                 Review Documents
               </DropdownMenuItem>
-              <DropdownMenuItem @click="$emit('accept', member)">
+              <DropdownMenuItem 
+                @click="$emit('accept', member)"
+                :disabled="!invitationAccepted"
+                :class="{'opacity-50 cursor-not-allowed': !invitationAccepted}"
+              >
                 <LucideIcon name="Check" size="4" class="h-4 w-4 mr-2" />
                 Accept
               </DropdownMenuItem>
@@ -83,6 +90,7 @@
             variant="default" 
             size="sm" 
             @click="$emit('accept', member)"
+            :disabled="!invitationAccepted"
           >
             <LucideIcon name="Check" size="4" class="h-4 w-4" />
           </Button>
@@ -168,6 +176,10 @@ const props = defineProps({
     default: false
   },
   hasDocuments: {
+    type: Boolean,
+    default: false
+  },
+  invitationAccepted: {
     type: Boolean,
     default: false
   }

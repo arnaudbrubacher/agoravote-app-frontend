@@ -580,13 +580,19 @@ const resendVerificationEmail = async () => {
 const logout = () => {
   // Show confirmation dialog first
   if (confirm('Are you sure you want to log out?')) {
-    // Clear user session or token
+    // First close the settings sheet
+    closeSheet()
+    
+    // Clear user session data
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
-    router.push('/auth')
+    localStorage.removeItem('lastUsedGroupId') // Also clear any other user-related data
     
-    // Close the settings sheet
-    closeSheet()
+    // Add a small delay to ensure the sheet is closed before navigation
+    setTimeout(() => {
+      // Force navigation to auth page
+      window.location.href = '/auth'
+    }, 100)
   }
 }
 </script> 

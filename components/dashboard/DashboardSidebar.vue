@@ -56,6 +56,17 @@
             :showActions="true"
             :showPrivateBadge="false"
           >
+            <template #badges>
+              <span v-if="isWaitingForAdminApproval(group)" class="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
+                {{ group.isInvitation === false ? 'Join Request Pending' : 'Awaiting Admin Approval' }}
+              </span>
+              <span v-else-if="(group.isInvitation === true || group.isInvitation === undefined) && 
+                              group.membership && group.membership.status === 'pending' && 
+                              group.membership.invitation_accepted !== true" 
+                    class="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                Invitation
+              </span>
+            </template>
             <template #actions>
               <Button 
                 variant="outline" 
@@ -76,13 +87,19 @@
                 Review
               </Button>
               <Button 
-                v-else
+                v-else-if="!isWaitingForAdminApproval(group)"
                 variant="default" 
                 size="sm"
                 @click.stop="acceptPendingGroup(group)"
               >
                 Accept
               </Button>
+              <div 
+                v-else
+                class="text-xs text-muted-foreground px-2 py-1 bg-muted rounded"
+              >
+                Awaiting Admin Approval
+              </div>
             </template>
           </GroupCard>
         </div>
@@ -203,6 +220,16 @@ const pendingGroups = computed(() => {
     // Check if the group has a membership property with status
     if (group.membership && group.membership.status === 'pending') {
       console.log(`Including group with pending membership.status in Pending Groups: ${group.name}`)
+      console.log(`Group invitation accepted status: ${group.membership.invitation_accepted}`)
+      console.log(`Group isInvitation flag: ${group.isInvitation}`)
+      
+      // Log whether this is waiting for admin approval or user acceptance
+      if (isWaitingForAdminApproval(group)) {
+        console.log(`Group ${group.name} is waiting for admin approval`)
+      } else {
+        console.log(`Group ${group.name} is waiting for user acceptance`)
+      }
+      
       return true
     }
     
@@ -269,6 +296,14 @@ watch(() => props.groups, (newGroups) => {
 // Accept a pending group membership
 const acceptPendingGroup = async (group) => {
   try {
+    console.log('Accepting pending group membership for:', group.name);
+    console.log('Group details:', {
+      id: group.id,
+      isInvitation: group.isInvitation,
+      membershipStatus: group.membership?.status,
+      invitationAccepted: group.membership?.invitation_accepted
+    });
+    
     // Check if the group requires a password
     const requiresPassword = group.requiresPassword === true || group.requires_password === true;
     
@@ -297,16 +332,20 @@ const acceptPendingGroup = async (group) => {
     // Also check the requiresDocuments flag
     const hasRequiresDocumentsFlag = group.requiresDocuments === true || group.requires_documents === true;
     
+    // Check if the group requires admin approval
+    const requiresAdminApproval = group.requiresAdminApproval === true || group.requires_admin_approval === true;
+    
     console.log('Group acceptance requirements:', {
       requiresPassword,
       requiresDocuments,
       hasRequiresDocumentsFlag,
+      requiresAdminApproval,
       groupName: group.name
     });
     
-    // If the group requires a password or documents, use the existing join-group flow
-    if (requiresPassword || (hasRequiresDocumentsFlag && requiresDocuments)) {
-      console.log('Group requires password or documents, using join-group flow');
+    // If the group requires a password, documents, or admin approval, use the existing join-group flow
+    if (requiresPassword || (hasRequiresDocumentsFlag && requiresDocuments) || requiresAdminApproval) {
+      console.log('Group requires password, documents, or admin approval, using join-group flow');
       // Emit the join-group event to reuse the existing flow
       emit('join-group', group.id, true); // Pass true to indicate this is an invitation acceptance
       return;
@@ -314,6 +353,15 @@ const acceptPendingGroup = async (group) => {
     
     // If no special requirements, proceed with direct acceptance
     await axios.post(`/groups/${group.id}/accept`);
+    
+    // Update the local state to reflect the acceptance
+    if (group.membership) {
+      console.log('Updating local state: Setting invitation_accepted to true');
+      group.membership.invitation_accepted = true;
+    } else {
+      console.log('Creating membership object with invitation_accepted=true');
+      group.membership = { invitation_accepted: true };
+    }
     
     // Show success message
     alert(`You have successfully joined ${group.name || 'the group'}`);
@@ -347,5 +395,25 @@ const cancelPendingGroup = async (group) => {
 const reviewDocuments = (group) => {
   // Emit an event to show the GroupAdmissionForm in review mode
   emit('review-documents', group.id)
+}
+
+// Helper function to check if a group is waiting for admin approval
+const isWaitingForAdminApproval = (group) => {
+  // Check if the group has a membership with pending status
+  if (!group.membership || group.membership.status !== 'pending') {
+    return false;
+  }
+  
+  // If this is an invitation (isInvitation is true or undefined) and it hasn't been accepted yet,
+  // then it's not waiting for admin approval - it's waiting for user acceptance
+  if ((group.isInvitation === true || group.isInvitation === undefined) && 
+      group.membership.invitation_accepted !== true) {
+    return false;
+  }
+  
+  // If this is a join request (isInvitation is explicitly false) or 
+  // an invitation that has been accepted (invitation_accepted is true),
+  // then it's waiting for admin approval
+  return group.isInvitation === false || group.membership.invitation_accepted === true;
 }
 </script> 

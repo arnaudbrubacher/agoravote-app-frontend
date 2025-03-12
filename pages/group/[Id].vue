@@ -318,8 +318,8 @@ onBeforeUnmount(() => {
 })
 
 // Navigation helpers
-const navigateToDashboard = () => {
-  router.push('/dashboard')
+const navigateToProfile = () => {
+  router.push('/profile')
 }
 
 // Action handlers

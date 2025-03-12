@@ -35,6 +35,7 @@
         :is-pending="true"
         :is-current-user-admin="true"
         :has-documents="member.hasDocuments"
+        :invitation-accepted="member.invitation_accepted === true"
         @review-documents="reviewDocuments(member)"
         @accept="approveMember(member)"
         @decline="declineMember(member)"
@@ -162,6 +163,7 @@ const fetchPendingMembers = async () => {
     // Add hasDocuments property to each member and ensure user info is available
     pendingMembers.value.forEach(member => {
       console.log('Processing pending member:', member)
+      console.log('Invitation accepted status:', member.invitation_accepted)
       
       // Ensure user info is available
       if (!member.name && member.user) {
@@ -201,6 +203,13 @@ const reviewDocuments = (member) => {
 
 // Approve a pending member
 const approveMember = async (member) => {
+  // Check if the invitation has been accepted
+  if (member.invitation_accepted !== true) {
+    console.log('Cannot approve member - invitation not accepted:', member);
+    alert(`Cannot approve ${member.user?.name || 'this member'} yet. They need to accept the invitation first.`);
+    return;
+  }
+
   try {
     await axios.post(`/groups/${props.groupId}/members/${member.user_id}/approve`)
     
@@ -230,6 +239,14 @@ const approveMember = async (member) => {
 
 // Approve a member with documents
 const approveWithDocuments = async (member) => {
+  // Check if the invitation has been accepted
+  if (member.invitation_accepted !== true) {
+    console.log('Cannot approve member with documents - invitation not accepted:', member);
+    alert(`Cannot approve ${member.user?.name || 'this member'} yet. They need to accept the invitation first.`);
+    selectedMember.value = null;
+    return;
+  }
+
   try {
     await axios.post(`/groups/${props.groupId}/members/${member.user_id}/approve-documents`)
     

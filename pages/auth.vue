@@ -108,30 +108,8 @@ const getLastUsedGroupId = () => {
 
 // Handle post-authentication navigation
 const handlePostAuthNavigation = async (isNewUser = false) => {
-  // For new users (signup), always go to profile
-  if (isNewUser) {
-    router.push('/profile')
-    return
-  }
-  
-  // For existing users (login), check if they have groups
-  const hasGroups = await checkUserGroups()
-  
-  if (!hasGroups) {
-    // If no groups, go to profile
-    router.push('/profile')
-  } else {
-    // If they have groups, check for last used group
-    const lastUsedGroupId = getLastUsedGroupId()
-    
-    if (lastUsedGroupId) {
-      // Navigate to last used group
-      router.push(`/group/${lastUsedGroupId}`)
-    } else {
-      // If no last used group is stored, go to dashboard
-      router.push('/dashboard')
-    }
-  }
+  // Always navigate to profile page after authentication
+  router.push('/profile')
 }
 
 const handleLogin = async () => {

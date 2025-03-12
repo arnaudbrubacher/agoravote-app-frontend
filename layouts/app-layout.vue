@@ -169,11 +169,6 @@ const isAuthenticated = computed(() => {
   return !!localStorage.getItem('token')
 })
 
-// Check if currently on dashboard page
-const isOnDashboard = computed(() => {
-  return route.path === '/dashboard'
-})
-
 // Open user settings sheet
 const openUserSettings = () => {
   isUserSettingsOpen.value = true
@@ -187,14 +182,6 @@ const openDashboardSidebar = () => {
   }
   // Toggle the sidebar
   isDashboardSidebarOpen.value = !isDashboardSidebarOpen.value
-}
-
-// Navigate to dashboard
-const navigateToDashboard = () => {
-  // Only navigate if not already on dashboard
-  if (!isOnDashboard.value) {
-    router.push('/dashboard')
-  }
 }
 
 // Navigate to group page
@@ -552,47 +539,76 @@ const reviewDocuments = async (groupId) => {
   }
 }
 
+// Handle the group-data-updated event
+const handleGroupDataUpdated = (event) => {
+  console.log('Group data updated event received in app-layout');
+  
+  // Check if the event has detail with groupId and isJoinRequest
+  if (event.detail && event.detail.groupId && event.detail.isJoinRequest) {
+    console.log('Join request detected for group:', event.detail.groupId);
+    
+    // Find the group in userGroups
+    const groupIndex = userGroups.value.findIndex(g => g.id === event.detail.groupId);
+    
+    // If the group exists, update its isInvitation flag
+    if (groupIndex !== -1) {
+      // Create a new object to ensure reactivity
+      userGroups.value[groupIndex] = {
+        ...userGroups.value[groupIndex],
+        isInvitation: false
+      };
+    }
+  }
+  
+  // Refresh the groups list
+  fetchUserGroups();
+}
+
 onMounted(async () => {
   // First fetch user data
   await fetchUserData()
-  
+   
   // Then fetch user groups
   await fetchUserGroups()
-  
+      
   // Check if the current route is a group page
   const currentPath = route.path
   const groupMatch = currentPath.match(/\/group\/([^/]+)/)
-  
+   
   if (groupMatch && groupMatch[1]) {
     const groupId = groupMatch[1]
-    
+     
     // Check if the user is a member of this group
     const isMember = userGroups.value.some(g => g.id === groupId)
-    
+     
     if (!isMember) {
       console.log('User is not a member of the current group, redirecting to profile')
       router.push('/profile')
     }
   }
-  
+    
   // Listen for the global user-data-updated event
   window.addEventListener('user-data-updated', fetchUserData)
-  
+   
   // Listen for the global group-data-updated event
-  window.addEventListener('group-data-updated', fetchUserGroups)
-  
+  window.addEventListener('group-data-updated', handleGroupDataUpdated)
+   
   // Listen for the close-dashboard-sidebar event to also close the FindGroupDialog
   window.addEventListener('close-dashboard-sidebar', () => {
     showFindGroupDialog.value = false
   })
+  
+  // Listen for the user-left-group event
+  window.addEventListener('user-left-group', handleUserLeftGroup)
 })
-
+  
 // Clean up event listeners
 onBeforeUnmount(() => {
   window.removeEventListener('user-data-updated', fetchUserData)
-  window.removeEventListener('group-data-updated', fetchUserGroups)
+  window.removeEventListener('group-data-updated', handleGroupDataUpdated)
   window.removeEventListener('close-dashboard-sidebar', () => {
     showFindGroupDialog.value = false
   })
+  window.removeEventListener('user-left-group', handleUserLeftGroup)
 })
 </script>

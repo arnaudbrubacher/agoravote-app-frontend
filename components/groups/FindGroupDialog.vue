@@ -210,7 +210,13 @@ const handleAdmissionSubmit = async (admissionData) => {
       emit('join-group', selectedGroup.value.id);
     } else {
       // If the request is pending, dispatch a custom event to refresh the dashboard sidebar
-      window.dispatchEvent(new CustomEvent('group-data-updated'));
+      // Also set a flag to indicate this is a join request, not an invitation
+      window.dispatchEvent(new CustomEvent('group-data-updated', {
+        detail: {
+          groupId: selectedGroup.value.id,
+          isJoinRequest: true
+        }
+      }));
     }
     
     // Show success message from the API response

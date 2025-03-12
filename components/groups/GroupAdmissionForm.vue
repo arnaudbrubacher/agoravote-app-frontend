@@ -38,6 +38,12 @@
               <div class="space-y-1">
                 <Label class="text-sm font-medium">Required Documents</Label>
                 <p class="text-sm text-muted-foreground">The following documents are required to join this group:</p>
+                <div v-if="adminApprovalRequired" class="text-sm text-amber-600 mt-2">
+                  <span class="flex items-center">
+                    <LucideIcon name="Info" size="4" class="h-4 w-4 mr-1" />
+                    Note: Your membership will require admin approval before it is activated.
+                  </span>
+                </div>
               </div>
               <div v-for="(doc, index) in requiredDocuments" :key="index" class="p-3 border rounded-md space-y-2">
                 <div class="flex items-center justify-between">
@@ -74,11 +80,25 @@
                 <Label class="text-sm text-muted-foreground" for="password">Password</Label>
                 <Input id="password" type="password" v-model="form.password" required :class="{ 'border-red-500': passwordError }" />
                 <p v-if="passwordError" class="text-sm text-red-500 mt-1">{{ passwordError }}</p>
+                <div v-if="adminApprovalRequired" class="text-sm text-amber-600 mt-2">
+                  <span class="flex items-center">
+                    <LucideIcon name="Info" size="4" class="h-4 w-4 mr-1" />
+                    Note: Your membership will require admin approval before it is activated.
+                  </span>
+                </div>
               </div>
 
               <!-- No Requirements Message -->
-              <div v-if="!passwordRequired && !documentsRequired" class="text-sm text-muted-foreground">
-                This group has no special admission requirements.
+              <div v-if="!passwordRequired && !documentsRequired" class="space-y-1">
+                <div class="text-sm text-muted-foreground">
+                  This group has no special admission requirements.
+                </div>
+                <div v-if="adminApprovalRequired" class="text-sm text-amber-600 mt-2">
+                  <span class="flex items-center">
+                    <LucideIcon name="Info" size="4" class="h-4 w-4 mr-1" />
+                    Note: Your membership will require admin approval before it is activated.
+                  </span>
+                </div>
               </div>
 
               <!-- Form Actions -->
@@ -120,6 +140,12 @@ const props = defineProps({
 const passwordRequired = computed(() => {
   // Check for both camelCase and snake_case versions
   return props.group.requiresPassword === true || props.group.requires_password === true
+})
+
+// Computed property to check if admin approval is required
+const adminApprovalRequired = computed(() => {
+  // Check for both camelCase and snake_case versions
+  return props.group.requiresAdminApproval === true || props.group.requires_admin_approval === true
 })
 
 // Computed property to handle document requirements
@@ -332,6 +358,7 @@ const handleSubmit = async () => {
     console.log('GroupAdmissionForm - Password provided:', !!form.value.password);
     console.log('GroupAdmissionForm - Documents provided:', documentsData.length);
     console.log('GroupAdmissionForm - Group:', props.group);
+    console.log('GroupAdmissionForm - Requires admin approval:', props.group.requires_admin_approval);
     
     // Emit the submit event with the admission data
     emit('submit', admissionData)

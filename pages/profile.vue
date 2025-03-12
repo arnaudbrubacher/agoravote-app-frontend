@@ -35,9 +35,9 @@
       <Button 
         class="mt-4" 
         variant="outline" 
-        @click="() => router.push('/dashboard')"
+        @click="() => router.push('/auth')"
       >
-        Return to Dashboard
+        Return to Login
       </Button>
     </div>
     
