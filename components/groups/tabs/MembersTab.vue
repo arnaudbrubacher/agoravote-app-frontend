@@ -27,6 +27,7 @@
             @remove="handleMemberRemove"
             @refresh-members="$emit('refresh-group')"
             @admin-status-update="handleAdminStatusUpdate"
+            @review-documents="handleReviewDocuments"
           />
         </TabsContent>
         
@@ -115,6 +116,25 @@ const activeMembers = computed(() => {
   });
   
   console.log('Filtered active members:', filtered);
+  
+  // Process documents for each member
+  filtered.forEach(member => {
+    // Process documents
+    let docs = member.documents_submitted;
+    
+    // If docs is a string, try to parse it as JSON
+    if (typeof docs === 'string') {
+      try {
+        docs = JSON.parse(docs);
+      } catch (e) {
+        docs = [];
+      }
+    }
+    
+    // Set hasDocuments based on whether there are any documents
+    member.hasDocuments = Array.isArray(docs) && docs.length > 0;
+  });
+  
   return filtered;
 });
 
@@ -404,5 +424,11 @@ const handleUserInvited = (userData) => {
   
   // Emit event to parent component
   emit('user-invited', userData);
+}
+
+// Handle review documents for active members
+const handleReviewDocuments = (member) => {
+  selectedPendingMember.value = member
+  showReviewDialog.value = true
 }
 </script>

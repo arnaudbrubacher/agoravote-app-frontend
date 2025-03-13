@@ -188,6 +188,12 @@ const fetchPendingMembers = async () => {
       
       // Set hasDocuments based on whether there are any documents
       member.hasDocuments = Array.isArray(docs) && docs.length > 0
+      
+      // If documents are submitted and invitation_accepted is true, mark as a join request
+      if (member.hasDocuments && member.invitation_accepted === true) {
+        member.isJoinRequest = true
+        console.log('Identified as a join request with documents')
+      }
     })
   } catch (error) {
     console.error('Failed to fetch pending members:', error)
@@ -203,9 +209,9 @@ const reviewDocuments = (member) => {
 
 // Approve a pending member
 const approveMember = async (member) => {
-  // Check if the invitation has been accepted
-  if (member.invitation_accepted !== true) {
-    console.log('Cannot approve member - invitation not accepted:', member);
+  // Check if the invitation has been accepted or if this is a join request
+  if (member.invitation_accepted !== true && !member.isJoinRequest) {
+    console.log('Cannot approve member - invitation not accepted and not a join request:', member);
     alert(`Cannot approve ${member.user?.name || 'this member'} yet. They need to accept the invitation first.`);
     return;
   }
@@ -239,9 +245,9 @@ const approveMember = async (member) => {
 
 // Approve a member with documents
 const approveWithDocuments = async (member) => {
-  // Check if the invitation has been accepted
-  if (member.invitation_accepted !== true) {
-    console.log('Cannot approve member with documents - invitation not accepted:', member);
+  // Check if the invitation has been accepted or if this is a join request
+  if (member.invitation_accepted !== true && !member.isJoinRequest) {
+    console.log('Cannot approve member with documents - invitation not accepted and not a join request:', member);
     alert(`Cannot approve ${member.user?.name || 'this member'} yet. They need to accept the invitation first.`);
     selectedMember.value = null;
     return;

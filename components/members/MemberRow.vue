@@ -34,7 +34,7 @@
           <span v-if="isPending" class="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
             Pending
           </span>
-          <span v-if="isPending && !invitationAccepted" class="ml-2 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
+          <span v-if="isPending && !invitationAccepted && !member.isJoinRequest" class="ml-2 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
             Awaiting Acceptance
           </span>
         </div>
@@ -61,8 +61,8 @@
               </DropdownMenuItem>
               <DropdownMenuItem 
                 @click="$emit('accept', member)"
-                :disabled="!invitationAccepted"
-                :class="{'opacity-50 cursor-not-allowed': !invitationAccepted}"
+                :disabled="!invitationAccepted && !member.isJoinRequest"
+                :class="{'opacity-50 cursor-not-allowed': !invitationAccepted && !member.isJoinRequest}"
               >
                 <LucideIcon name="Check" size="4" class="h-4 w-4 mr-2" />
                 Accept
@@ -90,7 +90,7 @@
             variant="default" 
             size="sm" 
             @click="$emit('accept', member)"
-            :disabled="!invitationAccepted"
+            :disabled="!invitationAccepted && !member.isJoinRequest"
           >
             <LucideIcon name="Check" size="4" class="h-4 w-4" />
           </Button>
@@ -106,6 +106,18 @@
       
       <!-- Actions for active members -->
       <div v-if="!isPending" class="flex items-center space-x-2">
+        <!-- Document Review Button - Only visible if member has documents -->
+        <Button 
+          v-if="member.hasDocuments && isCurrentUserAdmin"
+          variant="outline" 
+          size="sm" 
+          @click="$emit('review-documents', member)"
+          class="mr-2"
+        >
+          <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-1" />
+          Docs
+        </Button>
+        
         <!-- Admin Toggle - Only visible for admins and not for current user if they're an admin -->
         <div v-if="isCurrentUserAdmin && !isCurrentMember(member)" class="flex items-center space-x-2">
           <div class="flex items-center space-x-1">

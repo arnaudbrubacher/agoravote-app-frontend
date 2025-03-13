@@ -253,12 +253,12 @@
       <DialogHeader>
         <DialogTitle>Change Group Password</DialogTitle>
         <DialogDescription>
-          Enter a new password for the group.
+          {{ props.group.requires_password ? 'Enter a new password for the group.' : 'Set a password for the group.' }}
         </DialogDescription>
       </DialogHeader>
 
       <div class="grid gap-4 py-4">
-        <div class="space-y-2">
+        <div v-if="props.group.requires_password" class="space-y-2">
           <Label for="current-password" class="text-sm font-medium">
             Current Password
           </Label>
@@ -332,6 +332,8 @@ const showPasswordChange = ref(false)
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
+// Flag to track if a password has been successfully set during this session
+const passwordHasBeenSet = ref(false)
 
 // Computed property to check if passwords match
 const passwordMismatch = computed(() => {
@@ -827,6 +829,12 @@ const togglePasswordRequirement = () => {
   if (!formData.value.requires_password) {
     formData.value.password = ''
     formData.value.confirmPassword = ''
+    passwordHasBeenSet.value = false
+  } else {
+    // If turning on password requirement, show the password change dialog
+    showPasswordChange.value = true
+    // Reset the passwordHasBeenSet flag when toggling on
+    passwordHasBeenSet.value = false
   }
 }
 
@@ -898,6 +906,14 @@ const handleSubmit = async () => {
     if (!formData.value.requires_password) {
       formData.value.password = '';
       formData.value.confirmPassword = '';
+    } else {
+      // If the user is enabling password requirement but hasn't set a password yet,
+      // show the password dialog
+      if (formData.value.requires_password && !originalFormData.value.requires_password && !passwordHasBeenSet.value) {
+        alert('Please set a password for the group before saving changes.');
+        showPasswordChange.value = true;
+        return;
+      }
     }
     
     // Validate document names if documents are required
@@ -1007,14 +1023,24 @@ const removeDocument = (index) => {
 // Reset form data to original values
 const resetForm = () => {
   formData.value = cloneDeep(originalFormData.value)
+  passwordHasBeenSet.value = false
   console.log('Form reset to original values')
 }
 
 // Cancel button handler
 const handleCancel = () => {
+  // Check if the user has toggled requires_password to true but hasn't set a password
+  if (formData.value.requires_password && !originalFormData.value.requires_password && showPasswordChange.value) {
+    // Reset the requires_password toggle
+    formData.value.requires_password = false;
+    showPasswordChange.value = false;
+    passwordHasBeenSet.value = false;
+  }
+  
   // Only reset the form if the user is an admin
   if (props.isCurrentUserAdmin) {
     resetForm()
+    passwordHasBeenSet.value = false;
   }
   emit('close')
 }
@@ -1038,7 +1064,11 @@ const changePassword = async () => {
     return
   }
   
-  if (!currentPassword.value) {
+  // Check if the group previously required a password
+  const groupPreviouslyRequiredPassword = props.group.requires_password;
+  
+  // Only require current password if the group previously required a password
+  if (groupPreviouslyRequiredPassword && !currentPassword.value) {
     alert('Please enter your current password')
     return
   }
@@ -1062,8 +1092,13 @@ const changePassword = async () => {
     console.log('Current password provided:', currentPassword.value)
     console.log('Current password length:', currentPassword.value.length)
     
-    // Use the regular password change function with plaintext passwords
-    await changeGroupPassword(props.group.id, currentPassword.value, newPassword.value)
+    // If the group didn't previously require a password, use the emergency password change endpoint
+    if (!groupPreviouslyRequiredPassword) {
+      await emergencyChangeGroupPassword(props.group.id, newPassword.value);
+    } else {
+      // Use the regular password change function with plaintext passwords
+      await changeGroupPassword(props.group.id, currentPassword.value, newPassword.value)
+    }
     
     // Reset form and close dialog
     currentPassword.value = ''
@@ -1078,6 +1113,13 @@ const changePassword = async () => {
     // but we don't need to store the actual password
     originalFormData.value.password = ''
     originalFormData.value.confirmPassword = ''
+    
+    // Set the passwordHasBeenSet flag to true
+    passwordHasBeenSet.value = true
+    
+    // Also update the requires_password flag in the original form data
+    // to prevent the form from thinking this is a new change
+    originalFormData.value.requires_password = true
     
   } catch (error) {
     console.error('Failed to change group password:', error)

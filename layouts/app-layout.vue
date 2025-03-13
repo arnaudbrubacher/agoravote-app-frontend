@@ -72,13 +72,15 @@
     <DashboardSidebar
       v-model:open="isDashboardSidebarOpen"
       :groups="userGroups"
+      :pendingGroups="pendingGroups"
       :isLoading="isLoadingGroups"
       @find-group="showFindGroupDialog = true"
       @create-group="showCreateGroupDialog = true"
       @view-group="navigateToGroup"
       @refresh-groups="fetchUserGroups"
       @join-group="joinGroup"
-      @review-documents="reviewDocuments"
+      @review-documents="handleReviewDocuments"
+      @navigate-to-group="navigateToGroup"
     />
     
     <!-- Find Group Dialog -->
@@ -296,25 +298,44 @@ const joinGroup = async (groupId, isInvitation = false) => {
     // If no special requirements, proceed with direct join/accept
     if (isInvitation) {
       // This is an invitation acceptance
-      await axios.post(`/groups/${groupId}/accept`);
+      const response = await axios.post(`/groups/${groupId}/accept`);
+      console.log('Invitation acceptance response:', response.data);
+      
+      // Check if the user was immediately approved
+      const status = response.data?.status || 'pending';
+      
+      // Refresh groups after joining
+      await fetchUserGroups();
+      
+      // If the user was immediately approved, navigate to the group
+      if (status === 'approved') {
+        console.log('User was immediately approved, navigating to group');
+        navigateToGroup(groupId);
+      } else {
+        console.log('Invitation acceptance is pending approval');
+        // Dispatch a custom event to refresh the dashboard sidebar
+        window.dispatchEvent(new CustomEvent('group-data-updated'));
+      }
     } else {
       // This is a regular join
-      await axios.post(`/groups/${groupId}/join`);
-    }
-    
-    // Refresh groups after joining
-    await fetchUserGroups();
-    
-    // Check if the user is actually a member of the group with approved status
-    const isMember = userGroups.value.some(group => group.id === groupId);
-    
-    if (isMember) {
-      // Only navigate to the group if the user is a member
-      navigateToGroup(groupId);
-    } else {
-      console.log('Group join request is pending approval. You will be able to access the group once approved.');
-      // Dispatch a custom event to refresh the dashboard sidebar
-      window.dispatchEvent(new CustomEvent('group-data-updated'));
+      const response = await axios.post(`/groups/${groupId}/join`);
+      console.log('Join response:', response.data);
+      
+      // Check if the user was immediately approved
+      const status = response.data?.status || 'pending';
+      
+      // Refresh groups after joining
+      await fetchUserGroups();
+      
+      // If the user was immediately approved, navigate to the group
+      if (status === 'approved') {
+        console.log('User was immediately approved, navigating to group');
+        navigateToGroup(groupId);
+      } else {
+        console.log('Join request is pending approval');
+        // Dispatch a custom event to refresh the dashboard sidebar
+        window.dispatchEvent(new CustomEvent('group-data-updated'));
+      }
     }
   } catch (error) {
     console.error('Failed to join group:', error);
@@ -514,7 +535,7 @@ const handleAdmissionSubmit = async (admissionData) => {
 }
 
 // Function to handle reviewing documents
-const reviewDocuments = async (groupId) => {
+const handleReviewDocuments = async (groupId) => {
   try {
     // Get the group details
     const group = userGroups.value.find(g => g.id === groupId);

@@ -90,11 +90,51 @@
         :member="member" 
         :current-user="currentUser"
         :is-current-user-admin="isCurrentUserAdmin || isEditMode"
+        :has-documents="hasDocuments(member)"
         @promote="$emit('promote', member)"
         @demote="$emit('demote', member)"
         @remove="handleMemberRemove(member)"
+        @review-documents="$emit('review-documents', member)"
       />
     </div>
+    
+    <!-- Review Documents Dialog -->
+    <Dialog :open="!!selectedMember" @update:open="selectedMember = null">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Review Documents</DialogTitle>
+          <DialogDescription>
+            Documents submitted by {{ selectedMember?.name || selectedMember?.user?.name || 'the member' }}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="space-y-4 max-h-[60vh] overflow-y-auto">
+          <div v-if="!parsedDocuments || parsedDocuments.length === 0" 
+               class="text-center py-4 text-muted-foreground">
+            No documents submitted
+          </div>
+          
+          <div v-else v-for="(doc, index) in parsedDocuments" :key="index" class="border rounded-md p-4">
+            <h4 class="font-medium">{{ doc.name || `Document ${index + 1}` }}</h4>
+            <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
+            <div class="mt-2">
+              <a v-if="doc.url" :href="doc.url" target="_blank" class="text-blue-600 hover:underline">
+                View Document
+              </a>
+              <p v-else-if="doc.fileName" class="text-sm">
+                File: {{ doc.fileName }}
+                <span v-if="doc.fileType" class="text-muted-foreground">({{ doc.fileType }})</span>
+              </p>
+              <p v-else class="text-sm text-muted-foreground">Document data: {{ doc.data || 'No data' }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" @click="selectedMember = null">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -109,6 +149,14 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu/index.js'
 import MemberRow from '~/components/members/MemberRow.vue'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog'
 
 const props = defineProps({
   members: {
@@ -145,11 +193,13 @@ const emit = defineEmits([
   'demote',
   'remove',
   'refresh-members',
-  'admin-status-update'
+  'admin-status-update',
+  'review-documents'
 ])
 
 const searchQuery = ref('')
 const isEditMode = ref(false)
+const selectedMember = ref(null)
 
 // Check if the current user is an admin based on members data
 const isCurrentUserAdminInMembers = computed(() => {
@@ -213,6 +263,32 @@ const canEdit = computed(() => {
   return isAdmin;
 })
 
+// Computed property to parse documents from the selected member
+const parsedDocuments = computed(() => {
+  if (!selectedMember.value || !selectedMember.value.documents_submitted) {
+    return []
+  }
+  
+  let documents = selectedMember.value.documents_submitted
+  
+  // If documents is a string, try to parse it as JSON
+  if (typeof documents === 'string') {
+    try {
+      documents = JSON.parse(documents)
+    } catch (e) {
+      console.error('Error parsing documents:', e)
+      return []
+    }
+  }
+  
+  // If documents is not an array, return empty array
+  if (!Array.isArray(documents)) {
+    return []
+  }
+  
+  return documents
+})
+
 // Debug admin status
 onMounted(() => {
   console.log('MembersList - props.isCurrentUserAdmin:', props.isCurrentUserAdmin)
@@ -239,60 +315,66 @@ const handleDataUpdated = () => {
   emit('refresh-members')
 }
 
-// Watch for changes in the members or currentUser
-watch([() => props.members, () => props.currentUser], () => {
-  console.log('Members or currentUser changed')
-  console.log('isCurrentUserAdminInMembers is now:', isCurrentUserAdminInMembers.value)
-  console.log('canEdit is now:', canEdit.value)
-})
-
-// Watch for changes in the isCurrentUserAdmin prop
-watch(() => props.isCurrentUserAdmin, (newValue) => {
-  console.log('isCurrentUserAdmin prop changed to:', newValue)
-  console.log('canEdit is now:', canEdit.value)
+// Check if a member has documents
+const hasDocuments = (member) => {
+  let docs = member.documents_submitted
   
-  // If user is no longer admin, exit edit mode
-  if (!canEdit.value && isEditMode.value) {
-    isEditMode.value = false
+  // If docs is a string, try to parse it as JSON
+  if (typeof docs === 'string') {
+    try {
+      docs = JSON.parse(docs)
+    } catch (e) {
+      return false
+    }
   }
-})
-
-const handleEditButtonClick = () => {
-  console.log('Edit button clicked, canEdit:', canEdit.value)
-  if (canEdit.value) {
-    isEditMode.value = !isEditMode.value
-  }
+  
+  // Check if docs is an array with items
+  return Array.isArray(docs) && docs.length > 0
 }
 
+// Handle review documents
+const reviewDocuments = (member) => {
+  selectedMember.value = member
+}
+
+// Watch for changes in the members or currentUser
+watch(() => props.members, (newMembers) => {
+  console.log('MembersList - members changed:', newMembers?.length || 0)
+}, { deep: true })
+
+watch(() => props.currentUser, (newUser) => {
+  console.log('MembersList - currentUser changed:', newUser?.id || 'none')
+}, { deep: true })
+
+// Computed property for filtered members
 const filteredMembers = computed(() => {
   if (!props.members) return []
   
-  const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return props.members
+  // If no search query, return all members
+  if (!searchQuery.value) return props.members
   
+  // Filter members by name or email
   return props.members.filter(member => {
-    // Search in name
-    if (member.name && member.name.toLowerCase().includes(query)) return true
+    const name = member.name || member.user?.name || ''
+    const email = member.email || member.user?.email || ''
     
-    // Search in email
-    if (member.email && member.email.toLowerCase().includes(query)) return true
+    // Case-insensitive search
+    const query = searchQuery.value.toLowerCase()
     
-    // Search in role
-    if (member.isAdmin && 'admin'.includes(query)) return true
-    if (!member.isAdmin && 'member'.includes(query)) return true
-    
-    return false
+    return name.toLowerCase().includes(query) || email.toLowerCase().includes(query)
   })
 })
 
-// Add a handler for member removal to log the data
+// Handle edit button click
+const handleEditButtonClick = () => {
+  isEditMode.value = !isEditMode.value
+}
+
+// Handle member remove
 const handleMemberRemove = (member) => {
-  console.log('MembersList - Member removal event received for:', member.name, {
-    id: member.id,
-    userId: member.userId,
-    user_id: member.user_id,
-    user: member.user && member.user.id
-  });
-  emit('remove', member);
+  // Confirm before removing
+  if (confirm(`Are you sure you want to remove ${member.name || 'this member'} from the group?`)) {
+    emit('remove', member)
+  }
 }
 </script> 

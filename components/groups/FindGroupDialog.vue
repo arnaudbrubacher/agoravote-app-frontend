@@ -191,36 +191,40 @@ const openAdmissionForm = (group) => {
 
 const handleAdmissionSubmit = async (admissionData) => {
   try {
+    console.log('Submitting admission data for group:', selectedGroup.value.id, admissionData);
+    
     // Call the API to join the group with the admission data
     const response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
     
     // Get the success message from the API response
     const successMessage = response.data?.message || 'Request processed successfully';
+    const status = response.data?.status || 'pending';
+    
+    console.log('Join response:', { message: successMessage, status });
     
     // Close the admission form
     showAdmissionForm.value = false;
     
-    // Check if the user was immediately approved or if their request is pending
-    const isPending = successMessage.toLowerCase().includes('awaiting approval') || 
-                      successMessage.toLowerCase().includes('pending');
-    
-    // Only refresh user groups and navigate to the group if the user was immediately approved
-    if (!isPending) {
-      // Refresh the user's groups and navigate to the group
-      emit('join-group', selectedGroup.value.id);
-    } else {
-      // If the request is pending, dispatch a custom event to refresh the dashboard sidebar
-      // Also set a flag to indicate this is a join request, not an invitation
-      window.dispatchEvent(new CustomEvent('group-data-updated', {
-        detail: {
-          groupId: selectedGroup.value.id,
-          isJoinRequest: true
-        }
-      }));
-    }
-    
     // Show success message from the API response
     alert(successMessage);
+    
+    // Always emit join-group event to refresh the user's groups
+    emit('join-group', selectedGroup.value.id);
+    
+    // Dispatch a custom event to refresh the dashboard sidebar
+    window.dispatchEvent(new CustomEvent('group-data-updated', {
+      detail: {
+        groupId: selectedGroup.value.id,
+        isJoinRequest: true,
+        status: status
+      }
+    }));
+    
+    // If the user was immediately approved, navigate to the group
+    if (status === 'approved') {
+      console.log('User was immediately approved, navigating to group');
+      emit('view-group', selectedGroup.value.id);
+    }
   } catch (error) {
     console.error('Failed to join group:', error);
     

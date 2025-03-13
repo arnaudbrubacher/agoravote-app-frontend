@@ -173,7 +173,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups', 'join-group', 'review-documents'])
+const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups', 'join-group', 'review-documents', 'navigate-to-group'])
 
 // Computed property for two-way binding of open state
 const isOpen = computed({
@@ -352,22 +352,40 @@ const acceptPendingGroup = async (group) => {
     }
     
     // If no special requirements, proceed with direct acceptance
-    await axios.post(`/groups/${group.id}/accept`);
-    
+    const response = await axios.post(`/groups/${group.id}/accept`);
+    console.log('Acceptance response:', response.data);
+
+    // Get the status from the response
+    const status = response.data?.status || 'pending';
+
     // Update the local state to reflect the acceptance
     if (group.membership) {
       console.log('Updating local state: Setting invitation_accepted to true');
       group.membership.invitation_accepted = true;
+      
+      // If the user was immediately approved, update the status
+      if (status === 'approved') {
+        group.membership.status = 'approved';
+      }
     } else {
       console.log('Creating membership object with invitation_accepted=true');
-      group.membership = { invitation_accepted: true };
+      group.membership = { 
+        invitation_accepted: true,
+        status: status
+      };
     }
-    
+
     // Show success message
-    alert(`You have successfully joined ${group.name || 'the group'}`);
-    
+    alert(response.data?.message || `You have successfully joined ${group.name || 'the group'}`);
+
     // Refresh the groups list to show the newly joined group
     emit('refresh-groups');
+
+    // If the user was immediately approved, navigate to the group
+    if (status === 'approved') {
+      console.log('User was immediately approved, navigating to group');
+      emit('navigate-to-group', group.id);
+    }
   } catch (error) {
     console.error('Failed to accept group membership:', error);
     alert('Failed to accept group membership: ' + (error.response?.data?.error || 'Unknown error'));
