@@ -55,7 +55,7 @@
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem v-if="member.hasDocuments" @click="$emit('review-documents', member)">
+              <DropdownMenuItem v-if="hasDocuments" @click="$emit('review-documents', member)">
                 <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-2" />
                 Review Documents
               </DropdownMenuItem>
@@ -77,11 +77,17 @@
         
         <!-- Regular buttons for larger screens -->
         <div class="hidden md:flex md:space-x-2">
+          <!-- Debug info for admins -->
+          <div v-if="isCurrentUserAdmin && hasDocuments" class="text-xs text-green-500 mr-2 self-center">
+            Has Documents
+          </div>
+          
           <Button 
-            v-if="member.hasDocuments"
+            v-if="hasDocuments"
             variant="outline" 
             size="sm" 
             @click="$emit('review-documents', member)"
+            class="bg-amber-50"
           >
             <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-1" />
             Docs
@@ -195,6 +201,15 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+})
+
+// Log props for debugging
+console.log('MemberRow props for:', props.member.name, {
+  hasDocuments: props.hasDocuments,
+  isPending: props.isPending,
+  isCurrentUserAdmin: props.isCurrentUserAdmin,
+  invitationAccepted: props.invitationAccepted,
+  documents: props.member.documents_submitted
 })
 
 const emit = defineEmits([

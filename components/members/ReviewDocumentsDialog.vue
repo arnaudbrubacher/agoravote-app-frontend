@@ -68,14 +68,16 @@
         <!-- Action buttons -->
         <div class="flex justify-end space-x-2 pt-4 border-t">
           <Button variant="outline" @click="$emit('close')">Close</Button>
-          <Button variant="default" @click="$emit('accept', member)">
-            <LucideIcon name="Check" size="4" class="h-4 w-4 mr-1" />
-            Accept Member
-          </Button>
-          <Button variant="destructive" @click="$emit('decline', member)">
-            <LucideIcon name="X" size="4" class="h-4 w-4 mr-1" />
-            Decline Member
-          </Button>
+          <template v-if="isPending">
+            <Button variant="default" @click="$emit('accept', member)">
+              <LucideIcon name="Check" size="4" class="h-4 w-4 mr-1" />
+              Accept Member
+            </Button>
+            <Button variant="destructive" @click="$emit('decline', member)">
+              <LucideIcon name="X" size="4" class="h-4 w-4 mr-1" />
+              Decline Member
+            </Button>
+          </template>
         </div>
       </div>
     </div>
@@ -96,6 +98,10 @@ const props = defineProps({
   groupId: {
     type: String,
     required: true
+  },
+  isPending: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -142,15 +148,71 @@ const fetchDocuments = async () => {
       return
     }
     
+    // Use different API endpoints based on whether the member is pending or active
+    let endpoint = '';
+    if (props.isPending) {
+      endpoint = `/groups/${groupId}/pending-members/${memberId}/documents`;
+    } else {
+      endpoint = `/groups/${groupId}/members/${memberId}/documents`;
+    }
+    
+    console.log(`Fetching documents from endpoint: ${endpoint}`);
+    
     // Fetch documents from the API
-    const response = await axios.get(`/groups/${groupId}/pending-members/${memberId}/documents`)
-    documents.value = response.data
+    const response = await axios.get(endpoint);
+    documents.value = response.data;
+    
+    // If no documents were returned from the API, try to parse them from the member object
+    if ((!documents.value || documents.value.length === 0) && props.member.documents_submitted) {
+      console.log('No documents from API, parsing from member object:', props.member.documents_submitted);
+      
+      let docs = props.member.documents_submitted;
+      
+      // If docs is a string, try to parse it as JSON
+      if (typeof docs === 'string') {
+        try {
+          docs = JSON.parse(docs);
+        } catch (e) {
+          console.error('Error parsing documents:', e);
+          docs = [];
+        }
+      }
+      
+      // If docs is an array, use it
+      if (Array.isArray(docs)) {
+        documents.value = docs;
+      }
+    }
   } catch (error) {
-    console.error('Failed to fetch documents:', error)
-    // Mock data for development
-    documents.value = []
+    console.error('Failed to fetch documents:', error);
+    
+    // Try to parse documents from the member object if API call fails
+    if (props.member.documents_submitted) {
+      console.log('API call failed, parsing from member object:', props.member.documents_submitted);
+      
+      let docs = props.member.documents_submitted;
+      
+      // If docs is a string, try to parse it as JSON
+      if (typeof docs === 'string') {
+        try {
+          docs = JSON.parse(docs);
+        } catch (e) {
+          console.error('Error parsing documents:', e);
+          docs = [];
+        }
+      }
+      
+      // If docs is an array, use it
+      if (Array.isArray(docs)) {
+        documents.value = docs;
+      } else {
+        documents.value = [];
+      }
+    } else {
+      documents.value = [];
+    }
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 

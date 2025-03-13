@@ -1,45 +1,42 @@
 <!-- components/members/PendingMembersList.vue -->
 <template>
-  <div class="space-y-4">
-    <!-- Header with title -->
-    <div class="flex justify-between items-center">
-      <h3 class="text-lg font-medium">Pending Members ({{ pendingMembers.length || 0 }})</h3>
-      <Button v-if="pendingMembers.length > 0" variant="outline" size="sm" @click="fetchPendingMembers">
-        <LucideIcon name="RefreshCw" size="4" class="h-4 w-4 mr-1" />
-        Refresh
-      </Button>
-    </div>
-    
+  <div>
     <!-- Loading state -->
-    <div v-if="loading" class="flex justify-center items-center py-6">
-      <LucideIcon name="RefreshCw" size="6" class="h-6 w-6 animate-spin text-primary" />
-      <span class="ml-2">Loading pending members...</span>
+    <div v-if="loading" class="flex justify-center items-center py-2">
+      <LucideIcon name="RefreshCw" size="4" class="h-4 w-4 animate-spin text-primary" />
+      <span class="ml-2 text-sm">Loading pending members...</span>
     </div>
     
     <!-- No pending members state -->
-    <div v-else-if="!pendingMembers || pendingMembers.length === 0" class="text-center py-8 text-muted-foreground">
+    <div v-else-if="!pendingMembers || pendingMembers.length === 0" class="text-sm text-muted-foreground mb-2">
       <span>No pending members</span>
     </div>
     
     <!-- Pending members list -->
-    <div v-else class="space-y-4">
-      <MemberRow 
-        v-for="(member, index) in pendingMembers" 
-        :key="member.id || member.user_id || index" 
-        :member="{
-          ...member,
-          name: member.name || (member.user && member.user.name),
-          email: member.email || (member.user && member.user.email)
-        }"
-        :current-user="currentUser"
-        :is-pending="true"
-        :is-current-user-admin="true"
-        :has-documents="member.hasDocuments"
-        :invitation-accepted="member.invitation_accepted === true"
-        @review-documents="reviewDocuments(member)"
-        @accept="approveMember(member)"
-        @decline="declineMember(member)"
-      />
+    <div v-else class="space-y-3">
+      <div v-for="(member, index) in pendingMembers" :key="member.id || member.user_id || index">
+        <!-- Debug info -->
+        <div v-if="isCurrentUserAdmin" class="text-xs text-gray-500 mb-1">
+          Debug: hasDocuments={{ member.hasDocuments ? 'true' : 'false' }}, 
+          documents_submitted={{ member.documents_submitted ? (typeof member.documents_submitted === 'string' ? 'string' : 'object') : 'none' }}
+        </div>
+        
+        <MemberRow 
+          :member="{
+            ...member,
+            name: member.name || (member.user && member.user.name),
+            email: member.email || (member.user && member.user.email)
+          }"
+          :current-user="currentUser"
+          :is-pending="true"
+          :is-current-user-admin="isCurrentUserAdmin"
+          :has-documents="!!member.documents_submitted"
+          :invitation-accepted="member.invitation_accepted === true"
+          @review-documents="reviewDocuments(member)"
+          @accept="approveMember(member)"
+          @decline="declineMember(member)"
+        />
+      </div>
     </div>
     
     <!-- Document Review Dialog -->
@@ -107,6 +104,18 @@ const props = defineProps({
   currentUser: {
     type: Object,
     default: null
+  },
+  pendingMembers: {
+    type: Array,
+    default: () => []
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  isCurrentUserAdmin: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -114,9 +123,20 @@ const emit = defineEmits([
   'refresh'
 ])
 
-const pendingMembers = ref([])
-const loading = ref(false)
+const pendingMembersLocal = ref([])
+const loadingLocal = ref(false)
 const selectedMember = ref(null)
+
+// Use either provided props or local state
+const pendingMembers = computed(() => {
+  return props.pendingMembers && props.pendingMembers.length > 0 
+    ? props.pendingMembers 
+    : pendingMembersLocal.value
+})
+
+const loading = computed(() => {
+  return props.loading !== undefined ? props.loading : loadingLocal.value
+})
 
 // Computed property to parse documents from the selected member
 const parsedDocuments = computed(() => {
@@ -146,22 +166,28 @@ const parsedDocuments = computed(() => {
 
 // Fetch pending members from the API
 const fetchPendingMembers = async () => {
+  // If we're using props for data, just emit a refresh event
+  if (props.pendingMembers && props.pendingMembers.length > 0) {
+    emit('refresh')
+    return
+  }
+  
   // Check if groupId is valid (not undefined, null, or empty string)
   if (!props.groupId || props.groupId === 'undefined') {
     console.error('Cannot fetch pending members: Invalid group ID', props.groupId)
     return
   }
   
-  loading.value = true
+  loadingLocal.value = true
   
   try {
     const response = await axios.get(`/groups/${props.groupId}/pending-members`)
     console.log('Pending members response:', response.data)
     
-    pendingMembers.value = response.data
+    pendingMembersLocal.value = response.data
     
-    // Add hasDocuments property to each member and ensure user info is available
-    pendingMembers.value.forEach(member => {
+    // Process documents for each member
+    pendingMembersLocal.value.forEach(member => {
       console.log('Processing pending member:', member)
       console.log('Invitation accepted status:', member.invitation_accepted)
       
@@ -181,13 +207,19 @@ const fetchPendingMembers = async () => {
       if (typeof docs === 'string') {
         try {
           docs = JSON.parse(docs)
+          console.log(`Successfully parsed documents for ${member.name || 'member'}:`, docs)
         } catch (e) {
+          console.error(`Error parsing documents for ${member.name || 'member'}:`, e)
           docs = []
         }
       }
       
       // Set hasDocuments based on whether there are any documents
       member.hasDocuments = Array.isArray(docs) && docs.length > 0
+      
+      // Log document status for debugging
+      console.log(`Member ${member.name || 'Unknown'} hasDocuments:`, member.hasDocuments)
+      console.log(`Member ${member.name || 'Unknown'} documents_submitted:`, member.documents_submitted)
       
       // If documents are submitted and invitation_accepted is true, mark as a join request
       if (member.hasDocuments && member.invitation_accepted === true) {
@@ -198,7 +230,7 @@ const fetchPendingMembers = async () => {
   } catch (error) {
     console.error('Failed to fetch pending members:', error)
   } finally {
-    loading.value = false
+    loadingLocal.value = false
   }
 }
 
@@ -217,29 +249,22 @@ const approveMember = async (member) => {
   }
 
   try {
-    await axios.post(`/groups/${props.groupId}/members/${member.user_id}/approve`)
-    
-    // Remove the member from the list
-    pendingMembers.value = pendingMembers.value.filter(m => m.user_id !== member.user_id)
-    
-    // Close the dialog if it's open
-    if (selectedMember.value && selectedMember.value.user_id === member.user_id) {
-      selectedMember.value = null
-    }
-    
-    // Emit refresh event to update the members list
-    // Include information about the approved member
-    emit('refresh', { 
-      action: 'approve', 
-      member: member,
-      message: `${member.user?.name || 'Member'} has been approved`
-    })
-    
-    // Show success message
-    alert(`${member.user?.name || 'Member'} has been approved`)
+    await axios.post(`/groups/${props.groupId}/members/${member.id}/approve`, member)
+    // Handle success, e.g., remove the member from the list
   } catch (error) {
     console.error('Failed to approve member:', error)
-    alert('Failed to approve member: ' + (error.response?.data?.error || 'Unknown error'))
+    // Handle error, e.g., show an error message
+  }
+}
+
+// Decline a pending member
+const declineMember = async (member) => {
+  try {
+    await axios.post(`/groups/${props.groupId}/members/${member.id}/decline`, member)
+    // Handle success, e.g., remove the member from the list
+  } catch (error) {
+    console.error('Failed to decline member:', error)
+    // Handle error, e.g., show an error message
   }
 }
 
@@ -254,64 +279,35 @@ const approveWithDocuments = async (member) => {
   }
 
   try {
-    await axios.post(`/groups/${props.groupId}/members/${member.user_id}/approve-documents`)
+    console.log(`Approving member with documents: ${member.name || member.user?.name || 'Unknown member'}`);
     
-    // Remove the member from the list
-    pendingMembers.value = pendingMembers.value.filter(m => m.user_id !== member.user_id)
+    // Get the member ID
+    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+    
+    // Call API to approve the member with documents
+    await axios.post(`/groups/${props.groupId}/members/${memberId}/approve-documents`);
+    
+    // Remove the member from the local list
+    pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {
+      const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id;
+      return mId !== memberId;
+    });
     
     // Close the dialog
-    selectedMember.value = null
+    selectedMember.value = null;
     
     // Emit refresh event to update the members list
     emit('refresh', { 
       action: 'approve', 
       member: member,
-      message: `${member.user?.name || 'Member'} has been approved with documents`
-    })
+      message: `${member.user?.name || member.name || 'Member'} has been approved with documents`
+    });
     
     // Show success message
-    alert(`${member.user?.name || 'Member'} has been approved with documents`)
+    alert(`${member.user?.name || member.name || 'Member'} has been approved with documents`);
   } catch (error) {
-    console.error('Failed to approve member with documents:', error)
-    alert('Failed to approve member: ' + (error.response?.data?.error || 'Unknown error'))
+    console.error('Failed to approve member with documents:', error);
+    alert('Failed to approve member: ' + (error.response?.data?.error || error.message || 'Unknown error'));
   }
 }
-
-// Decline a pending member
-const declineMember = async (member) => {
-  // Confirm before declining
-  if (!confirm(`Are you sure you want to decline ${member.user?.name || 'this member'}?`)) {
-    return
-  }
-  
-  try {
-    await axios.post(`/groups/${props.groupId}/members/${member.user_id}/decline`)
-    
-    // Remove the member from the list
-    pendingMembers.value = pendingMembers.value.filter(m => m.user_id !== member.user_id)
-    
-    // Close the dialog if it's open
-    if (selectedMember.value && selectedMember.value.user_id === member.user_id) {
-      selectedMember.value = null
-    }
-    
-    // Emit refresh event with information about the declined member
-    emit('refresh', { 
-      action: 'decline', 
-      member: member,
-      message: `${member.user?.name || 'Member'} has been declined`
-    })
-    
-    // Show success message
-    alert(`${member.user?.name || 'Member'} has been declined`)
-  } catch (error) {
-    console.error('Failed to decline member:', error)
-    alert('Failed to decline member: ' + (error.response?.data?.error || 'Unknown error'))
-  }
-}
-
-// Fetch pending members when the component is mounted
-onMounted(() => {
-  fetchPendingMembers()
-})
-</script> 
+</script>

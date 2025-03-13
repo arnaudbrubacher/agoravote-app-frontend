@@ -2,44 +2,87 @@
 <template>
   <Card class="mt-6">
     <CardContent class="p-6">
-      <!-- Tabs for Active and Pending Members -->
-      <Tabs defaultValue="active" class="w-full">
-        <TabsList class="grid w-full grid-cols-2">
-          <TabsTrigger value="active">Active Members</TabsTrigger>
-          <TabsTrigger value="pending">Pending Members</TabsTrigger>
-        </TabsList>
+      <!-- Pending Members Section with Add Members dropdown -->
+      <div class="mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium">Pending Members ({{ pendingMembers.length || 0 }})</h3>
+          <div class="flex items-center space-x-2">
+            <!-- Add Members Dropdown -->
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  size="sm"
+                  :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
+                  :disabled="!isCurrentUserAdmin"
+                  :title="!isCurrentUserAdmin ? 'Only admins can add members' : ''"
+                >
+                  Add Members
+                  <LucideIcon name="ChevronDown" size="4" class="ml-1 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem @click="triggerCsvFileInput">
+                  <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-2" />
+                  Upload File
+                </DropdownMenuItem>
+                <DropdownMenuItem @click="$emit('show-add-member')">
+                  <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
+                  Email Invite
+                </DropdownMenuItem>
+                <DropdownMenuItem @click="$emit('show-user-search')">
+                  <LucideIcon name="Search" size="4" class="h-4 w-4 mr-2" />
+                  Search Users
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <!-- Refresh Button -->
+            <Button 
+              v-if="pendingMembers.length > 0" 
+              variant="outline" 
+              size="sm" 
+              @click="isCurrentUserAdmin ? fetchPendingMembers() : null"
+              :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
+              :disabled="!isCurrentUserAdmin"
+              :title="!isCurrentUserAdmin ? 'Only admins can refresh the pending members list' : ''"
+            >
+              <LucideIcon name="RefreshCw" size="4" class="h-4 w-4 mr-1" />
+              Refresh
+            </Button>
+          </div>
+        </div>
         
-        <!-- Active Members Tab -->
-        <TabsContent value="active">
-          <!-- Use the shared MembersList component which handles lists of members -->
-          <MembersList
-            :members="activeMembers"
-            :loading="isLoadingMembers"
-            :current-user="currentUser"
-            :is-current-user-admin="isCurrentUserAdmin"
-            :show-add-button="true"
-            :show-import-button="true"
-            @add-member="$emit('show-add-member')"
-            @search-user="$emit('show-user-search')"
-            @import-csv="triggerCsvFileInput"
-            @promote="promoteMember"
-            @demote="demoteMember"
-            @remove="handleMemberRemove"
-            @refresh-members="$emit('refresh-group')"
-            @admin-status-update="handleAdminStatusUpdate"
-            @review-documents="handleReviewDocuments"
-          />
-        </TabsContent>
+        <PendingMembersList
+          :group-id="group.id"
+          :current-user="currentUser"
+          :pending-members="pendingMembers"
+          :loading="isLoadingPendingMembers"
+          :is-current-user-admin="isCurrentUserAdmin"
+          @refresh="handlePendingMembersRefresh"
+        />
         
-        <!-- Pending Members Tab -->
-        <TabsContent value="pending">
-          <PendingMembersList
-            :group-id="group.id"
-            :current-user="currentUser"
-            @refresh="handlePendingMembersRefresh"
-          />
-        </TabsContent>
-      </Tabs>
+        <!-- Separator - only show when there are pending members -->
+        <div v-if="pendingMembers.length > 0" class="my-6 border-t border-gray-200"></div>
+      </div>
+      
+      <!-- Active Members Section -->
+      <div>
+        <!-- Use the shared MembersList component which handles lists of members -->
+        <MembersList
+          :members="activeMembers"
+          :loading="isLoadingMembers"
+          :current-user="currentUser"
+          :is-current-user-admin="isCurrentUserAdmin"
+          :show-add-button="false"
+          :show-import-button="false"
+          @promote="promoteMember"
+          @demote="demoteMember"
+          @remove="handleMemberRemove"
+          @refresh-members="$emit('refresh-group')"
+          @admin-status-update="handleAdminStatusUpdate"
+          @review-documents="handleReviewDocuments"
+        />
+      </div>
       
       <input
         type="file"
@@ -54,6 +97,7 @@
         v-if="showReviewDialog"
         :member="selectedPendingMember"
         :group-id="group.id"
+        :is-pending="isPendingMember"
         @close="showReviewDialog = false"
         @accept="acceptPendingMember"
         @decline="declinePendingMember"
@@ -65,11 +109,18 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import MembersList from '~/components/members/MembersList.vue'
 import PendingMembersList from '~/components/members/PendingMembersList.vue'
 import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'
 import axios from '~/src/utils/axios'
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu/index.js'
+import { Button } from '@/components/ui/button'
+import LucideIcon from '@/components/LucideIcon.vue'
 
 const props = defineProps({
   group: {
@@ -133,6 +184,11 @@ const activeMembers = computed(() => {
     
     // Set hasDocuments based on whether there are any documents
     member.hasDocuments = Array.isArray(docs) && docs.length > 0;
+    
+    // Log members with documents for debugging
+    if (member.hasDocuments) {
+      console.log(`Member ${member.name || member.user?.name || 'Unknown'} has documents:`, docs);
+    }
   });
   
   return filtered;
@@ -303,8 +359,6 @@ const handleAdminStatusUpdate = (isAdmin) => {
 
 // Fetch pending members from the API
 const fetchPendingMembers = async () => {
-  if (!props.isCurrentUserAdmin) return
-  
   // Check if group ID is valid
   if (!props.group || !props.group.id) {
     console.error('Cannot fetch pending members: Invalid group ID')
@@ -431,4 +485,24 @@ const handleReviewDocuments = (member) => {
   selectedPendingMember.value = member
   showReviewDialog.value = true
 }
+
+// Computed property to determine if the selected member is pending
+const isPendingMember = computed(() => {
+  if (!selectedPendingMember.value) return false;
+  
+  // Check if the member is in the pendingMembers array
+  const memberId = selectedPendingMember.value.user_id || 
+                   selectedPendingMember.value.userId || 
+                   (selectedPendingMember.value.user && selectedPendingMember.value.user.id) || 
+                   selectedPendingMember.value.id;
+  
+  const isPending = pendingMembers.value.some(m => {
+    const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id;
+    return mId === memberId;
+  });
+  
+  console.log(`Member ${selectedPendingMember.value.name || 'Unknown'} is pending: ${isPending}`);
+  
+  return isPending;
+});
 </script>

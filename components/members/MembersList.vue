@@ -1,51 +1,9 @@
 <!-- components/members/MembersList.vue -->
 <template>
   <div class="space-y-4">
-    <!-- Header with title and optional create button -->
+    <!-- Header with title -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">Members ({{ members.length || 0 }})</h3>
-      <div class="flex items-center space-x-2">
-        <!-- Add Members Dropdown - Only visible in edit mode -->
-        <DropdownMenu v-if="isEditMode">
-          <DropdownMenuTrigger asChild>
-            <Button size="sm">
-              Add Members
-              <LucideIcon name="ChevronDown" size="4" class="ml-1 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem v-if="showImportButton" @click="$emit('import-csv')">
-              <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-2" />
-              Upload File
-            </DropdownMenuItem>
-            <DropdownMenuItem v-if="showAddButton" @click="$emit('add-member')">
-              <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
-              Email Invite
-            </DropdownMenuItem>
-            <DropdownMenuItem v-if="showAddButton" @click="$emit('search-user')">
-              <LucideIcon name="Search" size="4" class="h-4 w-4 mr-2" />
-              Search Users
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <!-- Edit List Button - Disabled for non-admins -->
-        <Button
-          size="sm"
-          variant="outline"
-          @click="handleEditButtonClick"
-          class="flex items-center"
-          :class="[
-            isEditMode ? 'bg-primary text-primary-foreground hover:bg-primary/90' : '',
-            !canEdit ? 'opacity-50 cursor-not-allowed' : ''
-          ]"
-          :disabled="!canEdit"
-          :title="!canEdit ? 'Only admins can edit the member list' : ''"
-        >
-          <LucideIcon :name="isEditMode ? 'Check' : 'Edit2'" size="4" class="h-4 w-4 mr-1" />
-          {{ isEditMode ? 'Done' : 'Edit List' }}
-        </Button>
-      </div>
     </div>
     
     <!-- Search bar -->
@@ -89,7 +47,7 @@
         :key="member.id || index" 
         :member="member" 
         :current-user="currentUser"
-        :is-current-user-admin="isCurrentUserAdmin || isEditMode"
+        :is-current-user-admin="isCurrentUserAdmin"
         :has-documents="hasDocuments(member)"
         @promote="$emit('promote', member)"
         @demote="$emit('demote', member)"
@@ -142,12 +100,6 @@
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu/index.js'
 import MemberRow from '~/components/members/MemberRow.vue'
 import {
   Dialog,
@@ -174,14 +126,6 @@ const props = defineProps({
   isCurrentUserAdmin: {
     type: Boolean,
     default: false
-  },
-  showAddButton: {
-    type: Boolean,
-    default: true
-  },
-  showImportButton: {
-    type: Boolean,
-    default: true
   }
 })
 
@@ -198,7 +142,6 @@ const emit = defineEmits([
 ])
 
 const searchQuery = ref('')
-const isEditMode = ref(false)
 const selectedMember = ref(null)
 
 // Check if the current user is an admin based on members data
@@ -364,11 +307,6 @@ const filteredMembers = computed(() => {
     return name.toLowerCase().includes(query) || email.toLowerCase().includes(query)
   })
 })
-
-// Handle edit button click
-const handleEditButtonClick = () => {
-  isEditMode.value = !isEditMode.value
-}
 
 // Handle member remove
 const handleMemberRemove = (member) => {

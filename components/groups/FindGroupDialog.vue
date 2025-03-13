@@ -209,7 +209,7 @@ const handleAdmissionSubmit = async (admissionData) => {
     alert(successMessage);
     
     // Always emit join-group event to refresh the user's groups
-    emit('join-group', selectedGroup.value.id);
+    emit('join-group', selectedGroup.value.id, false, true);
     
     // Dispatch a custom event to refresh the dashboard sidebar
     window.dispatchEvent(new CustomEvent('group-data-updated', {

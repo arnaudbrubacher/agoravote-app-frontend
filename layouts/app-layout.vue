@@ -214,8 +214,16 @@ const handleGroupCreated = async (newGroup) => {
 }
 
 // Join a group
-const joinGroup = async (groupId, isInvitation = false) => {
+const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false) => {
   try {
+    // Check if this is a callback from a successful join in FindGroupDialog
+    if (isSuccessfulJoin) {
+      console.log('This is a callback from a successful join, skipping group existence check');
+      // Just refresh groups and return
+      await fetchUserGroups();
+      return;
+    }
+    
     // Get the group details
     let group = userGroups.value.find(g => g.id === groupId);
     
