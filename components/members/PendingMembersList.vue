@@ -15,12 +15,6 @@
     <!-- Pending members list -->
     <div v-else class="space-y-3">
       <div v-for="(member, index) in pendingMembers" :key="member.id || member.user_id || index">
-        <!-- Debug info -->
-        <div v-if="isCurrentUserAdmin" class="text-xs text-gray-500 mb-1">
-          Debug: hasDocuments={{ member.hasDocuments ? 'true' : 'false' }}, 
-          documents_submitted={{ member.documents_submitted ? (typeof member.documents_submitted === 'string' ? 'string' : 'object') : 'none' }}
-        </div>
-        
         <MemberRow 
           :member="{
             ...member,
@@ -249,22 +243,91 @@ const approveMember = async (member) => {
   }
 
   try {
-    await axios.post(`/groups/${props.groupId}/members/${member.id}/approve`, member)
-    // Handle success, e.g., remove the member from the list
+    // Get the member ID - prioritize user_id since that's the column name in the database
+    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+    
+    if (!memberId) {
+      console.error('Cannot approve member: Missing member ID', member);
+      alert('Cannot approve member: Missing member ID');
+      return;
+    }
+    
+    console.log(`Approving member with ID: ${memberId}`);
+    
+    // Call API to approve the member
+    await axios.post(`/groups/${props.groupId}/members/${memberId}/approve`);
+    
+    // Remove the member from the local list
+    pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {
+      const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id;
+      return mId !== memberId;
+    });
+    
+    // Emit refresh event to update the members list
+    emit('refresh', { 
+      action: 'approve', 
+      member: member,
+      message: `${member.user?.name || member.name || 'Member'} has been approved`
+    });
+    
+    // Show success message
+    alert(`${member.user?.name || member.name || 'Member'} has been approved`);
   } catch (error) {
-    console.error('Failed to approve member:', error)
-    // Handle error, e.g., show an error message
+    console.error('Failed to approve member:', error);
+    alert('Failed to approve member: ' + (error.response?.data?.error || error.message || 'Unknown error'));
   }
 }
 
 // Decline a pending member
 const declineMember = async (member) => {
+  // Confirm before declining
+  if (!confirm(`Are you sure you want to decline ${member.user?.name || member.name || 'this member'}?`)) {
+    return;
+  }
+  
   try {
-    await axios.post(`/groups/${props.groupId}/members/${member.id}/decline`, member)
-    // Handle success, e.g., remove the member from the list
+    // Get the member ID - prioritize user_id since that's the column name in the database
+    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+    
+    if (!memberId) {
+      console.error('Cannot decline member: Missing member ID', member);
+      alert('Cannot decline member: Missing member ID');
+      return;
+    }
+    
+    console.log(`Declining member with ID: ${memberId}`);
+    
+    // Call API to decline the member
+    await axios.post(`/groups/${props.groupId}/members/${memberId}/decline`);
+    
+    // Remove the member from the local list
+    pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {
+      const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id;
+      return mId !== memberId;
+    });
+    
+    // If the dialog is open for this member, close it
+    if (selectedMember.value && (
+      selectedMember.value.user_id === memberId || 
+      selectedMember.value.userId === memberId || 
+      (selectedMember.value.user && selectedMember.value.user.id === memberId) || 
+      selectedMember.value.id === memberId
+    )) {
+      selectedMember.value = null;
+    }
+    
+    // Emit refresh event to update the members list
+    emit('refresh', { 
+      action: 'decline', 
+      member: member,
+      message: `${member.user?.name || member.name || 'Member'} has been declined`
+    });
+    
+    // Show success message
+    alert(`${member.user?.name || member.name || 'Member'} has been declined`);
   } catch (error) {
-    console.error('Failed to decline member:', error)
-    // Handle error, e.g., show an error message
+    console.error('Failed to decline member:', error);
+    alert('Failed to decline member: ' + (error.response?.data?.error || error.message || 'Unknown error'));
   }
 }
 

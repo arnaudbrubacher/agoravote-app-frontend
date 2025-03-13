@@ -77,11 +77,6 @@
         
         <!-- Regular buttons for larger screens -->
         <div class="hidden md:flex md:space-x-2">
-          <!-- Debug info for admins -->
-          <div v-if="isCurrentUserAdmin && hasDocuments" class="text-xs text-green-500 mr-2 self-center">
-            Has Documents
-          </div>
-          
           <Button 
             v-if="hasDocuments"
             variant="outline" 
