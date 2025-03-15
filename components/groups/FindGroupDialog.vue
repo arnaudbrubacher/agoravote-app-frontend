@@ -193,6 +193,28 @@ const handleAdmissionSubmit = async (admissionData) => {
   try {
     console.log('Submitting admission data for group:', selectedGroup.value.id, admissionData);
     
+    // Check if the message has already been handled by the form component
+    if (admissionData.handledMessage) {
+      console.log('Message already handled by the form component, skipping additional API calls');
+      
+      // Close the admission form
+      showAdmissionForm.value = false;
+      
+      // Always emit join-group event to refresh the user's groups
+      emit('join-group', selectedGroup.value.id, false, true);
+      
+      // Dispatch a custom event to refresh the dashboard sidebar
+      window.dispatchEvent(new CustomEvent('group-data-updated', {
+        detail: {
+          groupId: selectedGroup.value.id,
+          isJoinRequest: true,
+          status: admissionData.status || 'pending'
+        }
+      }));
+      
+      return;
+    }
+    
     // Call the API to join the group with the admission data
     const response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
     

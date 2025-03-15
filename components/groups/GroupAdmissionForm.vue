@@ -33,59 +33,92 @@
           <div class="space-y-4">
             <h3 class="text-md font-medium">Admission Requirements</h3>
             
-            <!-- File inputs outside the form -->
-            <div v-if="documentsRequired" class="space-y-4 mb-4">
-              <div class="space-y-1">
-                <Label class="text-sm font-medium">Required Documents</Label>
-                <p class="text-sm text-muted-foreground">The following documents are required to join this group:</p>
-                <div v-if="adminApprovalRequired" class="text-sm text-amber-600 mt-2">
-                  <span class="flex items-center">
-                    <LucideIcon name="Info" size="4" class="h-4 w-4 mr-1" />
-                    Note: Your membership will require admin approval before it is activated.
-                  </span>
-                </div>
-              </div>
-              <div v-for="(doc, index) in requiredDocuments" :key="index" class="p-3 border rounded-md space-y-2">
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <Label class="text-sm font-medium" :for="'document-' + index">{{ doc.name }}</Label>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span v-if="form.documents[index]" class="text-sm text-green-600 truncate max-w-[150px]">
-                      {{ form.documents[index].name }}
-                    </span>
-                    <span v-else class="text-sm text-muted-foreground">No file selected</span>
-                    <Button type="button" variant="outline" size="sm" @click="(event) => triggerFileInput(index, event)">
-                      {{ form.documents[index] ? 'Replace' : 'Upload' }}
-                    </Button>
-                  </div>
-                </div>
-                
-                <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
-                
-                <input 
-                  :id="'document-' + index" 
-                  type="file" 
-                  class="hidden" 
-                  @change="handleDocumentChange(index, $event)" 
-                  ref="fileInputs"
-                  accept="image/*,.pdf,.doc,.docx"
-                />
-              </div>
-            </div>
-            
             <form @submit.prevent="handleSubmit" class="space-y-6">
               <!-- Group Password -->
               <div v-if="passwordRequired" class="space-y-1">
                 <Label class="text-sm text-muted-foreground" for="password">Password</Label>
                 <Input id="password" type="password" v-model="form.password" required :class="{ 'border-red-500': passwordError }" />
                 <p v-if="passwordError" class="text-sm text-red-500 mt-1">{{ passwordError }}</p>
-                <div v-if="adminApprovalRequired" class="text-sm text-amber-600 mt-2">
-                  <span class="flex items-center">
-                    <LucideIcon name="Info" size="4" class="h-4 w-4 mr-1" />
-                    Note: Your membership will require admin approval before it is activated.
-                  </span>
+              </div>
+
+              <!-- Document Requirements -->
+              <div v-if="documentsRequired" class="space-y-4">
+                <div class="space-y-1">
+                  <Label class="text-sm font-medium">Required Documents</Label>
+                  <p class="text-sm text-muted-foreground">The following documents are required to join this group:</p>
                 </div>
+                
+                <div v-for="(doc, index) in requiredDocuments" :key="index" class="p-3 border rounded-md space-y-3">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h4 class="text-sm font-medium">{{ doc.name }}</h4>
+                      <p v-if="doc.description" class="text-xs text-muted-foreground">{{ doc.description }}</p>
+                    </div>
+                    <div v-if="documentFiles[index]" class="flex items-center space-x-1">
+                      <LucideIcon 
+                        :name="getFileIcon(documentFiles[index].type)" 
+                        size="4" 
+                        class="h-4 w-4 text-primary" 
+                      />
+                      <span class="text-xs text-muted-foreground">{{ formatFileSize(documentFiles[index].size) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- File Upload Area -->
+                  <div 
+                    class="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                    :class="{ 'border-primary bg-primary/5': isDragging[index], 'border-green-500 bg-green-50': documentFiles[index] }"
+                    @click="() => triggerFileInput(index)"
+                    @dragover.prevent="() => setDragging(index, true)"
+                    @dragleave.prevent="() => setDragging(index, false)"
+                    @drop.prevent="(event) => handleFileDrop(event, index)"
+                  >
+                    <div v-if="!documentFiles[index]" class="space-y-1">
+                      <LucideIcon name="Upload" size="4" class="h-4 w-4 mx-auto text-muted-foreground" />
+                      <p class="text-xs text-muted-foreground">
+                        Drag and drop or click to select a file
+                      </p>
+                    </div>
+                    <div v-else class="space-y-1">
+                      <div class="flex items-center justify-center">
+                        <span class="text-xs font-medium truncate max-w-[200px]">
+                          {{ documentFiles[index].name }}
+                        </span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          @click.stop="() => removeFile(index)"
+                          class="ml-2 h-6 w-6 p-0"
+                        >
+                          <LucideIcon name="X" size="3" class="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- File Input (hidden) -->
+                  <input 
+                    :ref="el => { if (el) fileInputs[index] = el }"
+                    type="file" 
+                    class="hidden" 
+                    @change="(event) => handleFileChange(event, index)"
+                    accept="image/*,.pdf,.doc,.docx"
+                  />
+                  
+                  <!-- Error Message -->
+                  <p v-if="documentErrors[index]" class="text-xs text-red-500 mt-1">
+                    {{ documentErrors[index] }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Admin Approval Notice -->
+              <div v-if="adminApprovalRequired" class="text-sm text-amber-600 mt-2">
+                <span class="flex items-center">
+                  <LucideIcon name="Info" size="4" class="h-4 w-4 mr-1" />
+                  Note: Your membership will require admin approval before it is activated.
+                </span>
               </div>
 
               <!-- No Requirements Message -->
@@ -93,18 +126,16 @@
                 <div class="text-sm text-muted-foreground">
                   This group has no special admission requirements.
                 </div>
-                <div v-if="adminApprovalRequired" class="text-sm text-amber-600 mt-2">
-                  <span class="flex items-center">
-                    <LucideIcon name="Info" size="4" class="h-4 w-4 mr-1" />
-                    Note: Your membership will require admin approval before it is activated.
-                  </span>
-                </div>
               </div>
 
               <!-- Form Actions -->
               <div class="flex justify-end space-x-2">
                 <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
-                <Button type="submit" :disabled="isSubmitting">
+                <Button 
+                  type="submit" 
+                  :disabled="isSubmitting || !isFormValid"
+                >
+                  <LucideIcon v-if="isSubmitting" name="Loader2" size="4" class="h-4 w-4 mr-1 animate-spin" />
                   {{ isSubmitting ? 'Submitting...' : (group.isInvitation ? 'Accept' : 'Join') }}
                 </Button>
               </div>
@@ -122,7 +153,6 @@ import { ref, watch, onMounted, computed } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
-import Icon from '@/components/Icon.vue'
 import axios from '~/src/utils/axios'
 
 const props = defineProps({
@@ -252,21 +282,51 @@ watch(() => props.error, (newError) => {
 const isSubmitting = ref(false)
 const fileInputs = ref([])
 const passwordError = ref('')
+const documentFiles = ref([])
+const documentErrors = ref([])
+const isDragging = ref([])
+const uploadedDocuments = ref([])
+
+// Computed property to check if the form is valid
+const isFormValid = computed(() => {
+  // Check password if required
+  if (passwordRequired.value && !form.value.password) {
+    return false
+  }
+  
+  // Check documents if required
+  if (documentsRequired.value) {
+    // Make sure all required documents have files
+    for (let i = 0; i < requiredDocuments.value.length; i++) {
+      if (!documentFiles.value[i]) {
+        return false
+      }
+    }
+  }
+  
+  return true
+})
 
 const form = ref({
   password: '',
-  documents: []
 })
 
 // Initialize form fields based on group requirements
 watch(() => props.group, (newGroup) => {
   form.value.password = ''
   
-  // Initialize documents array based on required documents
+  // Initialize document arrays based on required documents
   if (documentsRequired.value) {
-    form.value.documents = requiredDocuments.value.map(() => null)
+    const docCount = requiredDocuments.value.length
+    documentFiles.value = Array(docCount).fill(null)
+    documentErrors.value = Array(docCount).fill('')
+    isDragging.value = Array(docCount).fill(false)
+    uploadedDocuments.value = Array(docCount).fill(null)
   } else {
-    form.value.documents = []
+    documentFiles.value = []
+    documentErrors.value = []
+    isDragging.value = []
+    uploadedDocuments.value = []
   }
   
   // Log group data for debugging
@@ -282,27 +342,109 @@ onMounted(() => {
   window.dispatchEvent(new CustomEvent('close-dashboard-sidebar'))
 })
 
-const handleDocumentChange = (index, event) => {
-  // Prevent default behavior to ensure it doesn't trigger form submission
-  event.preventDefault();
-  
-  // Store the file in the form data
-  form.value.documents[index] = event.target.files[0];
-  
-  // Log for debugging
-  console.log(`Document ${index} selected:`, event.target.files[0]?.name);
+// File handling functions
+const triggerFileInput = (index) => {
+  if (fileInputs.value[index]) {
+    fileInputs.value[index].click()
+  }
 }
 
-const triggerFileInput = (index, event) => {
-  // Prevent any form submission
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
+const setDragging = (index, value) => {
+  isDragging.value[index] = value
+}
+
+const handleFileChange = (event, index) => {
+  const file = event.target.files[0]
+  if (file) {
+    validateAndSetFile(file, index)
+  }
+}
+
+const handleFileDrop = (event, index) => {
+  isDragging.value[index] = false
+  const file = event.dataTransfer.files[0]
+  if (file) {
+    validateAndSetFile(file, index)
+  }
+}
+
+const validateAndSetFile = (file, index) => {
+  documentErrors.value[index] = ''
+  
+  // Check file size (max 10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    documentErrors.value[index] = 'File is too large. Maximum size is 10MB.'
+    return
   }
   
-  // Click the file input
-  if (fileInputs.value && fileInputs.value[index]) {
-    fileInputs.value[index].click();
+  // Check file type
+  const allowedTypes = [
+    'image/jpeg', 
+    'image/png', 
+    'image/gif', 
+    'application/pdf', 
+    'application/msword', 
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
+  
+  if (!allowedTypes.includes(file.type)) {
+    documentErrors.value[index] = 'File type not supported. Please upload an image, PDF, or DOC file.'
+    return
+  }
+  
+  // Set the file
+  documentFiles.value[index] = file
+}
+
+const removeFile = (index) => {
+  documentFiles.value[index] = null
+  documentErrors.value[index] = ''
+  uploadedDocuments.value[index] = null
+  
+  // Reset the file input
+  if (fileInputs.value[index]) {
+    fileInputs.value[index].value = ''
+  }
+}
+
+// Get appropriate icon based on file type
+const getFileIcon = (fileType) => {
+  if (fileType.startsWith('image/')) return 'Image'
+  if (fileType === 'application/pdf') return 'FileText'
+  if (fileType.includes('word') || fileType.includes('doc')) return 'FileText'
+  return 'File'
+}
+
+// Format file size
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return bytes + ' bytes'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+// Upload a single document
+const uploadDocument = async (file, docInfo, index) => {
+  try {
+    // Create form data
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('name', docInfo.name)
+    formData.append('description', docInfo.description || '')
+    
+    // Upload the document
+    const response = await axios.post(`/groups/${props.group.id}/members/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    // Store the uploaded document data
+    uploadedDocuments.value[index] = response.data
+    return response.data
+  } catch (err) {
+    console.error(`Failed to upload document ${index}:`, err)
+    documentErrors.value[index] = err.response?.data?.error || 'Failed to upload document'
+    throw err
   }
 }
 
@@ -311,63 +453,142 @@ const handleSubmit = async () => {
   passwordError.value = ''
   
   try {
-    // Prepare documents data
+    // Validate form
+    if (!isFormValid.value) {
+      if (passwordRequired.value && !form.value.password) {
+        passwordError.value = 'Password is required'
+      }
+      
+      if (documentsRequired.value) {
+        for (let i = 0; i < requiredDocuments.value.length; i++) {
+          if (!documentFiles.value[i]) {
+            documentErrors.value[i] = 'Document is required'
+          }
+        }
+      }
+      
+      throw new Error('Please provide all required information')
+    }
+    
+    // Create the admission data object
+    let admissionData = {}
+    let joinStatus = adminApprovalRequired.value ? 'pending' : 'approved'
+    let alreadyMember = false
+    let joinResponse = null
+    
+    // Add password if required
+    if (passwordRequired.value) {
+      admissionData.password = form.value.password
+    }
+    
+    // Only try to join if we need to upload documents
+    // This prevents the "already a member" error when we just need to upload documents
+    if (documentsRequired.value) {
+      try {
+        // Use the join endpoint for all cases
+        console.log('GroupAdmissionForm - Requesting to join group:', props.group.id)
+        
+        // Create the request data with password if required
+        const requestData = passwordRequired.value ? { password: form.value.password } : {};
+        
+        // Use the join endpoint
+        joinResponse = await axios.post(`/groups/${props.group.id}/join`, requestData);
+        
+        // Check the status from the response
+        joinStatus = joinResponse.data?.status || (adminApprovalRequired.value ? 'pending' : 'approved');
+        console.log(`GroupAdmissionForm - Successfully requested to join group with status: ${joinStatus}`);
+      } catch (joinError) {
+        // If the error is "already a member", continue with document upload
+        if (joinError.response?.data?.error && 
+            (joinError.response.data.error.includes('already a member') || 
+             joinError.response.data.error.includes('already requested to join'))) {
+          console.log('GroupAdmissionForm - Already a member or requested to join this group, continuing with document upload');
+          alreadyMember = true;
+        } else {
+          // For any other error, rethrow it
+          throw joinError;
+        }
+      }
+    }
+    
+    // Upload documents if required
     let documentsData = []
     
-    if (documentsRequired.value && form.value.documents.length > 0) {
-      // For each document, create an object with name and data
-      documentsData = form.value.documents.map((file, index) => {
+    if (documentsRequired.value) {
+      // Upload each document
+      const uploadPromises = documentFiles.value.map((file, index) => {
         if (!file) return null
         
         const docInfo = requiredDocuments.value[index] || { name: `Document ${index + 1}` }
-        
-        return {
-          name: docInfo.name,
-          description: docInfo.description || '',
-          fileName: file.name,
-          fileType: file.type,
-          // In a real implementation, you would upload the file to a server
-          // and store the URL or file ID here. For now, we'll just indicate
-          // that a file was provided.
-          data: `File provided: ${file.name}`
-        }
-      }).filter(doc => doc !== null)
+        return uploadDocument(file, docInfo, index)
+      })
+      
+      // Wait for all uploads to complete
+      const uploadResults = await Promise.all(uploadPromises)
+      
+      // Filter out null results and prepare document data
+      documentsData = uploadResults.filter(Boolean).map(result => ({
+        name: result.name,
+        description: result.description || '',
+        fileName: result.filename,
+        fileType: result.type,
+        url: result.url
+      }))
     }
     
-    // Create the admission data object based on what's required
-    let admissionData = {};
-    
-    // Only include password if it's required and provided
-    if (passwordRequired.value && form.value.password) {
-      admissionData.password = form.value.password;
-    }
-    
-    // Only include documents if they're required and provided
-    if (documentsRequired.value && documentsData.length > 0) {
-      admissionData.documents = documentsData;
-    }
-    
-    // If no data was provided but requirements exist, show an error
-    if ((passwordRequired.value && !form.value.password) || 
-        (documentsRequired.value && documentsData.length === 0)) {
-      throw new Error('Please provide all required information');
+    // Add documents to admission data if any were uploaded
+    if (documentsData.length > 0) {
+      admissionData.documents = documentsData
     }
     
     // Log the admission data for debugging
-    console.log('GroupAdmissionForm - Submitting admission data:', JSON.stringify(admissionData));
-    console.log('GroupAdmissionForm - Password provided:', !!form.value.password);
-    console.log('GroupAdmissionForm - Documents provided:', documentsData.length);
-    console.log('GroupAdmissionForm - Group:', props.group);
-    console.log('GroupAdmissionForm - Requires admin approval:', props.group.requires_admin_approval);
-    
-    // Emit the submit event with the admission data
-    emit('submit', admissionData)
+    console.log('GroupAdmissionForm - Submitting admission data:', JSON.stringify(admissionData))
+    console.log('GroupAdmissionForm - Password provided:', !!form.value.password)
+    console.log('GroupAdmissionForm - Documents provided:', documentsData.length)
     
     // Dispatch a custom event to refresh the dashboard sidebar
-    window.dispatchEvent(new CustomEvent('group-data-updated'));
+    window.dispatchEvent(new CustomEvent('group-data-updated'))
+    
+    // Determine the appropriate message
+    let successMessage = '';
+    
+    if (alreadyMember) {
+      if (documentsData.length > 0) {
+        successMessage = `Documents uploaded successfully for ${props.group.name}!`;
+      } else {
+        successMessage = `You are already a member of ${props.group.name}.`;
+      }
+    } else if (adminApprovalRequired.value || joinStatus === 'pending') {
+      successMessage = `Your request to join ${props.group.name} has been submitted. Waiting for admin review.`;
+      if (documentsData.length > 0) {
+        successMessage += ' Required documents have been uploaded.';
+      }
+    } else {
+      successMessage = `Successfully joined ${props.group.name}`;
+      if (documentsData.length > 0) {
+        successMessage += ' and uploaded required documents';
+      }
+      successMessage += '!';
+    }
+    
+    // Show the success message
+    alert(successMessage);
+    
+    // Close the form FIRST to prevent any other actions
+    emit('close');
+    
+    // Emit the submit event with the admission data AFTER closing
+    // This prevents duplicate join attempts and messages
+    emit('submit', {
+      ...admissionData,
+      status: joinStatus,
+      alreadyMember: alreadyMember,
+      // Add a flag to tell parent components not to show additional messages
+      handledMessage: true
+    });
   } catch (error) {
     console.error('Failed to submit admission form:', error)
-    alert(error.message || 'Failed to submit form')
+    alert(error.response?.data?.error || error.message || 'Failed to submit form')
   } finally {
     isSubmitting.value = false
   }

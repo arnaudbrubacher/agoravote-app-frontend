@@ -471,6 +471,20 @@ const handleAdmissionSubmit = async (admissionData) => {
       return;
     }
     
+    // Check if the message has already been handled by the form component
+    if (admissionData.handledMessage) {
+      console.log('Message already handled by the form component, skipping additional API calls');
+      
+      // Close the admission form
+      showAdmissionForm.value = false;
+      selectedGroup.value = null;
+      isReviewMode.value = false;
+      
+      // Refresh the groups list
+      fetchUserGroups();
+      return;
+    }
+    
     // Determine if this is an invitation acceptance or a regular join
     const isInvitation = selectedGroup.value.isInvitation === true;
     

@@ -47,11 +47,21 @@
               <div class="flex justify-between items-center mb-2">
                 <h3 class="font-medium">{{ doc.name }}</h3>
                 <div class="flex space-x-2">
-                  <Button variant="outline" size="sm" @click="downloadDocument(doc)">
+                  <Button 
+                    v-if="doc.url || doc.document_file_url" 
+                    variant="outline" 
+                    size="sm" 
+                    @click="downloadDocument(doc)"
+                  >
                     <LucideIcon name="Download" size="4" class="h-4 w-4 mr-1" />
                     Download
                   </Button>
-                  <Button variant="outline" size="sm" @click="viewDocument(doc)">
+                  <Button 
+                    v-if="doc.url || doc.document_file_url" 
+                    variant="outline" 
+                    size="sm" 
+                    @click="viewDocument(doc)"
+                  >
                     <LucideIcon name="Eye" size="4" class="h-4 w-4 mr-1" />
                     View
                   </Button>
@@ -59,7 +69,20 @@
               </div>
               <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
               <div class="mt-2 text-sm text-muted-foreground">
-                <span>Uploaded: {{ formatDate(doc.uploadedAt) }}</span>
+                <div class="flex items-center space-x-2">
+                  <LucideIcon 
+                    :name="getFileIcon(doc.fileType || doc.document_file_type)" 
+                    size="4" 
+                    class="h-4 w-4" 
+                  />
+                  <span>{{ doc.fileName || doc.document_file_name || 'Unknown file' }}</span>
+                </div>
+                <div v-if="doc.fileSize || doc.document_file_size" class="mt-1">
+                  Size: {{ formatFileSize(doc.fileSize || doc.document_file_size) }}
+                </div>
+                <div v-if="doc.uploadedAt || doc.document_uploaded_at" class="mt-1">
+                  Uploaded: {{ formatDate(doc.uploadedAt || doc.document_uploaded_at) }}
+                </div>
               </div>
             </div>
           </div>
@@ -233,13 +256,39 @@ const formatDate = (dateString) => {
   })
 }
 
+// Get appropriate icon based on file type
+const getFileIcon = (fileType) => {
+  if (!fileType) return 'File'
+  if (fileType.startsWith('image')) return 'Image'
+  if (fileType === 'pdf') return 'FileText'
+  if (fileType.includes('word') || fileType.includes('doc')) return 'FileText'
+  if (fileType.includes('spreadsheet') || fileType.includes('xls')) return 'FileSpreadsheet'
+  if (fileType.includes('presentation') || fileType.includes('ppt')) return 'FilePresentation'
+  return 'File'
+}
+
+// Format file size
+const formatFileSize = (bytes) => {
+  if (!bytes) return 'Unknown size'
+  if (bytes < 1024) return bytes + ' bytes'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
 const downloadDocument = (doc) => {
   // In a real implementation, this would download the document
   console.log('Downloading document:', doc)
   
   // If there's a URL, open it in a new tab
-  if (doc.url && doc.url !== '#') {
-    window.open(doc.url, '_blank')
+  const url = doc.url || doc.document_file_url
+  if (url && url !== '#') {
+    // If the URL is a relative path, prepend the API base URL
+    if (url.startsWith('/')) {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+      window.open(baseUrl + url, '_blank')
+    } else {
+      window.open(url, '_blank')
+    }
   } else {
     alert('Document download not implemented')
   }
@@ -250,8 +299,15 @@ const viewDocument = (doc) => {
   console.log('Viewing document:', doc)
   
   // If there's a URL, open it in a new tab
-  if (doc.url && doc.url !== '#') {
-    window.open(doc.url, '_blank')
+  const url = doc.url || doc.document_file_url
+  if (url && url !== '#') {
+    // If the URL is a relative path, prepend the API base URL
+    if (url.startsWith('/')) {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+      window.open(baseUrl + url, '_blank')
+    } else {
+      window.open(url, '_blank')
+    }
   } else {
     alert('Document viewer not implemented')
   }
