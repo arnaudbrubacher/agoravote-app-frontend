@@ -437,7 +437,19 @@ const uploadDocument = async (file, docInfo, index) => {
     formData.append('name', docInfo.name)
     formData.append('description', docInfo.description || '')
     
-    // Upload the document using the document fields endpoint
+    // Log the form data for debugging
+    console.log('GroupAdmissionForm - Form data:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      documentName: docInfo.name,
+      documentDescription: docInfo.description || '',
+      groupId: props.group.id
+    })
+    
+    // Use the correct document upload endpoint based on the backend routes
+    console.log(`GroupAdmissionForm - Uploading to endpoint: /groups/${props.group.id}/members/documents`)
+    
     const response = await axios.post(`/groups/${props.group.id}/members/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
@@ -451,6 +463,8 @@ const uploadDocument = async (file, docInfo, index) => {
     return response.data
   } catch (err) {
     console.error(`Failed to upload document ${index}:`, err)
+    console.error('Error response:', err.response?.data)
+    console.error('Error status:', err.response?.status)
     documentErrors.value[index] = err.response?.data?.error || 'Failed to upload document'
     throw err
   }
@@ -478,7 +492,7 @@ const handleSubmit = async () => {
       throw new Error('Please provide all required information')
     }
     
-    // Create the admission data object (password only)
+    // Create the admission data object
     let admissionData = {}
     let joinStatus = adminApprovalRequired.value ? 'pending' : 'approved'
     let alreadyMember = false
@@ -489,8 +503,9 @@ const handleSubmit = async () => {
       admissionData.password = form.value.password
     }
     
-    // First, try to join the group
+    // First, try to join the group (if not already a member)
     try {
+      // Try to join the group first
       console.log('GroupAdmissionForm - Requesting to join group:', props.group.id)
       
       // Create the request data with password if required
@@ -504,35 +519,71 @@ const handleSubmit = async () => {
       console.log(`GroupAdmissionForm - Successfully requested to join group with status: ${joinStatus}`);
     } catch (joinError) {
       // If the error is "already a member", continue with document upload
-      if (joinError.response?.data?.error && 
+      if (joinError.response?.status === 400 && 
+          joinError.response?.data?.message && 
+          joinError.response.data.message.includes('already a member')) {
+        console.log('GroupAdmissionForm - Already a member of this group, continuing with document upload');
+        alreadyMember = true;
+      } else if (joinError.response?.data?.error && 
           (joinError.response.data.error.includes('already a member') || 
            joinError.response.data.error.includes('already requested to join'))) {
         console.log('GroupAdmissionForm - Already a member or requested to join this group, continuing with document upload');
         alreadyMember = true;
       } else {
         // For any other error, rethrow it
+        console.error('Join error:', joinError.response?.data || joinError.message);
         throw joinError;
       }
     }
     
     // Upload documents if required (as a separate step)
     let documentsUploaded = false
+    let documentUploadErrors = []
     
     if (documentsRequired.value) {
-      // Upload each document
-      const uploadPromises = documentFiles.value.map((file, index) => {
-        if (!file) return null
+      try {
+        console.log('GroupAdmissionForm - Starting document upload process');
         
-        const docInfo = requiredDocuments.value[index] || { name: `Document ${index + 1}` }
-        return uploadDocument(file, docInfo, index)
-      })
-      
-      // Wait for all uploads to complete
-      const uploadResults = await Promise.all(uploadPromises)
-      
-      // Check if any documents were uploaded successfully
-      documentsUploaded = uploadResults.filter(Boolean).length > 0
-      console.log('GroupAdmissionForm - Documents uploaded:', documentsUploaded)
+        // Upload each document sequentially
+        for (let i = 0; i < documentFiles.value.length; i++) {
+          const file = documentFiles.value[i];
+          if (!file) continue;
+          
+          const docInfo = requiredDocuments.value[i] || { name: `Document ${i + 1}` };
+          
+          try {
+            console.log(`GroupAdmissionForm - Uploading document ${i}: ${docInfo.name}`);
+            const result = await uploadDocument(file, docInfo, i);
+            console.log(`GroupAdmissionForm - Document ${i} upload result:`, result);
+            
+            if (result) {
+              documentsUploaded = true;
+            }
+          } catch (singleDocError) {
+            console.error(`Error uploading document ${i}:`, singleDocError);
+            console.error('Response data:', singleDocError.response?.data);
+            console.error('Status code:', singleDocError.response?.status);
+            
+            documentErrors.value[i] = singleDocError.response?.data?.error || 'Failed to upload document';
+            documentUploadErrors.push({
+              index: i,
+              name: docInfo.name,
+              error: singleDocError.response?.data?.error || singleDocError.message
+            });
+          }
+        }
+        
+        console.log('GroupAdmissionForm - Documents uploaded:', documentsUploaded);
+      } catch (docError) {
+        console.error('Document upload error:', docError);
+        console.error('Response data:', docError.response?.data);
+        console.error('Status code:', docError.response?.status);
+        
+        documentUploadErrors.push({
+          general: true,
+          error: docError.message || 'Failed to upload documents'
+        });
+      }
     }
     
     // Log the admission data for debugging
@@ -549,6 +600,12 @@ const handleSubmit = async () => {
     if (alreadyMember) {
       if (documentsUploaded) {
         successMessage = `Documents uploaded successfully for ${props.group.name}!`;
+      } else if (documentUploadErrors.length > 0) {
+        // If there were document upload errors, show an error message
+        const errorMsg = documentUploadErrors.map(err => 
+          err.general ? err.error : `${err.name}: ${err.error}`
+        ).join('; ');
+        throw new Error(`Failed to upload documents: ${errorMsg}`);
       } else {
         successMessage = `You are already a member of ${props.group.name}.`;
       }
@@ -556,11 +613,23 @@ const handleSubmit = async () => {
       successMessage = `Your request to join ${props.group.name} has been submitted. Waiting for admin review.`;
       if (documentsUploaded) {
         successMessage += ' Required documents have been uploaded.';
+      } else if (documentUploadErrors.length > 0) {
+        // If there were document upload errors, show an error message
+        const errorMsg = documentUploadErrors.map(err => 
+          err.general ? err.error : `${err.name}: ${err.error}`
+        ).join('; ');
+        throw new Error(`Joined group but failed to upload documents: ${errorMsg}`);
       }
     } else {
       successMessage = `Successfully joined ${props.group.name}`;
       if (documentsUploaded) {
         successMessage += ' and uploaded required documents';
+      } else if (documentUploadErrors.length > 0) {
+        // If there were document upload errors, show an error message
+        const errorMsg = documentUploadErrors.map(err => 
+          err.general ? err.error : `${err.name}: ${err.error}`
+        ).join('; ');
+        throw new Error(`Joined group but failed to upload documents: ${errorMsg}`);
       }
       successMessage += '!';
     }
@@ -578,12 +647,15 @@ const handleSubmit = async () => {
       status: joinStatus,
       alreadyMember: alreadyMember,
       documentsUploaded: documentsUploaded,
+      documentUploadErrors: documentUploadErrors,
       // Add a flag to tell parent components not to show additional messages
       handledMessage: true
     });
   } catch (error) {
     console.error('Failed to submit admission form:', error)
-    alert(error.response?.data?.error || error.message || 'Failed to submit form')
+    // Show a more detailed error message
+    const errorMessage = error.response?.data?.error || error.message || 'Failed to submit form';
+    alert(errorMessage);
   } finally {
     isSubmitting.value = false
   }
