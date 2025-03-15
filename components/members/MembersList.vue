@@ -260,15 +260,33 @@ const handleDataUpdated = () => {
 
 // Check if a member has documents
 const hasDocuments = (member) => {
-  console.log(`MembersList - Checking if member ${member.name || 'Unknown'} has documents`)
+  console.log(`MembersList - Checking if member ${member.name || 'Unknown'} has documents:`, {
+    document_file_url: member.document_file_url,
+    document_file_name: member.document_file_name,
+    document_file_type: member.document_file_type,
+    document_file_size: member.document_file_size,
+    document_uploaded_at: member.document_uploaded_at,
+    // Check if hasDocuments flag is already set
+    hasDocumentsFlag: member.hasDocuments,
+    // Log all keys to see what's available
+    keys: Object.keys(member),
+    // Log the member object for debugging
+    member: member
+  })
   
-  // Check if the member has document fields
-  if (member.document_file_url) {
-    console.log(`MembersList - Member ${member.name || 'Unknown'} has document:`, {
-      url: member.document_file_url,
-      name: member.document_file_name,
-      type: member.document_file_type
-    })
+  // If hasDocuments flag is already set, respect it
+  if (member.hasDocuments === true) {
+    console.log(`MembersList - Member ${member.name || 'Unknown'} has hasDocuments flag set to true`)
+    return true
+  }
+  
+  // Check if the member has any direct document fields
+  if (member.document_file_url || 
+      member.document_file_name || 
+      member.document_file_type || 
+      member.document_file_size || 
+      member.document_uploaded_at) {
+    console.log(`MembersList - Member ${member.name || 'Unknown'} has document fields`)
     return true
   }
   

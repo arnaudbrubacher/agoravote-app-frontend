@@ -213,6 +213,15 @@ export function useGroupData(groupId) {
     return members.map(member => {
       const userData = member.user || {}
       
+      // Log the original member data to see document fields
+      console.log('Normalizing member data for:', member.name || userData.name || 'Unknown Member', {
+        document_file_url: member.document_file_url,
+        document_file_name: member.document_file_name,
+        document_file_type: member.document_file_type,
+        document_file_size: member.document_file_size,
+        document_uploaded_at: member.document_uploaded_at
+      });
+      
       return {
         id: member.id || member.userId || member.user_id || userData.id,
         name: member.name || member.username || userData.name || userData.username || 'Unknown Member',
@@ -221,7 +230,14 @@ export function useGroupData(groupId) {
         isAdmin: member.isAdmin || member.is_admin || member.role === 'admin' || userData.role === 'admin',
         status: member.status || 'approved', // Preserve the status field, default to 'approved' if not present
         user_id: member.user_id || member.userId || userData.id, // Preserve user_id for API calls
-        user: member.user // Preserve the original user object
+        user: member.user, // Preserve the original user object
+        
+        // Preserve document fields
+        document_file_url: member.document_file_url,
+        document_file_name: member.document_file_name,
+        document_file_type: member.document_file_type,
+        document_file_size: member.document_file_size,
+        document_uploaded_at: member.document_uploaded_at
       }
     })
   }

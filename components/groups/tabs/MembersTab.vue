@@ -170,24 +170,38 @@ const activeMembers = computed(() => {
   
   // Process documents for each member
   filtered.forEach(member => {
-    // Process documents
-    let docs = member.documents_submitted;
+    // Log all document-related fields for debugging
+    console.log(`Member ${member.name || member.user?.name || 'Unknown'} document fields:`, {
+      document_file_url: member.document_file_url,
+      document_file_name: member.document_file_name,
+      document_file_type: member.document_file_type,
+      document_file_size: member.document_file_size,
+      document_uploaded_at: member.document_uploaded_at,
+      // Log all keys to see what's available
+      keys: Object.keys(member)
+    });
     
-    // If docs is a string, try to parse it as JSON
-    if (typeof docs === 'string') {
-      try {
-        docs = JSON.parse(docs);
-      } catch (e) {
-        docs = [];
-      }
+    // Check if the member has direct document fields
+    if (member.document_file_url || 
+        member.document_file_name || 
+        member.document_file_type || 
+        member.document_file_size || 
+        member.document_uploaded_at) {
+      console.log(`Member ${member.name || member.user?.name || 'Unknown'} has direct document fields:`, {
+        url: member.document_file_url,
+        name: member.document_file_name,
+        type: member.document_file_type,
+        size: member.document_file_size,
+        uploaded_at: member.document_uploaded_at
+      });
+      member.hasDocuments = true;
+    } else {
+      member.hasDocuments = false;
     }
-    
-    // Set hasDocuments based on whether there are any documents
-    member.hasDocuments = Array.isArray(docs) && docs.length > 0;
     
     // Log members with documents for debugging
     if (member.hasDocuments) {
-      console.log(`Member ${member.name || member.user?.name || 'Unknown'} has documents:`, docs);
+      console.log(`Member ${member.name || member.user?.name || 'Unknown'} has documents`);
     }
   });
   
@@ -195,7 +209,7 @@ const activeMembers = computed(() => {
 });
 
 // Debug admin status
-onMounted(() => {
+onMounted(async () => {
   console.log('MembersTab - isCurrentUserAdmin:', props.isCurrentUserAdmin)
   console.log('MembersTab - group:', props.group)
   
@@ -205,6 +219,9 @@ onMounted(() => {
     props.group.members.forEach(member => {
       console.log(`Member ${member.name || member.user?.name || 'Unknown'}: has status field = ${member.status !== undefined}, status = ${member.status}`);
     });
+    
+    // Fetch document information for all active members
+    await fetchDocumentsForActiveMembers();
   }
   
   // Fetch pending members when component mounts
@@ -215,6 +232,15 @@ onMounted(() => {
 watch(() => props.isCurrentUserAdmin, (newValue) => {
   console.log('MembersTab - isCurrentUserAdmin changed to:', newValue)
 })
+
+// Watch for changes in the group prop to refresh document information
+watch(() => props.group, async (newGroup) => {
+  console.log('MembersTab - group prop changed')
+  if (newGroup && newGroup.members) {
+    // Fetch document information for all active members
+    await fetchDocumentsForActiveMembers()
+  }
+}, { deep: true })
 
 const emit = defineEmits([
   'show-add-member', 
@@ -481,12 +507,86 @@ const handleUserInvited = (userData) => {
 }
 
 // Handle review documents for active members
-const handleReviewDocuments = (member) => {
+const handleReviewDocuments = async (member) => {
   console.log('MembersTab - handleReviewDocuments called with member:', member)
-  console.log('MembersTab - member documents_submitted:', member.documents_submitted)
+  
+  // Check if the member has direct document fields
+  if (member.document_file_url || 
+      member.document_file_name || 
+      member.document_file_type || 
+      member.document_file_size || 
+      member.document_uploaded_at) {
+    console.log('MembersTab - Member has direct document fields:', {
+      url: member.document_file_url,
+      name: member.document_file_name,
+      type: member.document_file_type,
+      size: member.document_file_size,
+      uploaded_at: member.document_uploaded_at
+    })
+  } else {
+    console.log('MembersTab - Member has no direct document fields, attempting to fetch from API')
+    
+    try {
+      // Get the member ID - prioritize user_id since that's the column name in the database
+      const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id
+      
+      // Check if we have valid IDs
+      if (!memberId || !props.group || !props.group.id) {
+        console.error('Cannot fetch documents: Missing member ID or group ID', { memberId, groupId: props.group?.id })
+        return
+      }
+      
+      // Determine if this is a pending member
+      const isPending = pendingMembers.value.some(m => {
+        const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id
+        return mId === memberId
+      })
+      
+      // Use different API endpoints based on whether the member is pending or active
+      let endpoint = ''
+      if (isPending) {
+        endpoint = `/groups/${props.group.id}/pending-members/${memberId}/documents`
+      } else {
+        endpoint = `/groups/${props.group.id}/members/${memberId}/documents`
+      }
+      
+      console.log(`MembersTab - Fetching documents from endpoint: ${endpoint}`)
+      
+      // Fetch documents from the API
+      const response = await axios.get(endpoint)
+      console.log('MembersTab - API response:', response.data)
+      
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        // Update the member object with document fields from the first document
+        const doc = response.data[0]
+        member.document_file_url = doc.document_file_url || doc.url
+        member.document_file_name = doc.document_file_name || doc.name
+        member.document_file_type = doc.document_file_type || doc.type
+        member.document_file_size = doc.document_file_size || doc.size
+        member.document_uploaded_at = doc.document_uploaded_at || doc.uploaded_at
+        
+        // Set hasDocuments flag
+        member.hasDocuments = true
+        
+        console.log('MembersTab - Updated member with document fields from API:', {
+          url: member.document_file_url,
+          name: member.document_file_name,
+          type: member.document_file_type,
+          size: member.document_file_size,
+          uploaded_at: member.document_uploaded_at
+        })
+      }
+    } catch (error) {
+      console.error('MembersTab - Error fetching documents:', error)
+    }
+  }
   
   // Make sure we have the complete member data
-  selectedPendingMember.value = { ...member }
+  selectedPendingMember.value = { 
+    ...member,
+    name: member.name || (member.user && member.user.name) || 'Unknown Member',
+    email: member.email || (member.user && member.user.email) || 'No email available'
+  }
   
   // Set the dialog to visible
   showReviewDialog.value = true
@@ -511,4 +611,72 @@ const isPendingMember = computed(() => {
   
   return isPending;
 });
+
+// New function to fetch document information for all active members
+const fetchDocumentsForActiveMembers = async () => {
+  console.log('MembersTab - Fetching document information for all active members');
+  
+  // Get active members
+  const active = props.group.members.filter(member => member.status !== 'pending');
+  
+  // For each active member, check if they have documents
+  for (const member of active) {
+    try {
+      // Skip if member already has document fields
+      if (member.document_file_url || 
+          member.document_file_name || 
+          member.document_file_type || 
+          member.document_file_size || 
+          member.document_uploaded_at) {
+        console.log(`Member ${member.name || member.user?.name || 'Unknown'} already has document fields`);
+        member.hasDocuments = true;
+        continue;
+      }
+      
+      // Get the member ID
+      const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+      
+      // Skip if no valid member ID
+      if (!memberId) {
+        console.log(`Member ${member.name || member.user?.name || 'Unknown'} has no valid ID, skipping document check`);
+        continue;
+      }
+      
+      console.log(`Checking documents for member ${member.name || member.user?.name || 'Unknown'} with ID ${memberId}`);
+      
+      // Use the API endpoint for active members
+      const endpoint = `/groups/${props.group.id}/members/${memberId}/documents`;
+      
+      // Fetch documents from the API
+      const response = await axios.get(endpoint);
+      console.log(`Document API response for ${member.name || member.user?.name || 'Unknown'}:`, response.data);
+      
+      // If documents are found, update the member object
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        const doc = response.data[0];
+        member.document_file_url = doc.document_file_url || doc.url;
+        member.document_file_name = doc.document_file_name || doc.name;
+        member.document_file_type = doc.document_file_type || doc.type;
+        member.document_file_size = doc.document_file_size || doc.size;
+        member.document_uploaded_at = doc.document_uploaded_at || doc.uploaded_at;
+        
+        // Set hasDocuments flag
+        member.hasDocuments = true;
+        
+        console.log(`Found documents for member ${member.name || member.user?.name || 'Unknown'}:`, {
+          url: member.document_file_url,
+          name: member.document_file_name,
+          type: member.document_file_type
+        });
+      } else {
+        console.log(`No documents found for member ${member.name || member.user?.name || 'Unknown'}`);
+        member.hasDocuments = false;
+      }
+    } catch (error) {
+      console.error(`Error fetching documents for member ${member.name || member.user?.name || 'Unknown'}:`, error);
+    }
+  }
+  
+  console.log('MembersTab - Finished fetching document information for all active members');
+}
 </script>
