@@ -39,12 +39,6 @@
           <!-- No documents state -->
           <div v-else-if="!documents || documents.length === 0" class="text-center py-8 text-muted-foreground">
             <span>No documents available</span>
-            <div class="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
-              <div><strong>Debug:</strong> Member data</div>
-              <pre>{{ JSON.stringify(member, null, 2) }}</pre>
-              <div class="mt-2"><strong>Documents array:</strong></div>
-              <pre>{{ JSON.stringify(documents, null, 2) }}</pre>
-            </div>
           </div>
 
           <!-- Documents list -->
@@ -88,13 +82,6 @@
                 </div>
                 <div v-if="doc.uploadedAt || doc.document_uploaded_at" class="mt-1">
                   Uploaded: {{ formatDate(doc.uploadedAt || doc.document_uploaded_at) }}
-                </div>
-                <!-- Debug information -->
-                <div class="mt-2 p-2 bg-gray-100 rounded text-xs">
-                  <div><strong>Debug:</strong> Document properties</div>
-                  <div v-for="(value, key) in doc" :key="key">
-                    <strong>{{ key }}:</strong> {{ typeof value === 'object' ? JSON.stringify(value) : value }}
-                  </div>
                 </div>
               </div>
             </div>
@@ -166,6 +153,9 @@ const memberAvatarUrl = computed(() => {
 onMounted(async () => {
   console.log('ReviewDocumentsDialog - Component mounted with props:', {
     member: props.member,
+    memberName: props.member.name,
+    memberEmail: props.member.email,
+    memberUser: props.member.user,
     groupId: props.groupId,
     isPending: props.isPending
   })
@@ -431,7 +421,13 @@ watch(documents, (newDocs) => {
 
 // Watch for changes to the member prop
 watch(() => props.member, (newMember) => {
-  console.log('ReviewDocumentsDialog - member prop changed:', newMember)
+  console.log('ReviewDocumentsDialog - member prop changed:', {
+    member: newMember,
+    memberName: newMember.name,
+    memberEmail: newMember.email,
+    memberUser: newMember.user,
+    hasDocumentFields: !!newMember.document_file_url
+  })
   
   // Check if the member has document fields
   if (newMember && newMember.document_file_url) {

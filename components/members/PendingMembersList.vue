@@ -37,7 +37,11 @@
   <!-- Document Review Dialog - Use separate component -->
   <ReviewDocumentsDialog
     v-if="selectedMember"
-    :member="selectedMember"
+    :member="{
+      ...selectedMember,
+      name: selectedMember.name || (selectedMember.user && selectedMember.user.name) || 'Unknown Member',
+      email: selectedMember.email || (selectedMember.user && selectedMember.user.email) || 'No email available'
+    }"
     :group-id="groupId"
     :is-pending="true"
     @close="selectedMember = null"
@@ -164,18 +168,25 @@ const fetchPendingMembers = async () => {
 const reviewDocuments = (member) => {
   console.log('PendingMembersList - reviewDocuments called for member:', member.name || 'Unknown')
   
+  // Ensure member has name and email properties
+  const preparedMember = {
+    ...member,
+    name: member.name || (member.user && member.user.name) || 'Unknown Member',
+    email: member.email || (member.user && member.user.email) || 'No email available'
+  }
+  
   // Check if the member has direct document fields
-  if (member.document_file_url) {
+  if (preparedMember.document_file_url) {
     console.log('PendingMembersList - Member has direct document fields:', {
-      url: member.document_file_url,
-      name: member.document_file_name,
-      type: member.document_file_type
+      url: preparedMember.document_file_url,
+      name: preparedMember.document_file_name,
+      type: preparedMember.document_file_type
     })
   } else {
     console.log('PendingMembersList - Member has no documents')
   }
   
-  selectedMember.value = member
+  selectedMember.value = preparedMember
 }
 
 // Approve a pending member
