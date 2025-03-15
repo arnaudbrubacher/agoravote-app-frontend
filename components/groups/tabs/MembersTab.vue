@@ -482,7 +482,13 @@ const handleUserInvited = (userData) => {
 
 // Handle review documents for active members
 const handleReviewDocuments = (member) => {
-  selectedPendingMember.value = member
+  console.log('MembersTab - handleReviewDocuments called with member:', member)
+  console.log('MembersTab - member documents_submitted:', member.documents_submitted)
+  
+  // Make sure we have the complete member data
+  selectedPendingMember.value = { ...member }
+  
+  // Set the dialog to visible
   showReviewDialog.value = true
 }
 

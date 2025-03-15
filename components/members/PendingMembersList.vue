@@ -24,7 +24,7 @@
           :current-user="currentUser"
           :is-pending="true"
           :is-current-user-admin="isCurrentUserAdmin"
-          :has-documents="!!member.documents_submitted"
+          :has-documents="hasDocuments(member)"
           :invitation-accepted="member.invitation_accepted === true"
           @review-documents="reviewDocuments(member)"
           @accept="approveMember(member)"
@@ -32,47 +32,18 @@
         />
       </div>
     </div>
-    
-    <!-- Document Review Dialog -->
-    <Dialog :open="!!selectedMember" @update:open="selectedMember = null">
-      <DialogContent class="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Review Documents</DialogTitle>
-          <DialogDescription>
-            Documents submitted by {{ selectedMember?.user?.name || 'the member' }}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div class="space-y-4 max-h-[60vh] overflow-y-auto">
-          <div v-if="!selectedMember?.documents_submitted || selectedMember?.documents_submitted.length === 0" 
-               class="text-center py-4 text-muted-foreground">
-            No documents submitted
-          </div>
-          
-          <div v-else v-for="(doc, index) in parsedDocuments" :key="index" class="border rounded-md p-4">
-            <h4 class="font-medium">{{ doc.name || `Document ${index + 1}` }}</h4>
-            <p v-if="doc.description" class="text-sm text-muted-foreground">{{ doc.description }}</p>
-            <div class="mt-2">
-              <a v-if="doc.url" :href="doc.url" target="_blank" class="text-blue-600 hover:underline">
-                View Document
-              </a>
-              <p v-else-if="doc.fileName" class="text-sm">
-                File: {{ doc.fileName }}
-                <span v-if="doc.fileType" class="text-muted-foreground">({{ doc.fileType }})</span>
-              </p>
-              <p v-else class="text-sm text-muted-foreground">Document data: {{ doc.data || 'No data' }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <DialogFooter>
-          <Button variant="outline" @click="selectedMember = null">Close</Button>
-          <Button variant="default" @click="approveWithDocuments(selectedMember)">Approve Member</Button>
-          <Button variant="destructive" @click="declineMember(selectedMember)">Decline Member</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
+  
+  <!-- Document Review Dialog - Use separate component -->
+  <ReviewDocumentsDialog
+    v-if="selectedMember"
+    :member="selectedMember"
+    :group-id="groupId"
+    :is-pending="true"
+    @close="selectedMember = null"
+    @accept="approveWithDocuments"
+    @decline="declineMember"
+  />
 </template>
 
 <script setup>
@@ -80,15 +51,8 @@ import { ref, computed, onMounted } from 'vue'
 import axios from '~/src/utils/axios'
 import LucideIcon from '@/components/LucideIcon.vue'
 import MemberRow from '~/components/members/MemberRow.vue'
+import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription
-} from '@/components/ui/dialog'
 
 const props = defineProps({
   groupId: {
@@ -132,32 +96,6 @@ const loading = computed(() => {
   return props.loading !== undefined ? props.loading : loadingLocal.value
 })
 
-// Computed property to parse documents from the selected member
-const parsedDocuments = computed(() => {
-  if (!selectedMember.value || !selectedMember.value.documents_submitted) {
-    return []
-  }
-  
-  let documents = selectedMember.value.documents_submitted
-  
-  // If documents is a string, try to parse it as JSON
-  if (typeof documents === 'string') {
-    try {
-      documents = JSON.parse(documents)
-    } catch (e) {
-      console.error('Error parsing documents:', e)
-      return []
-    }
-  }
-  
-  // If documents is not an array, return empty array
-  if (!Array.isArray(documents)) {
-    return []
-  }
-  
-  return documents
-})
-
 // Fetch pending members from the API
 const fetchPendingMembers = async () => {
   // If we're using props for data, just emit a refresh event
@@ -194,26 +132,20 @@ const fetchPendingMembers = async () => {
         member.email = member.user.email
       }
       
-      // Process documents
-      let docs = member.documents_submitted
-      
-      // If docs is a string, try to parse it as JSON
-      if (typeof docs === 'string') {
-        try {
-          docs = JSON.parse(docs)
-          console.log(`Successfully parsed documents for ${member.name || 'member'}:`, docs)
-        } catch (e) {
-          console.error(`Error parsing documents for ${member.name || 'member'}:`, e)
-          docs = []
-        }
+      // Check if the member has direct document fields
+      if (member.document_file_url) {
+        console.log(`Member ${member.name || 'Unknown'} has direct document fields:`, {
+          url: member.document_file_url,
+          name: member.document_file_name,
+          type: member.document_file_type
+        })
+        member.hasDocuments = true
+      } else {
+        member.hasDocuments = false
       }
-      
-      // Set hasDocuments based on whether there are any documents
-      member.hasDocuments = Array.isArray(docs) && docs.length > 0
       
       // Log document status for debugging
       console.log(`Member ${member.name || 'Unknown'} hasDocuments:`, member.hasDocuments)
-      console.log(`Member ${member.name || 'Unknown'} documents_submitted:`, member.documents_submitted)
       
       // If documents are submitted and invitation_accepted is true, mark as a join request
       if (member.hasDocuments && member.invitation_accepted === true) {
@@ -230,6 +162,19 @@ const fetchPendingMembers = async () => {
 
 // Review documents for a member
 const reviewDocuments = (member) => {
+  console.log('PendingMembersList - reviewDocuments called for member:', member.name || 'Unknown')
+  
+  // Check if the member has direct document fields
+  if (member.document_file_url) {
+    console.log('PendingMembersList - Member has direct document fields:', {
+      url: member.document_file_url,
+      name: member.document_file_name,
+      type: member.document_file_type
+    })
+  } else {
+    console.log('PendingMembersList - Member has no documents')
+  }
+  
   selectedMember.value = member
 }
 
@@ -333,6 +278,17 @@ const declineMember = async (member) => {
 
 // Approve a member with documents
 const approveWithDocuments = async (member) => {
+  // If no member is provided, use the selected member
+  if (!member) {
+    member = selectedMember.value
+  }
+  
+  // Check if we have a valid member
+  if (!member) {
+    console.error('Cannot approve member with documents: No member provided')
+    return
+  }
+  
   // Check if the invitation has been accepted or if this is a join request
   if (member.invitation_accepted !== true && !member.isJoinRequest) {
     console.log('Cannot approve member with documents - invitation not accepted and not a join request:', member);
@@ -372,5 +328,23 @@ const approveWithDocuments = async (member) => {
     console.error('Failed to approve member with documents:', error);
     alert('Failed to approve member: ' + (error.response?.data?.error || error.message || 'Unknown error'));
   }
+}
+
+// Check if a member has documents
+const hasDocuments = (member) => {
+  console.log(`PendingMembersList - Checking if member ${member.name || 'Unknown'} has documents`)
+  
+  // Check if the member has direct document fields
+  if (member.document_file_url) {
+    console.log(`PendingMembersList - Member ${member.name || 'Unknown'} has document:`, {
+      url: member.document_file_url,
+      name: member.document_file_name,
+      type: member.document_file_type
+    })
+    return true
+  }
+  
+  console.log(`PendingMembersList - Member ${member.name || 'Unknown'} has no documents`)
+  return false
 }
 </script>

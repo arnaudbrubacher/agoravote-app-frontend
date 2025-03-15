@@ -39,13 +39,19 @@
           <!-- No documents state -->
           <div v-else-if="!documents || documents.length === 0" class="text-center py-8 text-muted-foreground">
             <span>No documents available</span>
+            <div class="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+              <div><strong>Debug:</strong> Member data</div>
+              <pre>{{ JSON.stringify(member, null, 2) }}</pre>
+              <div class="mt-2"><strong>Documents array:</strong></div>
+              <pre>{{ JSON.stringify(documents, null, 2) }}</pre>
+            </div>
           </div>
 
           <!-- Documents list -->
           <div v-else class="space-y-4">
             <div v-for="(doc, index) in documents" :key="index" class="border rounded-md p-4">
               <div class="flex justify-between items-center mb-2">
-                <h3 class="font-medium">{{ doc.name }}</h3>
+                <h3 class="font-medium">{{ doc.name || `Document ${index + 1}` }}</h3>
                 <div class="flex space-x-2">
                   <Button 
                     v-if="doc.url || doc.document_file_url" 
@@ -83,6 +89,13 @@
                 <div v-if="doc.uploadedAt || doc.document_uploaded_at" class="mt-1">
                   Uploaded: {{ formatDate(doc.uploadedAt || doc.document_uploaded_at) }}
                 </div>
+                <!-- Debug information -->
+                <div class="mt-2 p-2 bg-gray-100 rounded text-xs">
+                  <div><strong>Debug:</strong> Document properties</div>
+                  <div v-for="(value, key) in doc" :key="key">
+                    <strong>{{ key }}:</strong> {{ typeof value === 'object' ? JSON.stringify(value) : value }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -108,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
 import axios from '~/src/utils/axios'
@@ -151,13 +164,79 @@ const memberAvatarUrl = computed(() => {
 })
 
 onMounted(async () => {
+  console.log('ReviewDocumentsDialog - Component mounted with props:', {
+    member: props.member,
+    groupId: props.groupId,
+    isPending: props.isPending
+  })
+  
+  // Check if the member has document fields
+  if (props.member && props.member.document_file_url) {
+    console.log('ReviewDocumentsDialog - Member has document fields:', {
+      url: props.member.document_file_url,
+      name: props.member.document_file_name,
+      type: props.member.document_file_type,
+      size: props.member.document_file_size
+    })
+    
+    // Create a document object from the fields
+    const doc = {
+      name: props.member.document_file_name || 'Document',
+      document_file_url: props.member.document_file_url,
+      document_file_name: props.member.document_file_name || 'document',
+      document_file_type: props.member.document_file_type || 'application/octet-stream',
+      document_file_size: props.member.document_file_size || 0,
+      document_uploaded_at: props.member.document_uploaded_at || new Date().toISOString()
+    }
+    
+    documents.value = [doc]
+    loading.value = false
+    console.log('ReviewDocumentsDialog - Created document object from fields:', documents.value)
+    return // Skip further processing
+  }
+  
+  // If we don't have documents from the member object, try to fetch from API
   await fetchDocuments()
 })
 
 const fetchDocuments = async () => {
-  if (!props.member) return
+  if (!props.member) {
+    console.error('Cannot fetch documents: No member provided')
+    return
+  }
+  
+  console.log('ReviewDocumentsDialog - fetchDocuments called with member:', props.member)
+  console.log('ReviewDocumentsDialog - isPending:', props.isPending)
+  console.log('ReviewDocumentsDialog - groupId:', props.groupId)
   
   loading.value = true
+  
+  // Check if the member has document fields
+  if (props.member.document_file_url) {
+    console.log('ReviewDocumentsDialog - Member has document fields:', {
+      url: props.member.document_file_url,
+      name: props.member.document_file_name,
+      type: props.member.document_file_type,
+      size: props.member.document_file_size
+    })
+    
+    // Create a document object from the fields
+    const doc = {
+      name: props.member.document_file_name || 'Document',
+      document_file_url: props.member.document_file_url,
+      document_file_name: props.member.document_file_name || 'document',
+      document_file_type: props.member.document_file_type || 'application/octet-stream',
+      document_file_size: props.member.document_file_size || 0,
+      document_uploaded_at: props.member.document_uploaded_at || new Date().toISOString()
+    }
+    
+    documents.value = [doc]
+    loading.value = false
+    console.log('ReviewDocumentsDialog - Created document object from fields:', documents.value)
+    return
+  }
+  
+  // If no document fields, try to fetch from API
   try {
     // Get the member ID - prioritize user_id since that's the column name in the database
     const memberId = props.member.user_id || props.member.userId || (props.member.user && props.member.user.id) || props.member.id
@@ -165,77 +244,66 @@ const fetchDocuments = async () => {
     // Get the group ID
     const groupId = props.groupId
     
+    console.log('ReviewDocumentsDialog - Resolved memberId:', memberId)
+    
     // Check if we have valid IDs
     if (!memberId || !groupId) {
       console.error('Cannot fetch documents: Missing member ID or group ID', { memberId, groupId })
+      loading.value = false
       return
     }
     
-    // Use different API endpoints based on whether the member is pending or active
-    let endpoint = '';
-    if (props.isPending) {
-      endpoint = `/groups/${groupId}/pending-members/${memberId}/documents`;
-    } else {
-      endpoint = `/groups/${groupId}/members/${memberId}/documents`;
-    }
-    
-    console.log(`Fetching documents from endpoint: ${endpoint}`);
-    
-    // Fetch documents from the API
-    const response = await axios.get(endpoint);
-    documents.value = response.data;
-    
-    // If no documents were returned from the API, try to parse them from the member object
-    if ((!documents.value || documents.value.length === 0) && props.member.documents_submitted) {
-      console.log('No documents from API, parsing from member object:', props.member.documents_submitted);
-      
-      let docs = props.member.documents_submitted;
-      
-      // If docs is a string, try to parse it as JSON
-      if (typeof docs === 'string') {
-        try {
-          docs = JSON.parse(docs);
-        } catch (e) {
-          console.error('Error parsing documents:', e);
-          docs = [];
-        }
+    // Try to fetch from API
+    try {
+      // Use different API endpoints based on whether the member is pending or active
+      let endpoint = '';
+      if (props.isPending) {
+        endpoint = `/groups/${groupId}/pending-members/${memberId}/documents`;
+      } else {
+        endpoint = `/groups/${groupId}/members/${memberId}/documents`;
       }
       
-      // If docs is an array, use it
-      if (Array.isArray(docs)) {
-        documents.value = docs;
+      console.log(`ReviewDocumentsDialog - Fetching documents from endpoint: ${endpoint}`);
+      
+      // Fetch documents from the API
+      const response = await axios.get(endpoint);
+      console.log('ReviewDocumentsDialog - API response:', response.data);
+      
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        documents.value = response.data;
+        console.log('ReviewDocumentsDialog - Using documents from API:', documents.value);
+      } else {
+        console.log('ReviewDocumentsDialog - No documents returned from API');
+        documents.value = [];
       }
-    }
-  } catch (error) {
-    console.error('Failed to fetch documents:', error);
-    
-    // Try to parse documents from the member object if API call fails
-    if (props.member.documents_submitted) {
-      console.log('API call failed, parsing from member object:', props.member.documents_submitted);
+    } catch (apiError) {
+      console.error('ReviewDocumentsDialog - API call failed:', apiError);
+      console.log('ReviewDocumentsDialog - API endpoint might not exist yet, using fallback');
       
-      let docs = props.member.documents_submitted;
-      
-      // If docs is a string, try to parse it as JSON
-      if (typeof docs === 'string') {
-        try {
-          docs = JSON.parse(docs);
-        } catch (e) {
-          console.error('Error parsing documents:', e);
-          docs = [];
-        }
-      }
-      
-      // If docs is an array, use it
-      if (Array.isArray(docs)) {
-        documents.value = docs;
+      // If the API call fails, create a fallback document if the member has a document_file_url
+      if (props.member.document_file_url) {
+        console.log('ReviewDocumentsDialog - Creating fallback document from document_file_url:', props.member.document_file_url);
+        
+        const doc = {
+          name: props.member.document_file_name || 'Document',
+          document_file_url: props.member.document_file_url,
+          document_file_name: props.member.document_file_name || 'document',
+          document_file_type: props.member.document_file_type || 'application/octet-stream',
+          document_file_size: props.member.document_file_size || 0,
+          document_uploaded_at: props.member.document_uploaded_at || new Date().toISOString()
+        };
+        
+        documents.value = [doc];
       } else {
         documents.value = [];
       }
-    } else {
-      documents.value = [];
     }
+  } catch (error) {
+    console.error('ReviewDocumentsDialog - Error in fetchDocuments:', error);
+    documents.value = [];
   } finally {
     loading.value = false;
+    console.log('ReviewDocumentsDialog - Final documents value:', documents.value);
   }
 }
 
@@ -276,40 +344,121 @@ const formatFileSize = (bytes) => {
 }
 
 const downloadDocument = (doc) => {
-  // In a real implementation, this would download the document
-  console.log('Downloading document:', doc)
+  console.log('ReviewDocumentsDialog - downloadDocument called with doc:', doc)
   
-  // If there's a URL, open it in a new tab
-  const url = doc.url || doc.document_file_url
-  if (url && url !== '#') {
-    // If the URL is a relative path, prepend the API base URL
-    if (url.startsWith('/')) {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-      window.open(baseUrl + url, '_blank')
-    } else {
-      window.open(url, '_blank')
-    }
-  } else {
-    alert('Document download not implemented')
+  // Get the document URL - try all possible property names
+  const url = doc.url || doc.document_file_url || doc.file_url || doc.fileURL
+  console.log('ReviewDocumentsDialog - Resolved document URL:', url)
+  
+  if (!url || url === '#') {
+    console.error('ReviewDocumentsDialog - Document URL not available')
+    alert('Document URL not available')
+    return
   }
+  
+  // Construct the full URL if it's a relative path
+  const fullUrl = url.startsWith('http') 
+    ? url 
+    : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url.startsWith('/') ? url : `/${url}`}`
+  
+  console.log('ReviewDocumentsDialog - Downloading document from URL:', fullUrl)
+  
+  // Create a blob from the file URL and force download
+  fetch(fullUrl, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`)
+      }
+      return response.blob()
+    })
+    .then(blob => {
+      // Create a blob URL
+      const blobUrl = URL.createObjectURL(blob)
+      
+      // Create a link element
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = doc.fileName || doc.document_file_name || doc.name || 'document'
+      
+      // Append to body, click and remove
+      document.body.appendChild(link)
+      link.click()
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link)
+        URL.revokeObjectURL(blobUrl)
+      }, 100)
+    })
+    .catch(error => {
+      console.error('ReviewDocumentsDialog - Error downloading file:', error)
+      alert('Failed to download the file. Please try again.')
+    })
 }
 
 const viewDocument = (doc) => {
-  // In a real implementation, this would open a viewer for the document
-  console.log('Viewing document:', doc)
+  console.log('ReviewDocumentsDialog - viewDocument called with doc:', doc)
   
-  // If there's a URL, open it in a new tab
-  const url = doc.url || doc.document_file_url
-  if (url && url !== '#') {
-    // If the URL is a relative path, prepend the API base URL
-    if (url.startsWith('/')) {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-      window.open(baseUrl + url, '_blank')
-    } else {
-      window.open(url, '_blank')
-    }
-  } else {
-    alert('Document viewer not implemented')
+  // Get the document URL - try all possible property names
+  const url = doc.url || doc.document_file_url || doc.file_url || doc.fileURL
+  console.log('ReviewDocumentsDialog - Resolved document URL:', url)
+  
+  if (!url || url === '#') {
+    console.error('ReviewDocumentsDialog - Document URL not available')
+    alert('Document URL not available')
+    return
   }
+  
+  // Construct the full URL if it's a relative path
+  const fullUrl = url.startsWith('http') 
+    ? url 
+    : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url.startsWith('/') ? url : `/${url}`}`
+  
+  console.log('ReviewDocumentsDialog - Opening document URL:', fullUrl)
+  
+  // Open the document in a new tab
+  window.open(fullUrl, '_blank')
 }
+
+// Watch for changes to the documents array
+watch(documents, (newDocs) => {
+  console.log('ReviewDocumentsDialog - documents changed:', newDocs)
+}, { deep: true })
+
+// Watch for changes to the member prop
+watch(() => props.member, (newMember) => {
+  console.log('ReviewDocumentsDialog - member prop changed:', newMember)
+  
+  // Check if the member has document fields
+  if (newMember && newMember.document_file_url) {
+    console.log('ReviewDocumentsDialog - New member has document fields:', {
+      url: newMember.document_file_url,
+      name: newMember.document_file_name,
+      type: newMember.document_file_type,
+      size: newMember.document_file_size
+    })
+    
+    // Create a document object from the fields
+    const doc = {
+      name: newMember.document_file_name || 'Document',
+      document_file_url: newMember.document_file_url,
+      document_file_name: newMember.document_file_name || 'document',
+      document_file_type: newMember.document_file_type || 'application/octet-stream',
+      document_file_size: newMember.document_file_size || 0,
+      document_uploaded_at: newMember.document_uploaded_at || new Date().toISOString()
+    }
+    
+    documents.value = [doc]
+    loading.value = false
+    console.log('ReviewDocumentsDialog - Created document object from fields:', documents.value)
+    return // Skip further processing
+  } else {
+    // If no document fields, try to fetch from API
+    fetchDocuments()
+  }
+}, { deep: true })
 </script> 

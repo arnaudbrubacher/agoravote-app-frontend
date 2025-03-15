@@ -425,18 +425,26 @@ const formatFileSize = (bytes) => {
 // Upload a single document
 const uploadDocument = async (file, docInfo, index) => {
   try {
+    console.log('GroupAdmissionForm - Uploading document:', {
+      file: file.name,
+      docInfo,
+      index
+    })
+    
     // Create form data
     const formData = new FormData()
     formData.append('file', file)
     formData.append('name', docInfo.name)
     formData.append('description', docInfo.description || '')
     
-    // Upload the document
+    // Upload the document using the document fields endpoint
     const response = await axios.post(`/groups/${props.group.id}/members/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
+    
+    console.log('GroupAdmissionForm - Document upload response:', response.data)
     
     // Store the uploaded document data
     uploadedDocuments.value[index] = response.data
@@ -470,7 +478,7 @@ const handleSubmit = async () => {
       throw new Error('Please provide all required information')
     }
     
-    // Create the admission data object
+    // Create the admission data object (password only)
     let admissionData = {}
     let joinStatus = adminApprovalRequired.value ? 'pending' : 'approved'
     let alreadyMember = false
@@ -481,38 +489,34 @@ const handleSubmit = async () => {
       admissionData.password = form.value.password
     }
     
-    // Only try to join if we need to upload documents
-    // This prevents the "already a member" error when we just need to upload documents
-    if (documentsRequired.value) {
-      try {
-        // Use the join endpoint for all cases
-        console.log('GroupAdmissionForm - Requesting to join group:', props.group.id)
-        
-        // Create the request data with password if required
-        const requestData = passwordRequired.value ? { password: form.value.password } : {};
-        
-        // Use the join endpoint
-        joinResponse = await axios.post(`/groups/${props.group.id}/join`, requestData);
-        
-        // Check the status from the response
-        joinStatus = joinResponse.data?.status || (adminApprovalRequired.value ? 'pending' : 'approved');
-        console.log(`GroupAdmissionForm - Successfully requested to join group with status: ${joinStatus}`);
-      } catch (joinError) {
-        // If the error is "already a member", continue with document upload
-        if (joinError.response?.data?.error && 
-            (joinError.response.data.error.includes('already a member') || 
-             joinError.response.data.error.includes('already requested to join'))) {
-          console.log('GroupAdmissionForm - Already a member or requested to join this group, continuing with document upload');
-          alreadyMember = true;
-        } else {
-          // For any other error, rethrow it
-          throw joinError;
-        }
+    // First, try to join the group
+    try {
+      console.log('GroupAdmissionForm - Requesting to join group:', props.group.id)
+      
+      // Create the request data with password if required
+      const requestData = passwordRequired.value ? { password: form.value.password } : {};
+      
+      // Use the join endpoint
+      joinResponse = await axios.post(`/groups/${props.group.id}/join`, requestData);
+      
+      // Check the status from the response
+      joinStatus = joinResponse.data?.status || (adminApprovalRequired.value ? 'pending' : 'approved');
+      console.log(`GroupAdmissionForm - Successfully requested to join group with status: ${joinStatus}`);
+    } catch (joinError) {
+      // If the error is "already a member", continue with document upload
+      if (joinError.response?.data?.error && 
+          (joinError.response.data.error.includes('already a member') || 
+           joinError.response.data.error.includes('already requested to join'))) {
+        console.log('GroupAdmissionForm - Already a member or requested to join this group, continuing with document upload');
+        alreadyMember = true;
+      } else {
+        // For any other error, rethrow it
+        throw joinError;
       }
     }
     
-    // Upload documents if required
-    let documentsData = []
+    // Upload documents if required (as a separate step)
+    let documentsUploaded = false
     
     if (documentsRequired.value) {
       // Upload each document
@@ -526,25 +530,15 @@ const handleSubmit = async () => {
       // Wait for all uploads to complete
       const uploadResults = await Promise.all(uploadPromises)
       
-      // Filter out null results and prepare document data
-      documentsData = uploadResults.filter(Boolean).map(result => ({
-        name: result.name,
-        description: result.description || '',
-        fileName: result.filename,
-        fileType: result.type,
-        url: result.url
-      }))
-    }
-    
-    // Add documents to admission data if any were uploaded
-    if (documentsData.length > 0) {
-      admissionData.documents = documentsData
+      // Check if any documents were uploaded successfully
+      documentsUploaded = uploadResults.filter(Boolean).length > 0
+      console.log('GroupAdmissionForm - Documents uploaded:', documentsUploaded)
     }
     
     // Log the admission data for debugging
     console.log('GroupAdmissionForm - Submitting admission data:', JSON.stringify(admissionData))
     console.log('GroupAdmissionForm - Password provided:', !!form.value.password)
-    console.log('GroupAdmissionForm - Documents provided:', documentsData.length)
+    console.log('GroupAdmissionForm - Documents uploaded:', documentsUploaded)
     
     // Dispatch a custom event to refresh the dashboard sidebar
     window.dispatchEvent(new CustomEvent('group-data-updated'))
@@ -553,19 +547,19 @@ const handleSubmit = async () => {
     let successMessage = '';
     
     if (alreadyMember) {
-      if (documentsData.length > 0) {
+      if (documentsUploaded) {
         successMessage = `Documents uploaded successfully for ${props.group.name}!`;
       } else {
         successMessage = `You are already a member of ${props.group.name}.`;
       }
     } else if (adminApprovalRequired.value || joinStatus === 'pending') {
       successMessage = `Your request to join ${props.group.name} has been submitted. Waiting for admin review.`;
-      if (documentsData.length > 0) {
+      if (documentsUploaded) {
         successMessage += ' Required documents have been uploaded.';
       }
     } else {
       successMessage = `Successfully joined ${props.group.name}`;
-      if (documentsData.length > 0) {
+      if (documentsUploaded) {
         successMessage += ' and uploaded required documents';
       }
       successMessage += '!';
@@ -583,6 +577,7 @@ const handleSubmit = async () => {
       ...admissionData,
       status: joinStatus,
       alreadyMember: alreadyMember,
+      documentsUploaded: documentsUploaded,
       // Add a flag to tell parent components not to show additional messages
       handledMessage: true
     });

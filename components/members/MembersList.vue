@@ -260,19 +260,20 @@ const handleDataUpdated = () => {
 
 // Check if a member has documents
 const hasDocuments = (member) => {
-  let docs = member.documents_submitted
+  console.log(`MembersList - Checking if member ${member.name || 'Unknown'} has documents`)
   
-  // If docs is a string, try to parse it as JSON
-  if (typeof docs === 'string') {
-    try {
-      docs = JSON.parse(docs)
-    } catch (e) {
-      return false
-    }
+  // Check if the member has document fields
+  if (member.document_file_url) {
+    console.log(`MembersList - Member ${member.name || 'Unknown'} has document:`, {
+      url: member.document_file_url,
+      name: member.document_file_name,
+      type: member.document_file_type
+    })
+    return true
   }
   
-  // Check if docs is an array with items
-  return Array.isArray(docs) && docs.length > 0
+  console.log(`MembersList - Member ${member.name || 'Unknown'} has no documents`)
+  return false
 }
 
 // Handle review documents

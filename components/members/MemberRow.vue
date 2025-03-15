@@ -55,7 +55,7 @@
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem v-if="hasDocuments" @click="$emit('review-documents', member)">
+              <DropdownMenuItem v-if="hasDocuments" @click="handleReviewDocuments(member)">
                 <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-2" />
                 Review Documents
               </DropdownMenuItem>
@@ -81,7 +81,7 @@
             v-if="hasDocuments"
             variant="outline" 
             size="sm" 
-            @click="$emit('review-documents', member)"
+            @click="handleReviewDocuments(member)"
             class="bg-amber-50"
           >
             <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-1" />
@@ -107,13 +107,13 @@
       
       <!-- Actions for active members -->
       <div v-if="!isPending" class="flex items-center space-x-2">
-        <!-- Document Review Button - Only visible if member has documents -->
+        <!-- Document Review Button - Always visible if member has documents -->
         <Button 
-          v-if="member.hasDocuments && isCurrentUserAdmin"
+          v-if="hasDocuments"
           variant="outline" 
           size="sm" 
-          @click="$emit('review-documents', member)"
-          class="mr-2"
+          @click="handleReviewDocuments(member)"
+          class="bg-amber-50"
         >
           <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-1" />
           Docs
@@ -204,7 +204,8 @@ console.log('MemberRow props for:', props.member.name, {
   isPending: props.isPending,
   isCurrentUserAdmin: props.isCurrentUserAdmin,
   invitationAccepted: props.invitationAccepted,
-  documents: props.member.documents_submitted
+  documents: props.member.documents_submitted,
+  member: props.member
 })
 
 const emit = defineEmits([
@@ -301,5 +302,12 @@ const getMemberEmail = (member) => {
   return member.email || 
          (member.user && member.user.email) || 
          'No email available';
+}
+
+// Add a method to handle the review-documents event
+const handleReviewDocuments = (member) => {
+  console.log('MemberRow - handleReviewDocuments called for member:', member.name)
+  console.log('MemberRow - member documents_submitted:', member.documents_submitted)
+  emit('review-documents', member)
 }
 </script>

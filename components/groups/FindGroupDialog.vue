@@ -208,7 +208,8 @@ const handleAdmissionSubmit = async (admissionData) => {
         detail: {
           groupId: selectedGroup.value.id,
           isJoinRequest: true,
-          status: admissionData.status || 'pending'
+          status: admissionData.status || 'pending',
+          documentsUploaded: admissionData.documentsUploaded || false
         }
       }));
       
