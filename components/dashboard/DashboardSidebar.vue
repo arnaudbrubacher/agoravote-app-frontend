@@ -76,13 +76,10 @@
                 Cancel
               </Button>
               <Button 
-                v-if="group.membership && group.membership.documents_submitted && 
-                     (typeof group.membership.documents_submitted === 'string' ? 
-                      group.membership.documents_submitted !== '[]' && group.membership.documents_submitted !== '{}' : 
-                      Array.isArray(group.membership.documents_submitted) && group.membership.documents_submitted.length > 0)"
+                v-if="hasDocuments(group)"
                 variant="default" 
                 size="sm"
-                @click.stop="reviewDocuments(group)"
+                @click.stop="manageDocuments(group)"
               >
                 Review
               </Button>
@@ -135,6 +132,14 @@
       </div>
     </SheetContent>
   </Sheet>
+  
+  <!-- Member Document Manager Dialog -->
+  <MemberDocumentManager
+    v-if="showDocumentManager && selectedGroup"
+    :group="selectedGroup"
+    @close="closeDocumentManager"
+    @document-updated="handleDocumentUpdated"
+  />
 </template>
 
 <script setup>
@@ -153,6 +158,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import GroupCard from '@/components/groups/GroupCard.vue'
+import MemberDocumentManager from '@/components/members/MemberDocumentManager.vue'
 import axios from '~/src/utils/axios'
 
 // Props
@@ -179,6 +185,13 @@ const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-gro
 const isOpen = computed({
   get: () => props.open,
   set: (value) => emit('update:open', value)
+})
+
+// Computed property to check if we're in development mode
+const isDevelopment = computed(() => {
+  // Check if we're in development mode
+  // This is a safer way to check than using import.meta.env.DEV directly in the template
+  return process.env.NODE_ENV === 'development';
 })
 
 // Filter out pending memberships from the groups list
@@ -219,34 +232,139 @@ const pendingGroups = computed(() => {
   return props.groups.filter(group => {
     // Check if the group has a membership property with status
     if (group.membership && group.membership.status === 'pending') {
-      console.log(`Including group with pending membership.status in Pending Groups: ${group.name}`)
-      console.log(`Group invitation accepted status: ${group.membership.invitation_accepted}`)
-      console.log(`Group isInvitation flag: ${group.isInvitation}`)
+      console.log(`Including group with pending membership.status in Pending Groups: ${group.name}`);
+      console.log(`Group membership details:`, {
+        name: group.name,
+        status: group.membership.status,
+        invitation_accepted: group.membership.invitation_accepted,
+        isInvitation: group.isInvitation,
+        document_file_url: group.membership.document_file_url,
+        document_file_name: group.membership.document_file_name,
+        hasDocuments: hasDocuments(group)
+      });
       
       // Log whether this is waiting for admin approval or user acceptance
       if (isWaitingForAdminApproval(group)) {
-        console.log(`Group ${group.name} is waiting for admin approval`)
+        console.log(`Group ${group.name} is waiting for admin approval`);
       } else {
-        console.log(`Group ${group.name} is waiting for user acceptance`)
+        console.log(`Group ${group.name} is waiting for user acceptance`);
       }
       
-      return true
+      return true;
     }
     
     // Legacy checks for backward compatibility
     if (group.membership_status === 'pending') {
-      console.log(`Including group with pending membership_status in Pending Groups: ${group.name}`)
-      return true
+      console.log(`Including group with pending membership_status in Pending Groups: ${group.name}`);
+      return true;
     }
     
     if (group.status === 'pending') {
-      console.log(`Including group with pending status in Pending Groups: ${group.name}`)
-      return true
+      console.log(`Including group with pending status in Pending Groups: ${group.name}`);
+      return true;
     }
     
-    return false
-  })
+    return false;
+  });
 })
+
+// Function to check for documents via API for all pending groups
+const checkDocumentsForPendingGroups = async () => {
+  console.log('Checking documents for all pending groups');
+  
+  if (!pendingGroups.value || pendingGroups.value.length === 0) {
+    console.log('No pending groups to check');
+    return;
+  }
+  
+  for (const group of pendingGroups.value) {
+    console.log(`Checking documents for group ${group.name} (${group.id})`);
+    
+    try {
+      const response = await axios.get(`/groups/${group.id}/members/documents`);
+      console.log(`API documents response for group ${group.name}:`, response.data);
+      
+      // If we have documents from the API, update the group membership
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        console.log(`Documents found via API call for group ${group.name}`);
+        
+        // If the group doesn't have a membership object, create one
+        if (!group.membership) {
+          group.membership = {
+            status: 'pending',
+            invitation_accepted: true
+          };
+        }
+        
+        // Update the document fields in the membership
+        const doc = response.data[0];
+        group.membership.document_file_url = doc.document_file_url || doc.url;
+        group.membership.document_file_name = doc.document_file_name || doc.filename || doc.name;
+        group.membership.document_file_type = doc.document_file_type || doc.type;
+        group.membership.document_file_size = doc.document_file_size || doc.size;
+        group.membership.document_uploaded_at = doc.document_uploaded_at || doc.uploaded_at;
+        
+        console.log(`Updated group ${group.name} membership with document information:`, group.membership);
+      } else {
+        console.log(`No documents found via API call for group ${group.name}`);
+      }
+    } catch (error) {
+      console.error(`Error checking for documents via API for group ${group.name}:`, error);
+    }
+  }
+}
+
+// Function to check for documents for a specific group by name
+const checkDocumentsForGroupByName = async (groupName) => {
+  console.log(`Checking documents for group with name: ${groupName}`);
+  
+  // Find the group with the specified name
+  const group = props.groups.find(g => g.name === groupName);
+  
+  if (!group) {
+    console.log(`Group with name ${groupName} not found`);
+    return;
+  }
+  
+  console.log(`Found group with name ${groupName}:`, group);
+  
+  try {
+    const response = await axios.get(`/groups/${group.id}/members/documents`);
+    console.log(`API documents response for group ${group.name}:`, response.data);
+    
+    // If we have documents from the API, update the group membership
+    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+      console.log(`Documents found via API call for group ${group.name}`);
+      
+      // If the group doesn't have a membership object, create one
+      if (!group.membership) {
+        group.membership = {
+          status: 'pending',
+          invitation_accepted: true
+        };
+      }
+      
+      // Update the document fields in the membership
+      const doc = response.data[0];
+      group.membership.document_file_url = doc.document_file_url || doc.url;
+      group.membership.document_file_name = doc.document_file_name || doc.filename || doc.name;
+      group.membership.document_file_type = doc.document_file_type || doc.type;
+      group.membership.document_file_size = doc.document_file_size || doc.size;
+      group.membership.document_uploaded_at = doc.document_uploaded_at || doc.uploaded_at;
+      
+      console.log(`Updated group ${group.name} membership with document information:`, group.membership);
+      console.log(`Group ${group.name} has documents: ${hasDocuments(group)}`);
+      console.log(`Group ${group.name} is waiting for admin approval: ${isWaitingForAdminApproval(group)}`);
+      
+      // Force a refresh of the component
+      emit('refresh-groups');
+    } else {
+      console.log(`No documents found via API call for group ${group.name}`);
+    }
+  } catch (error) {
+    console.error(`Error checking for documents via API for group ${group.name}:`, error);
+  }
+}
 
 // Listen for the user-left-group event
 const handleUserLeftGroup = (event) => {
@@ -276,6 +394,19 @@ onMounted(() => {
   // Log the groups that are being displayed
   console.log('DashboardSidebar - All groups:', props.groups)
   console.log('DashboardSidebar - Active groups:', activeGroups.value)
+  
+  // Force refresh the groups list when the component is mounted
+  emit('refresh-groups');
+  
+  // Check for documents for all pending groups after a short delay
+  // to ensure the groups list has been loaded
+  setTimeout(() => {
+    checkDocumentsForPendingGroups();
+    
+    // If you know the name of Alice's group, you can check it directly
+    // Replace "Alice's Group" with the actual name of the group
+    // checkDocumentsForGroupByName("Alice's Group");
+  }, 1000);
 })
 
 // Clean up event listeners
@@ -289,6 +420,11 @@ onBeforeUnmount(() => {
 watch(() => props.groups, (newGroups) => {
   console.log('DashboardSidebar - Groups updated:', newGroups)
   console.log('DashboardSidebar - Active groups after update:', activeGroups.value)
+  
+  // Check for documents for all pending groups after groups are updated
+  setTimeout(() => {
+    checkDocumentsForPendingGroups();
+  }, 500);
 })
 
 // Helper function to properly format group picture URLs
@@ -301,7 +437,9 @@ const acceptPendingGroup = async (group) => {
       id: group.id,
       isInvitation: group.isInvitation,
       membershipStatus: group.membership?.status,
-      invitationAccepted: group.membership?.invitation_accepted
+      invitationAccepted: group.membership?.invitation_accepted,
+      document_file_url: group.membership?.document_file_url,
+      hasDocuments: hasDocuments(group)
     });
     
     // Check if the group requires a password
@@ -411,27 +549,370 @@ const cancelPendingGroup = async (group) => {
 
 // Review documents for a group
 const reviewDocuments = (group) => {
-  // Emit an event to show the GroupAdmissionForm in review mode
-  emit('review-documents', group.id)
+  // Use the new document manager instead
+  manageDocuments(group);
 }
 
 // Helper function to check if a group is waiting for admin approval
 const isWaitingForAdminApproval = (group) => {
+  // Log for debugging
+  console.log(`Checking if group ${group.name} is waiting for admin approval`);
+  
   // Check if the group has a membership with pending status
   if (!group.membership || group.membership.status !== 'pending') {
+    console.log(`Group ${group.name} has no membership or status is not pending`);
     return false;
   }
   
   // If this is an invitation (isInvitation is true or undefined) and it hasn't been accepted yet,
   // then it's not waiting for admin approval - it's waiting for user acceptance
   if ((group.isInvitation === true || group.isInvitation === undefined) && 
-      group.membership.invitation_accepted !== true) {
+      group.membership.invitation_accepted !== true && 
+      !hasDocuments(group)) {
+    console.log(`Group ${group.name} is an invitation that hasn't been accepted yet`);
     return false;
   }
   
-  // If this is a join request (isInvitation is explicitly false) or 
-  // an invitation that has been accepted (invitation_accepted is true),
-  // then it's waiting for admin approval
-  return group.isInvitation === false || group.membership.invitation_accepted === true;
+  // If this is a join request (isInvitation is explicitly false), it's waiting for admin approval
+  if (group.isInvitation === false) {
+    console.log(`Group ${group.name} is a join request waiting for admin approval`);
+    return true;
+  }
+  
+  // If the invitation has been explicitly accepted, it's waiting for admin approval
+  if (group.membership.invitation_accepted === true) {
+    console.log(`Group ${group.name} has invitation_accepted=true, waiting for admin approval`);
+    return true;
+  }
+  
+  // If the user has uploaded documents, it's waiting for admin approval
+  if (hasDocuments(group)) {
+    console.log(`Group ${group.name} has documents, waiting for admin approval`);
+    return true;
+  }
+  
+  // If none of the above conditions are met, it's not waiting for admin approval
+  console.log(`Group ${group.name} is not waiting for admin approval`);
+  return false;
+}
+
+// Add state for document manager
+const showDocumentManager = ref(false)
+const selectedGroup = ref(null)
+
+// Helper function to check if a group has documents
+const hasDocuments = (group) => {
+  // Log for debugging
+  console.log('Checking if group has documents:', group.name);
+  
+  try {
+    // Check if the group has a membership with document fields
+    if (group.membership) {
+      // Direct check for document_file_url field (most reliable)
+      if (group.membership.document_file_url) {
+        console.log(`Group ${group.name} has document_file_url:`, group.membership.document_file_url);
+        return true;
+      }
+      
+      // Check for other document URL fields (camelCase, PascalCase)
+      const hasDocumentUrl = !!(
+        group.membership.DocumentFileURL || 
+        group.membership.documentFileURL ||
+        group.membership.document_url ||
+        group.membership.documentUrl
+      );
+      
+      if (hasDocumentUrl) {
+        console.log(`Group ${group.name} has document URL field`);
+        return true;
+      }
+      
+      // Check for DocumentsSubmitted field (from group package)
+      if (group.membership.DocumentsSubmitted || group.membership.documents_submitted) {
+        const docsField = group.membership.DocumentsSubmitted || group.membership.documents_submitted;
+        console.log(`Group ${group.name} has DocumentsSubmitted field:`, docsField);
+        
+        // If it's a string, check if it's not empty JSON and try to parse it
+        if (typeof docsField === 'string') {
+          // Skip empty arrays or objects
+          if (docsField === '[]' || docsField === '{}') {
+            console.log(`Group ${group.name} has empty DocumentsSubmitted string`);
+            return false;
+          }
+          
+          try {
+            const parsed = JSON.parse(docsField);
+            // Check if it's a non-empty array or object with url property
+            if ((Array.isArray(parsed) && parsed.length > 0) || 
+                (typeof parsed === 'object' && parsed !== null && parsed.url)) {
+              console.log(`Group ${group.name} has valid documents in DocumentsSubmitted`);
+              return true;
+            }
+            return false;
+          } catch (e) {
+            console.error('Error parsing DocumentsSubmitted:', e);
+            // If we can't parse it but it's not empty, assume it contains a document
+            if (docsField && docsField !== '{}' && docsField !== '[]') {
+              console.log(`Group ${group.name} has non-empty DocumentsSubmitted that couldn't be parsed`);
+              return true;
+            }
+            return false;
+          }
+        }
+        // If it's already an object or array
+        else if (typeof docsField === 'object' && docsField !== null) {
+          // If it's an array with items
+          if (Array.isArray(docsField) && docsField.length > 0) {
+            console.log(`Group ${group.name} has DocumentsSubmitted array with items`);
+            return true;
+          }
+          // If it's an object with a url property
+          else if (docsField.url) {
+            console.log(`Group ${group.name} has DocumentsSubmitted object with url`);
+            return true;
+          }
+        }
+      }
+      
+      // Check for documents_submitted field (legacy)
+      if (group.membership.documents_submitted) {
+        // If it's a string, check if it's not empty JSON and try to parse it
+        if (typeof group.membership.documents_submitted === 'string') {
+          // Skip empty arrays or objects
+          if (group.membership.documents_submitted === '[]' || 
+              group.membership.documents_submitted === '{}') {
+            console.log(`Group ${group.name} has empty documents_submitted string`);
+            return false;
+          }
+          
+          try {
+            const parsed = JSON.parse(group.membership.documents_submitted);
+            // Check if it's a non-empty array
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].url) {
+              console.log(`Group ${group.name} has valid documents in documents_submitted`);
+              return true;
+            }
+            return false;
+          } catch (e) {
+            console.error('Error parsing documents_submitted:', e);
+            return false;
+          }
+        }
+        // If it's already an array, check if it has items with URLs
+        else if (Array.isArray(group.membership.documents_submitted) && 
+                group.membership.documents_submitted.length > 0 &&
+                group.membership.documents_submitted[0].url) {
+          console.log(`Group ${group.name} has documents_submitted array with URLs`);
+          return true;
+        }
+      }
+      
+      // Check for documents field (another possible format)
+      if (group.membership.documents) {
+        // If it's a string, check if it's not empty JSON and try to parse it
+        if (typeof group.membership.documents === 'string') {
+          // Skip empty arrays or objects
+          if (group.membership.documents === '[]' || 
+              group.membership.documents === '{}') {
+            console.log(`Group ${group.name} has empty documents string`);
+            return false;
+          }
+          
+          try {
+            const parsed = JSON.parse(group.membership.documents);
+            // Check if it's a non-empty array
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].url) {
+              console.log(`Group ${group.name} has valid documents in documents field`);
+              return true;
+            }
+            return false;
+          } catch (e) {
+            console.error('Error parsing documents field:', e);
+            return false;
+          }
+        }
+        // If it's already an array, check if it has items with URLs
+        else if (Array.isArray(group.membership.documents) && 
+                group.membership.documents.length > 0 &&
+                group.membership.documents[0].url) {
+          console.log(`Group ${group.name} has documents array with URLs`);
+          return true;
+        }
+      }
+      
+      // Check for document_file_name with document_file_url
+      if (group.membership.document_file_name && group.membership.document_file_url) {
+        console.log(`Group ${group.name} has document_file_name and document_file_url`);
+        return true;
+      }
+      
+      // Check for documentFileName with documentFileURL (camelCase)
+      if (group.membership.documentFileName && group.membership.documentFileURL) {
+        console.log(`Group ${group.name} has documentFileName and documentFileURL`);
+        return true;
+      }
+      
+      // Check for DocumentFileName with DocumentFileURL (PascalCase)
+      if (group.membership.DocumentFileName && group.membership.DocumentFileURL) {
+        console.log(`Group ${group.name} has DocumentFileName and DocumentFileURL`);
+        return true;
+      }
+      
+      // REMOVED: The assumption that invitation_accepted=true means documents exist
+    }
+    
+    // Check if the group itself has document URL fields
+    const hasDirectDocumentUrl = !!(
+      group.DocumentFileURL || 
+      group.document_file_url || 
+      group.documentFileURL ||
+      group.document_url ||
+      group.documentUrl
+    );
+    
+    if (hasDirectDocumentUrl) {
+      console.log(`Group ${group.name} has direct document URL field`);
+      return true;
+    }
+    
+    // Check for documents field on the group itself
+    if (group.documents) {
+      // If it's a string, check if it's not empty JSON and try to parse it
+      if (typeof group.documents === 'string') {
+        // Skip empty arrays or objects
+        if (group.documents === '[]' || group.documents === '{}') {
+          console.log(`Group ${group.name} has empty documents string directly`);
+          return false;
+        }
+        
+        try {
+          const parsed = JSON.parse(group.documents);
+          // Check if it's a non-empty array
+          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].url) {
+            console.log(`Group ${group.name} has valid documents directly`);
+            return true;
+          }
+          return false;
+        } catch (e) {
+          console.error('Error parsing direct documents field:', e);
+          return false;
+        }
+      }
+      // If it's already an array, check if it has items with URLs
+      else if (Array.isArray(group.documents) && 
+              group.documents.length > 0 &&
+              group.documents[0].url) {
+        console.log(`Group ${group.name} has documents array directly with URLs`);
+        return true;
+      }
+    }
+    
+    // If we've checked everything and found no documents, return false
+    console.log(`Group ${group.name} has no documents`);
+    return false;
+  } catch (error) {
+    console.error('Error in hasDocuments function:', error);
+    return false;
+  }
+}
+
+// Open the document manager for a group
+const manageDocuments = async (group) => {
+  console.log('Opening document manager for group:', group.name);
+  console.log('Group ID:', group.id);
+  console.log('Group membership status:', group.membership?.status);
+  console.log('Invitation accepted:', group.membership?.invitation_accepted);
+  
+  // Check if the group has documents
+  const hasDocsResult = hasDocuments(group);
+  console.log('Group has documents (from local check):', hasDocsResult);
+  
+  // Check if the group requires documents
+  const requiresDocuments = group.requiresDocuments === true || 
+                           group.requires_documents === true || 
+                           (group.requiredDocuments && group.requiredDocuments.length > 0) ||
+                           (group.required_documents && group.required_documents.length > 0);
+  
+  console.log('Group requires documents:', requiresDocuments);
+  
+  // Document fields in membership
+  if (group.membership) {
+    console.log('Document fields in membership:');
+    console.log('- document_file_url:', group.membership.document_file_url);
+    console.log('- document_file_name:', group.membership.document_file_name);
+    console.log('- documents_submitted:', group.membership.documents_submitted);
+    console.log('- DocumentsSubmitted:', group.membership.DocumentsSubmitted);
+  } else {
+    console.log('No membership object found');
+  }
+  
+  // Make a direct API call to check for documents
+  try {
+    console.log(`Making API call to /groups/${group.id}/members/documents`);
+    const response = await axios.get(`/groups/${group.id}/members/documents`);
+    console.log('API documents response status:', response.status);
+    console.log('API documents response data:', response.data);
+    
+    // If we have documents from the API, update the group membership
+    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+      console.log('Documents found via API call');
+      
+      // If the group doesn't have a membership object, create one
+      if (!group.membership) {
+        group.membership = {
+          status: 'pending'
+        };
+      }
+      
+      // Update the document fields in the membership
+      const doc = response.data[0];
+      group.membership.document_file_url = doc.document_file_url || doc.url;
+      group.membership.document_file_name = doc.document_file_name || doc.filename || doc.name;
+      group.membership.document_file_type = doc.document_file_type || doc.type;
+      group.membership.document_file_size = doc.document_file_size || doc.size;
+      group.membership.document_uploaded_at = doc.document_uploaded_at || doc.uploaded_at;
+      
+      console.log('Updated group membership with document information');
+    } else {
+      console.log('No documents found via API call (empty response or empty array)');
+    }
+  } catch (error) {
+    console.error('Error checking for documents via API:', error);
+    
+    if (error.response) {
+      console.log('API error status:', error.response.status);
+      console.log('API error data:', error.response.data);
+      
+      if (error.response.status === 404) {
+        console.log('404 error: Documents endpoint not found or no documents exist for this user in this group');
+      }
+    } else if (error.request) {
+      console.log('No response received from server');
+    } else {
+      console.log('Error setting up request:', error.message);
+    }
+    // Continue with the local data if the API call fails
+  }
+  
+  // Close the dashboard sidebar
+  isOpen.value = false;
+  
+  // Set the selected group and show the document manager
+  selectedGroup.value = group;
+  showDocumentManager.value = true;
+}
+
+// Close the document manager
+const closeDocumentManager = () => {
+  showDocumentManager.value = false;
+  selectedGroup.value = null;
+}
+
+// Handle document updated event
+const handleDocumentUpdated = (document) => {
+  console.log('Document updated:', document);
+  
+  // Refresh the groups list to reflect the updated document
+  emit('refresh-groups');
 }
 </script> 
