@@ -22,6 +22,7 @@ Always consider both repositories when making changes.
 - **Post Management**: Create and retrieve posts within groups.
 - **Voting System**: Cast and retrieve votes on posts.
 - **User Authentication**: Login and manage user sessions.
+- **Secure Voting**: End-to-end verifiable voting with ElectionGuard.
 
 ## Project Structure
 
@@ -37,6 +38,7 @@ The project uses the following dependencies:
 - [Axios](https://axios-http.com/) - Promise based HTTP client for the browser and node.js
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 - [Heroicons](https://heroicons.com/) - Beautiful hand-crafted SVG icons
+- [ElectionGuard](https://github.com/microsoft/electionguard) - Secure, verifiable voting SDK
 
 These dependencies are listed in the `package.json` file:
 
@@ -136,8 +138,41 @@ The backend script uses [Air](https://github.com/air-verse/air), a live reload t
 - Changes to backend Go code will automatically rebuild and restart the server
 - Each application runs in its own terminal window for better visibility of logs
 
+## ElectionGuard Integration
+
+AgoraVote integrates with ElectionGuard to provide secure, end-to-end verifiable voting. ElectionGuard is an open-source SDK that uses homomorphic encryption to ensure that votes remain encrypted, secure, and secret.
+
+### Setup ElectionGuard
+
+To set up the ElectionGuard development environment:
+
+```bash
+# Run the setup script
+bash scripts/setup_electionguard.sh
+
+# Source the environment variables (for backend development)
+source ../agoravote-app-backend/.env.electionguard
+```
+
+### Test ElectionGuard
+
+To test the ElectionGuard integration:
+
+```bash
+# Run the test script
+bash scripts/test_electionguard.sh
+```
+
+### ElectionGuard Test Page
+
+A test page is available to verify the ElectionGuard integration:
+
+```
+http://localhost:3000/electionguard-test
+```
+
+For more information about the ElectionGuard integration, see [README-ELECTIONGUARD.md](README-ELECTIONGUARD.md).
+
 ## Production
 
 Build the application for production:
-
-```
