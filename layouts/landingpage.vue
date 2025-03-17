@@ -1,34 +1,32 @@
 <template>
   <div class="min-h-screen bg-background">
-    <header class="border-b">
-      <div class="container flex h-16 items-center px-4">
-        <h1 class="text-xl font-bold">Agora Vote</h1>
-        <nav class="ml-auto">
-          <ul class="flex items-center gap-6">
-            <li><NuxtLink to="/" class="hover:text-primary">Home</NuxtLink></li>
-            <li><NuxtLink to="/about" class="hover:text-primary">About</NuxtLink></li>
-            <li><NuxtLink to="/contact" class="hover:text-primary">Contact</NuxtLink></li>
-            <li><Button @click="openApp" variant="default">Open App</Button></li>
-          </ul>
-        </nav>
-      </div>
-    </header>
-    <main class="container mx-auto py-6 px-4">
+    <!-- Main Content -->
+    <main>
       <NuxtPage />
     </main>
-    <footer class="border-t">
-      <div class="container mx-auto py-6 px-4 text-center text-sm text-muted-foreground">
-        <p>&copy; 2025 Agora Vote. All rights reserved.</p>
+
+    <!-- Footer -->
+    <footer class="border-t border-border bg-muted/20">
+      <div class="container mx-auto py-10 px-4">
+        <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div class="space-y-4">
+            <h3 class="text-lg font-bold">Agora Vote Inc.</h3>
+          </div>
+          <div class="space-y-4">
+            <p class="text-muted-foreground">arnaud_brubacher@hotmail.com</p>
+          </div>
+          <div class="space-y-4">
+            <p class="text-muted-foreground">1 (450) 405-3415</p>
+          </div>
+        </div>
+        <div class="mt-10 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+          <p>&copy; 2025 Agora Vote. All rights reserved.</p>
+        </div>
       </div>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { Button } from '@/components/ui/button'
-const router = useRouter()
-
-const openApp = () => {
-  router.push('/auth')
-}
+// No imports or functions needed in the layout anymore
 </script>

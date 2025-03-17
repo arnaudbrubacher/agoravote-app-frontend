@@ -19,6 +19,7 @@
     "clsx": "^2.1.1",
     "jwt-decode": "^4.0.0",
     "lucide-vue-next": "^0.475.0",
+    "nodemailer": "^6.10.0",
     "nuxt": "^3.0.0",
     "postcss": "^8.0.0",
     "radix-vue": "^1.9.14",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@nuxt/icon": "^1.10.3",
     "@nuxtjs/tailwindcss": "^6.13.1",
+    "@types/nodemailer": "^6.4.17",
     "@vitejs/plugin-vue": "^1.10.2",
     "nuxt-icon": "^1.0.0-beta.7",
     "shadcn-nuxt": "^1.0.1",
