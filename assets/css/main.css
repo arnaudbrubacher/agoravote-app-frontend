@@ -1,0 +1,10 @@
+/* Add this to your existing CSS */
+[data-reka-ui-portal] {
+  z-index: 100 !important;
+}
+
+/* Ensure alert dialog is above all other components */
+[data-reka-ui-dialog-overlay][data-state="open"],
+[data-reka-ui-dialog-content][data-state="open"] {
+  z-index: 100 !important;
+} 

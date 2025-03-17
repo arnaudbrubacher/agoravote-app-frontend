@@ -199,9 +199,11 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useAlert } from '@/composables/useAlert'
 
 const router = useRouter()
 const fileInput = ref(null)
+const { confirm } = useAlert()
 
 // Props
 const props = defineProps({
@@ -526,9 +528,15 @@ const deleteAccount = async () => {
 }
 
 // Log out user
-const logout = () => {
+const logout = async () => {
   // Show confirmation dialog first
-  if (confirm('Are you sure you want to log out?')) {
+  const confirmed = await confirm(
+    'Are you sure you want to log out?',
+    'Confirm Logout',
+    { actionText: 'Yes, log out', cancelText: 'Cancel' }
+  )
+  
+  if (confirmed) {
     // Clear user session or token
     localStorage.removeItem('token')
     localStorage.removeItem('userId')

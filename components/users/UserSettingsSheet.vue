@@ -214,9 +214,13 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { useAlert } from '@/composables/useAlert'
+import { inject } from 'vue'
 
 const router = useRouter()
 const fileInput = ref(null)
+const { confirm } = useAlert()
+const alertDialog = inject('alertDialog')
 
 // Props
 const props = defineProps({
@@ -298,6 +302,11 @@ watch(() => props.open, (isOpen) => {
 // Close the sheet
 const closeSheet = () => {
   isOpen.value = false
+  
+  // If there's an active alert dialog, close it too
+  if (alertDialog && alertDialog.closeDialog) {
+    alertDialog.closeDialog()
+  }
 }
 
 // Trigger file input for profile picture
@@ -577,9 +586,15 @@ const resendVerificationEmail = async () => {
 }
 
 // Log out user
-const logout = () => {
+const logout = async () => {
   // Show confirmation dialog first
-  if (confirm('Are you sure you want to log out?')) {
+  const confirmed = await confirm(
+    'Are you sure you want to log out?',
+    'Confirm Logout',
+    { actionText: 'Yes, log out', cancelText: 'Cancel' }
+  )
+  
+  if (confirmed) {
     // First close the settings sheet
     closeSheet()
     

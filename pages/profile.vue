@@ -105,6 +105,7 @@ import UserProfileCard from '@/components/users/UserCard.vue'
 import Postslist from '@/components/posts/Postslist.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
+import { useAlert } from '@/composables/useAlert'
 
 const router = useRouter()
 const fileInput = ref(null)
@@ -131,6 +132,8 @@ const {
   deletePost
 } = useUserPosts()
 
+const { alert } = useAlert()
+
 // Trigger file input for profile picture
 const triggerFileInput = () => {
   fileInput.value.click()
@@ -142,7 +145,7 @@ const handleProfilePictureUpload = async (event) => {
   try {
     await updateProfilePicture(file)
   } catch (error) {
-    alert('Failed to upload profile picture: ' + (error.response?.data?.error || 'Unknown error'))
+    await alert('Failed to upload profile picture: ' + (error.response?.data?.error || 'Unknown error'), 'Error')
   }
 }
 

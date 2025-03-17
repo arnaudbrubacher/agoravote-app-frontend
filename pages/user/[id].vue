@@ -91,6 +91,7 @@ import UserProfileCard from '~/components/users/UserCard.vue'
 import PostCard from '~/components/posts/Postslist.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
+import { useAlert } from '@/composables/useAlert'
 
 const route = useRoute()
 const router = useRouter()
@@ -112,6 +113,8 @@ const {
   fetchPosts
 } = useUserPosts()
 
+const { alert, confirm } = useAlert()
+
 // Navigate to group page
 const navigateToGroup = (groupId) => {
   router.push(`/group/${groupId}`)
@@ -123,10 +126,18 @@ const openPostDetails = (post) => {
 }
 
 // Open settings
-const openSettings = () => {
+const openSettings = async () => {
   // You can implement settings functionality here
-  // For now, just show an alert
-  alert('Settings functionality will be implemented here')
+  // For now, use the confirm dialog
+  const result = await confirm(
+    'Settings functionality will be implemented soon. Would you like to be notified when it\'s ready?',
+    'Coming Soon',
+    { actionText: 'Yes, notify me', cancelText: 'No thanks' }
+  )
+  
+  if (result) {
+    await alert('You will be notified when the settings feature is available.', 'Notification Set')
+  }
 }
 
 // Computed property for profile picture URL

@@ -107,6 +107,15 @@
       @close="showCreateGroupDialog = false"
       @group-created="handleGroupCreated"
     />
+    
+    <!-- User Settings Dialog -->
+    <UserSettingsDialog 
+      :show="showUserSettingsDialog" 
+      @close="showUserSettingsDialog = false" 
+    />
+    
+    <!-- Global Alert Dialog -->
+    <GlobalAlertDialog />
   </div>
 </template>
 
@@ -132,6 +141,8 @@ import {
 import FindGroupDialog from '@/components/groups/FindGroupDialog.vue'
 import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 import NewGroupDialog from '@/components/groups/NewGroupDialog.vue'
+import UserSettingsDialog from '@/components/users/UserSettingsDialog.vue'
+import GlobalAlertDialog from '@/components/common/GlobalAlertDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
