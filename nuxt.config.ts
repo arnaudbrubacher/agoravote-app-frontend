@@ -73,6 +73,17 @@ export default defineNuxtConfig({
   // Vite Configuration
   vite: {
     // Add your Vite configuration here if needed
+    server: {
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+        port: 24678,
+      },
+      watch: {
+        usePolling: true,
+        interval: 100
+      }
+    }
   },
 
   // PostCSS Configuration

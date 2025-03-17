@@ -110,40 +110,34 @@ yarn dev
 bun run dev
 ```
 
+## Development with Hot Reloading
+
+For a better development experience, you can use hot reloading for both the frontend and backend. This will automatically refresh your applications when code changes are detected.
+
+### Setup
+
+Two scripts have been created to run the frontend and backend with hot reloading:
+
+1. **Frontend Hot Reloading**: Run in one terminal window from the frontend directory
+   ```bash
+   ./dev-frontend.sh
+   ```
+
+2. **Backend Hot Reloading**: Run in another terminal window from the backend directory
+   ```bash
+   ./dev-backend.sh
+   ```
+
+The backend script uses [Air](https://github.com/air-verse/air), a live reload tool for Go applications. It will be automatically installed if not already present.
+
+### Benefits
+
+- Changes to frontend code will automatically refresh the browser
+- Changes to backend Go code will automatically rebuild and restart the server
+- Each application runs in its own terminal window for better visibility of logs
+
 ## Production
 
 Build the application for production:
 
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
 ```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
-
-This update ensures that all dependencies and libraries used by the frontend code are listed in the `README.md` file for other developers to reference.
