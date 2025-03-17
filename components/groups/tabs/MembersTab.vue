@@ -36,9 +36,8 @@
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <!-- Refresh Button -->
+            <!-- Refresh Button - Always visible but only usable by admins -->
             <Button 
-              v-if="pendingMembers.length > 0" 
               variant="outline" 
               size="sm" 
               @click="isCurrentUserAdmin ? fetchPendingMembers() : null"
