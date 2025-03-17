@@ -4,7 +4,13 @@
     <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
       <div class="flex flex-col space-y-4">
         <header class="flex justify-between items-center">
-          <h2 class="text-lg font-semibold">Review Document</h2>
+          <h2 class="text-lg font-semibold">
+            {{ 
+              isApprovedGroup 
+                ? (currentDocument ? 'Manage Document' : (props.requiresDocuments ? 'Upload Required Document' : 'View Document')) 
+                : (currentDocument ? 'Review Document' : 'Upload Required Document') 
+            }}
+          </h2>
           <Button variant="ghost" size="icon" @click="$emit('close')">
             <LucideIcon name="X" size="4" class="h-4 w-4" />
           </Button>
@@ -83,8 +89,8 @@
             </div>
             
             <!-- Update Document Section -->
-            <div class="space-y-4 mt-6">
-              <h3 class="text-md font-medium">Replace Document</h3>
+            <div v-if="currentDocument || props.requiresDocuments" class="space-y-4 mt-6">
+              <h3 class="text-md font-medium">{{ currentDocument ? 'Replace Document' : 'Upload Document' }}</h3>
               
               <div 
                 class="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
@@ -147,13 +153,14 @@
         <div class="flex justify-end space-x-2 pt-4 border-t">
           <Button variant="outline" @click="$emit('close')">Cancel</Button>
           <Button 
+            v-if="currentDocument || props.requiresDocuments"
             variant="default" 
             :disabled="!newDocumentFile || isSubmitting"
             @click="uploadDocument"
           >
             <LucideIcon v-if="isSubmitting" name="Loader2" size="4" class="h-4 w-4 mr-1 animate-spin" />
             <LucideIcon v-else name="Upload" size="4" class="h-4 w-4 mr-1" />
-            {{ isSubmitting ? 'Uploading...' : 'Replace Document' }}
+            {{ isSubmitting ? 'Uploading...' : (currentDocument ? 'Replace Document' : 'Upload Document') }}
           </Button>
         </div>
       </div>
@@ -171,6 +178,10 @@ const props = defineProps({
   group: {
     type: Object,
     required: true
+  },
+  requiresDocuments: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -211,6 +222,12 @@ const statusText = computed(() => {
   if (status === 'rejected') return 'Rejected';
   
   return 'Unknown Status';
+})
+
+// Add this computed property after the other computed properties
+const isApprovedGroup = computed(() => {
+  if (!props.group.membership) return false;
+  return props.group.membership.status === 'approved';
 })
 
 // Fetch the current document when the component is mounted

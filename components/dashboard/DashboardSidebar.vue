@@ -125,9 +125,20 @@
             v-for="group in activeGroups" 
             :key="group.id" 
             :group="group"
-            :showActions="false"
+            :showActions="true"
             @click="$emit('view-group', group.id)"
-          />
+          >
+            <template #actions>
+              <Button 
+                v-if="hasDocuments(group) || groupRequiresDocuments(group)"
+                variant="outline" 
+                size="sm"
+                @click.stop="manageDocuments(group)"
+              >
+                {{ hasDocuments(group) ? 'View Documents' : 'Upload Documents' }}
+              </Button>
+            </template>
+          </GroupCard>
         </div>
       </div>
     </SheetContent>
@@ -137,6 +148,7 @@
   <MemberDocumentManager
     v-if="showDocumentManager && selectedGroup"
     :group="selectedGroup"
+    :requiresDocuments="groupRequiresDocuments(selectedGroup)"
     @close="closeDocumentManager"
     @document-updated="handleDocumentUpdated"
   />
@@ -816,24 +828,60 @@ const hasDocuments = (group) => {
   }
 }
 
+// Helper function to check if a group requires documents
+const groupRequiresDocuments = (group) => {
+  // Check both camelCase and snake_case versions of the flag
+  if (group.requiresDocuments === true || group.requires_documents === true) {
+    console.log(`Group ${group.name} requires documents (flag)`);
+    return true;
+  }
+  
+  // Check for required documents array
+  const documents = group.requiredDocuments || group.required_documents;
+  
+  if (documents) {
+    // If it's a string (JSON), parse it
+    if (typeof documents === 'string') {
+      try {
+        const parsedDocs = JSON.parse(documents);
+        if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
+          console.log(`Group ${group.name} requires documents (parsed array)`);
+          return true;
+        }
+      } catch (e) {
+        console.error('Error parsing required documents:', e);
+      }
+    } 
+    // If it's already an array
+    else if (Array.isArray(documents) && documents.length > 0) {
+      console.log(`Group ${group.name} requires documents (array)`);
+      return true;
+    }
+  }
+  
+  console.log(`Group ${group.name} does not require documents`);
+  return false;
+}
+
 // Open the document manager for a group
 const manageDocuments = async (group) => {
   console.log('Opening document manager for group:', group.name);
   console.log('Group ID:', group.id);
   console.log('Group membership status:', group.membership?.status);
-  console.log('Invitation accepted:', group.membership?.invitation_accepted);
   
   // Check if the group has documents
   const hasDocsResult = hasDocuments(group);
   console.log('Group has documents (from local check):', hasDocsResult);
   
   // Check if the group requires documents
-  const requiresDocuments = group.requiresDocuments === true || 
-                           group.requires_documents === true || 
-                           (group.requiredDocuments && group.requiredDocuments.length > 0) ||
-                           (group.required_documents && group.required_documents.length > 0);
-  
+  const requiresDocuments = groupRequiresDocuments(group);
   console.log('Group requires documents:', requiresDocuments);
+  
+  // If the group doesn't require documents and doesn't have documents, don't proceed
+  if (!requiresDocuments && !hasDocsResult) {
+    console.log(`Group ${group.name} doesn't require documents and doesn't have any, not opening document manager`);
+    return;
+  }
   
   // Document fields in membership
   if (group.membership) {
@@ -842,6 +890,7 @@ const manageDocuments = async (group) => {
     console.log('- document_file_name:', group.membership.document_file_name);
     console.log('- documents_submitted:', group.membership.documents_submitted);
     console.log('- DocumentsSubmitted:', group.membership.DocumentsSubmitted);
+    console.log('- membership status:', group.membership.status);
   } else {
     console.log('No membership object found');
   }
@@ -860,7 +909,8 @@ const manageDocuments = async (group) => {
       // If the group doesn't have a membership object, create one
       if (!group.membership) {
         group.membership = {
-          status: 'pending'
+          // For approved groups in "Your Groups" section, set status to approved
+          status: activeGroups.value.includes(group) ? 'approved' : 'pending'
         };
       }
       
@@ -899,6 +949,8 @@ const manageDocuments = async (group) => {
   
   // Set the selected group and show the document manager
   selectedGroup.value = group;
+  // Store whether the group requires documents
+  selectedGroup.value.requiresDocuments = requiresDocuments;
   showDocumentManager.value = true;
 }
 

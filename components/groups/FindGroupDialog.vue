@@ -33,6 +33,7 @@
             <GroupCard 
               :group="group" 
               :showActions="true"
+              :clickable="false"
               @click="$emit('view-group', group.id)"
             >
               <template #actions>
