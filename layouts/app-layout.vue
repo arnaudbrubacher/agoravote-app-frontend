@@ -8,21 +8,29 @@
             v-if="isAuthenticated" 
             class="flex items-center cursor-pointer"
             @click="openDashboardSidebar"
+            :class="{'bg-primary/10 rounded-md px-2 py-1': isOnGroupPage}"
           >
             <div class="flex-shrink-0 mr-2">
-              <div v-if="!lastUsedGroup?.picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+              <!-- Fallback icon -->
+              <div 
+                v-show="!groupPictureUrl || showFallbackIcon" 
+                class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+                ref="fallbackIcon"
+              >
                 <Users class="h-5 w-5 text-gray-600" />
               </div>
+              
+              <!-- Group image -->
               <img 
-                v-else
-                :src="lastUsedGroup.picture" 
+                v-if="groupPictureUrl"
+                :src="groupPictureUrl" 
                 alt="Group Picture"
                 class="w-8 h-8 rounded-full object-cover"
+                @error="handleGroupImageError"
+                v-show="!showFallbackIcon"
               />
             </div>
-            <div>
-              <span class="text-sm font-medium truncate max-w-[120px]">{{ lastUsedGroup?.name || 'Groups' }}</span>
-            </div>
+            <span class="text-sm font-medium truncate max-w-[120px]">{{ lastUsedGroup?.name || 'Groups' }}</span>
           </div>
           
           
@@ -34,6 +42,7 @@
             v-if="isAuthenticated" 
             class="flex items-center cursor-pointer"
             @click="openUserSettings"
+            :class="{'bg-primary/10 rounded-md px-2 py-1': isOnProfilePage}"
           >
             <div class="flex-shrink-0 mr-2">
               <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -150,20 +159,42 @@ const userData = ref(null)
 const loading = ref(false)
 const isUserSettingsOpen = ref(false)
 const isDashboardSidebarOpen = ref(false)
+const showFallbackIcon = ref(false)
 
 // Groups data
 const userGroups = ref([])
 const isLoadingGroups = ref(false)
 const lastUsedGroupId = ref(localStorage.getItem('lastUsedGroupId') || null)
 
+// Computed properties to check current route
+const isOnGroupPage = computed(() => {
+  return route.path.startsWith('/group/')
+})
+
+const isOnProfilePage = computed(() => {
+  return route.path === '/profile' || route.path === '/settings'
+})
+
 // Computed property for the last used group
 const lastUsedGroup = computed(() => {
   if (!lastUsedGroupId.value || userGroups.value.length === 0) {
+    console.log('No last used group or empty groups array');
     return userGroups.value[0] || null // Return first group or null if no groups
   }
   
   // Find the group with the matching ID
   const group = userGroups.value.find(g => g.id === lastUsedGroupId.value)
+  
+  // Log the group object to inspect its structure
+  if (group) {
+    console.log('Found last used group:', JSON.stringify(group));
+    console.log('Group picture property:', group.picture);
+    // Check if the picture property might be under a different name
+    const groupKeys = Object.keys(group);
+    console.log('Group object keys:', groupKeys);
+  } else {
+    console.log('Last used group not found, using first group');
+  }
   
   // Return the found group or the first group as fallback
   return group || userGroups.value[0] || null
@@ -369,6 +400,13 @@ const fetchUserGroups = async () => {
   try {
     isLoadingGroups.value = true
     const response = await axios.get('/user/groups')
+    console.log('Raw API response for user groups:', response.data);
+    
+    // Check if the response data has the expected structure
+    if (Array.isArray(response.data)) {
+      console.log('First group in response:', response.data[0]);
+    }
+    
     userGroups.value = response.data
     
     // After fetching groups, check if we need to update the last used group
@@ -408,6 +446,36 @@ const fetchUserGroups = async () => {
     isLoadingGroups.value = false
   }
 }
+
+// Computed property for the last used group picture URL
+const groupPictureUrl = computed(() => {
+  console.log('Last used group:', lastUsedGroup.value);
+  if (!lastUsedGroup.value) return null;
+  
+  // Check for both camelCase and snake_case versions of the picture property
+  const picture = lastUsedGroup.value.picture || lastUsedGroup.value.profile_picture || lastUsedGroup.value.image;
+  
+  if (!picture) {
+    console.log('No picture found for group using any property name');
+    return null;
+  }
+  
+  // Check if it's already a full URL
+  if (picture.startsWith('http://') || picture.startsWith('https://')) {
+    console.log('Using full URL for group picture:', picture);
+    return picture;
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  
+  // Ensure the path starts with a slash
+  const picturePath = picture.startsWith('/') ? picture : `/${picture}`;
+  const fullUrl = `${baseUrl}${picturePath}`;
+  
+  console.log('Using relative URL for group picture:', fullUrl);
+  return fullUrl;
+})
 
 // Computed property for profile picture URL
 const profilePictureUrl = computed(() => {
@@ -470,6 +538,15 @@ watch(
       lastUsedGroupId.value = groupMatch[1]
       localStorage.setItem('lastUsedGroupId', groupMatch[1])
     }
+  }
+)
+
+// Watch for changes to lastUsedGroup to reset the fallback icon
+watch(
+  () => lastUsedGroup.value,
+  () => {
+    // Reset the fallback icon when the group changes
+    showFallbackIcon.value = false;
   }
 )
 
@@ -616,6 +693,41 @@ const handleGroupDataUpdated = (event) => {
   
   // Refresh the groups list
   fetchUserGroups();
+}
+
+// Handle when a user leaves a group
+const handleUserLeftGroup = (event) => {
+  console.log('User left group event received in app-layout')
+  
+  // Check if the event has detail with groupId
+  if (event.detail && event.detail.groupId) {
+    console.log('User left group:', event.detail.groupId)
+    
+    // If the user is currently on the page of the group they left, redirect to profile
+    if (route.path === `/group/${event.detail.groupId}`) {
+      console.log('User is on the page of the group they left, redirecting to profile')
+      router.push('/profile')
+    }
+    
+    // If this was the last used group, clear it
+    if (lastUsedGroupId.value === event.detail.groupId) {
+      lastUsedGroupId.value = null
+      localStorage.removeItem('lastUsedGroupId')
+    }
+    
+    // Refresh the groups list
+    fetchUserGroups()
+  }
+}
+
+// Handle group image loading error
+const handleGroupImageError = (event) => {
+  console.error('Error loading group image:', event);
+  // Log the URL that failed to load
+  console.error('Failed image URL:', event.target.src);
+  
+  // Show the fallback icon
+  showFallbackIcon.value = true;
 }
 
 onMounted(async () => {
