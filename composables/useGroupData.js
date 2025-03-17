@@ -23,7 +23,7 @@ export function useGroupData(groupId) {
       console.log('Group data from API:', group.value)
       console.log('User role in group:', group.value?.currentUserRole)
       console.log('Is admin flag:', group.value?.currentUserIsAdmin)
-      console.log('Admin ID:', group.value?.admin_id)
+      console.log('Creator ID:', group.value?.creator_id)
       console.log('Current user ID from API:', group.value?.currentUser?.id)
       
       // Check if the user has pending status
@@ -42,17 +42,19 @@ export function useGroupData(groupId) {
       // Save this group as the last visited group
       localStorage.setItem('lastVisitedGroupId', groupId)
       
-      // If currentUserIsAdmin is not set but we have admin_id, check if current user is the admin
+      // If currentUserIsAdmin is not set but we have creator_id, check if current user is the creator
       if (group.value && group.value.currentUserIsAdmin === undefined) {
         // Get current user ID from local storage or auth store
         const currentUserId = localStorage.getItem('userId') // Adjust based on your auth implementation
         
         console.log('Current user ID from localStorage:', currentUserId)
-        console.log('Comparing with admin_id:', group.value.admin_id)
+        console.log('Comparing with creator_id:', group.value.creator_id || group.value.admin_id) // Support both for backward compatibility
         
-        // Set admin flag if current user is the group admin
-        if (currentUserId && group.value.admin_id && currentUserId === group.value.admin_id) {
-          console.log('Setting currentUserIsAdmin to true based on admin_id match')
+        // Set admin flag if current user is the group creator
+        if (currentUserId && 
+            ((group.value.creator_id && currentUserId === group.value.creator_id) || 
+             (group.value.admin_id && currentUserId === group.value.admin_id))) {
+          console.log('Setting currentUserIsAdmin to true based on creator match')
           group.value.currentUserIsAdmin = true
         }
       }
@@ -256,7 +258,7 @@ export function useGroupData(groupId) {
     // Get current user ID from local storage or auth store
     const currentUserId = localStorage.getItem('userId'); // Adjust based on your auth implementation
     console.log('Current user ID from localStorage:', currentUserId);
-    console.log('Admin ID from group:', group.value.admin_id);
+    console.log('Creator ID from group:', group.value.creator_id || group.value.admin_id); // Support both for backward compatibility
     
     // Check all possible admin indicators
     const adminByRole = group.value?.currentUserRole === 'admin';
@@ -278,9 +280,13 @@ export function useGroupData(groupId) {
       
       return isCurrentUser && isAdmin;
     });
-    const isGroupCreator = currentUserId && group.value.admin_id && 
+    const isGroupCreator = currentUserId && 
+                          ((group.value.creator_id && 
+                           (currentUserId === group.value.creator_id || 
+                            currentUserId === group.value.creator_id.toString())) ||
+                           (group.value.admin_id && 
                            (currentUserId === group.value.admin_id || 
-                            currentUserId === group.value.admin_id.toString());
+                            currentUserId === group.value.admin_id.toString())));
     
     console.log('Admin checks:', {
       adminByRole,

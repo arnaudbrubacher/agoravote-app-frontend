@@ -205,9 +205,6 @@ const addUser = async (user) => {
     
     // Remove added user from results
     searchResults.value = searchResults.value.filter(u => u.id !== user.id)
-    
-    // Show success message
-    alert(`Invitation sent to ${user.name || user.email}`)
   } catch (err) {
     console.error('Failed to invite user to group:', err)
     alert('Failed to send invitation: ' + (err.response?.data?.error || err.message))
