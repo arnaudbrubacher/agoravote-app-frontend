@@ -174,7 +174,7 @@ const {
   currentUser,
   fetchCurrentUser,
   addMember, 
-  handleUserAdded,
+  handleUserAdded: processUserAdded,
   handleCsvImport: importCsvMembers,
   promoteMember,
   demoteMember,
@@ -502,6 +502,21 @@ const handleLeaveGroup = async () => {
       console.error('Failed to leave group:', err)
       alert('Failed to leave group: ' + (err.response?.data?.error || err.message))
     }
+  }
+}
+
+const handleUserAdded = async (userData) => {
+  try {
+    await processUserAdded(userData);
+    
+    // Dispatch a custom event to refresh the pending members list
+    window.dispatchEvent(new CustomEvent('refresh-pending-members', {
+      detail: { groupId: groupId }
+    }));
+    
+    showUserSearchDialog.value = false;
+  } catch (err) {
+    console.error('Failed to add user:', err);
   }
 }
 </script>

@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
 import MembersList from '~/components/members/MembersList.vue'
 import PendingMembersList from '~/components/members/PendingMembersList.vue'
@@ -226,6 +226,14 @@ onMounted(async () => {
   
   // Fetch pending members when component mounts
   fetchPendingMembers()
+  
+  // Add event listener for refresh-pending-members event
+  window.addEventListener('refresh-pending-members', handleRefreshPendingMembers)
+})
+
+onBeforeUnmount(() => {
+  // Remove event listener when component is unmounted
+  window.removeEventListener('refresh-pending-members', handleRefreshPendingMembers)
 })
 
 // Watch for changes in the isCurrentUserAdmin prop
@@ -678,5 +686,16 @@ const fetchDocumentsForActiveMembers = async () => {
   }
   
   console.log('MembersTab - Finished fetching document information for all active members');
+}
+
+// Handler for refresh-pending-members event
+const handleRefreshPendingMembers = (event) => {
+  console.log('MembersTab - Received refresh-pending-members event:', event.detail)
+  
+  // Check if the event is for this group
+  if (event.detail && event.detail.groupId === props.group.id) {
+    console.log('MembersTab - Refreshing pending members for group:', props.group.id)
+    fetchPendingMembers()
+  }
 }
 </script>

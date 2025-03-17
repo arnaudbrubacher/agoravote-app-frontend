@@ -205,6 +205,11 @@ const addUser = async (user) => {
     
     // Remove added user from results
     searchResults.value = searchResults.value.filter(u => u.id !== user.id)
+    
+    // Close the dialog after successful invitation
+    setTimeout(() => {
+      emit('close')
+    }, 500) // Small delay to allow the parent component to process the user-added event
   } catch (err) {
     console.error('Failed to invite user to group:', err)
     alert('Failed to send invitation: ' + (err.response?.data?.error || err.message))

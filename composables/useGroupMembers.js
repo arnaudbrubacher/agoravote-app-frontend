@@ -109,6 +109,11 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     
     // Refresh the group data to update the members list
     await fetchGroup()
+    
+    // Dispatch an event to refresh the pending members list
+    window.dispatchEvent(new CustomEvent('refresh-pending-members', {
+      detail: { groupId }
+    }))
   }
 
   // Promote member to admin
