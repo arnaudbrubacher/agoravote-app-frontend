@@ -1,5 +1,11 @@
 # AgoraVote Application Rules for AI
 
+## Repository Paths
+- Frontend absolute path: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend
+- Backend absolute path: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-backend
+- IMPORTANT: Always use absolute paths when accessing either repository
+- DO NOT use relative paths (../agoravote-app-backend)
+
 ## Project Structure
 - Frontend: Vue.js/Nuxt.js application (current repository)
 - Backend: Go application with Gin framework (located at ../agoravote-app-backend)
