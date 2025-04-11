@@ -3,11 +3,11 @@
   <Card class="mt-6">
     <CardContent class="p-6">
       <!-- Message for temporarily disabled voting functionality -->
-      <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+      <!-- <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
         <p class="text-amber-800">
           Voting functionality is currently under development and will be available soon.
         </p>
-      </div>
+      </div> -->
       
       <!-- Use the shared VotesList component which handles lists of votes -->
       <VotesList

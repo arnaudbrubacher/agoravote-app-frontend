@@ -62,12 +62,6 @@
               <LucideIcon name="Trash" size="4" class="h-4 w-4" />
             </Button>
           </div>
-          
-          <!-- Write-in option toggle -->
-          <div class="flex items-center space-x-2 mt-2">
-            <Checkbox id="allowWriteIn" v-model="formData.allowWriteIn" />
-            <Label for="allowWriteIn">Allow write-in option</Label>
-          </div>
         </div>
         
         <!-- Vote Settings -->
@@ -80,33 +74,8 @@
               <Label for="isSecret">Secret ballot (votes are anonymous)</Label>
             </div>
           </div>
-          
-          <!-- Vote Limits -->
-          <div>
-            <Label>Selection Limits</Label>
-            <div class="grid grid-cols-2 gap-2 mt-2">
-              <div>
-                <Label for="minChoices" class="text-xs">Minimum</Label>
-                <Input 
-                  id="minChoices"
-                  v-model.number="formData.minChoices"
-                  type="number"
-                  min="1"
-                  :max="formData.choices.length"
-                />
-              </div>
-              <div>
-                <Label for="maxChoices" class="text-xs">Maximum</Label>
-                <Input 
-                  id="maxChoices"
-                  v-model.number="formData.maxChoices"
-                  type="number"
-                  :min="formData.minChoices"
-                  :max="formData.choices.length"
-                />
-              </div>
-            </div>
-          </div>
+          <!-- Empty div to maintain grid layout if needed -->
+          <div></div> 
         </div>
         
         <!-- Vote Schedule -->
@@ -178,10 +147,7 @@ const formData = ref({
     { text: '' },
     { text: '' }
   ],
-  allowWriteIn: false,
   isSecret: true,
-  minChoices: 1,
-  maxChoices: 1,
   startTime: formatDateForInput(new Date()),
   endTime: formatDateForInput(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // Default to 1 week later
 })
@@ -198,16 +164,6 @@ function addChoice() {
 
 function removeChoice(index) {
   formData.value.choices.splice(index, 1)
-  
-  // Ensure maxChoices is not greater than the number of choices
-  if (formData.value.maxChoices > formData.value.choices.length) {
-    formData.value.maxChoices = formData.value.choices.length
-  }
-  
-  // Ensure minChoices is not greater than maxChoices
-  if (formData.value.minChoices > formData.value.maxChoices) {
-    formData.value.minChoices = formData.value.maxChoices
-  }
 }
 
 function handleSubmit() {

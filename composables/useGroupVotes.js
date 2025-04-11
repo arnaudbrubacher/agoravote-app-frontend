@@ -10,14 +10,16 @@ export function useGroupVotes(groupId) {
   const fetchVotes = async () => {
     try {
       isLoadingVotes.value = true
-      // Temporarily disabled actual API call due to 404 error - backend endpoint not implemented yet
-      // const response = await axios.get(`/groups/${groupId}/votes`)
-      // votes.value = response.data.votes || response.data // Handle different API response formats
-      
-      // Return mock empty votes array instead
-      votes.value = []
-      console.log("Vote fetching is temporarily disabled - backend endpoint not implemented yet")
-      return votes.value
+      // Re-enable the API call
+      const response = await axios.get(`/groups/${groupId}/votes`)
+      // Ensure we correctly access the votes array from the response
+      // (Backend returns { "votes": [...] })
+      votes.value = response.data.votes || []
+      console.log("Fetched votes:", votes.value)
+      // Remove temporary disabling logic
+      // votes.value = []
+      // console.log("Vote fetching is temporarily disabled - backend endpoint not implemented yet")
+      // return votes.value
     } catch (error) {
       console.error('Failed to fetch votes:', error)
       alert('Failed to fetch votes')

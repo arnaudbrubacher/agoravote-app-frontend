@@ -30,8 +30,8 @@ alwaysApply: true
 ## ElectionGuard Security Integration
 - The backend integrates with ElectionGuard SDK for secure, end-to-end verifiable voting
 - ElectionGuard uses homomorphic encryption to secure ballots
-- Integration uses CGo to interface between Go and C++ ElectionGuard library
-- API endpoint: POST /electionguard/encrypt-ballot
+- https://github.com/Election-Tech-Initiative/electionguard-python/tree/main/docs
+
 
 ## Key Models
 - User: Authentication and profile information
