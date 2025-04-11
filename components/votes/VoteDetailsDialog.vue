@@ -35,7 +35,7 @@
                     :id="choice.text"
                     v-model:checked="selectedChoices"
                     :value="choice.text"
-                    :disabled="!canSelectMore && !selectedChoices.includes(choice.text)"
+                    :disabled="!vote.can_vote || (!canSelectMore && !selectedChoices.includes(choice.text))"
                   />
                   <Label :for="choice.text">{{ choice.text }}</Label>
                 </div>
@@ -52,9 +52,9 @@
               </p>
 
               <div class="flex justify-end">
-                <Button 
-                  type="submit" 
-                  :disabled="!isValidVote"
+                <Button
+                  type="submit"
+                  :disabled="!vote.can_vote || !isValidVote"
                 >
                   <LucideIcon v-if="isSubmitting" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
                   Submit Vote

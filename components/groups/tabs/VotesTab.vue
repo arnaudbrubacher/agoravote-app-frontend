@@ -12,120 +12,45 @@
       <!-- Use the shared VotesList component which handles lists of votes -->
       <VotesList
         :votes="votes"
-        :loading="isLoadingVotes"
+        :loading="loading"
         :show-create-button="true"
-        @create-vote="showNewVoteDialog = true"
-        @open-vote="openVoteDetails"
+        @create-vote="$emit('create-vote')"
+        @open-vote="$emit('open-vote', $event)"
       />
     </CardContent>
   </Card>
   
-  <!-- New Vote Dialog -->
-  <NewVoteDialog
-    v-if="showNewVoteDialog"
-    :group="group"
-    @close="showNewVoteDialog = false"
-    @submit="handleCreateVote"
-  />
-  
-  <!-- Vote Details Dialog -->
-  <VoteDetailsDialog
-    v-if="selectedVote"
-    :vote="selectedVote"
-    :current-user-id="currentUserId"
-    @close="selectedVote = null"
-    @submit-vote="handleSubmitVote"
-    @delete="handleDeleteVote"
-  />
+  <!-- Dialogs are now handled by the parent component -->
+  <!-- New Vote Dialog removed -->
+  <!-- Vote Details Dialog removed -->
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
 import VotesList from '~/components/votes/Voteslist.vue'
-import NewVoteDialog from '~/components/votes/NewVoteDialog.vue'
-import VoteDetailsDialog from '~/components/votes/VoteDetailsDialog.vue'
-import { useGroupVotes } from '@/composables/useGroupVotes'
-import { getUserIdFromToken } from '~/src/utils/auth'
-import axios from '~/src/utils/axios'
+// Removed imports: NewVoteDialog, VoteDetailsDialog, useGroupVotes, getUserIdFromToken, axios, computed
 
+// Receive props from parent
 const props = defineProps({
-  group: {
+  votes: {
+    type: Array,
+    required: true
+  },
+  loading: {
+    type: Boolean,
+    required: true
+  },
+  group: { // Keep group prop if needed by VotesList or other elements here
     type: Object,
     required: true
   }
 })
 
-const emit = defineEmits(['show-new-vote', 'open-vote'])
+// Define emits
+const emit = defineEmits(['create-vote', 'open-vote'])
 
-// Get current user ID from token
-const currentUserId = computed(() => {
-  if (process.client) {
-    return getUserIdFromToken() || ''
-  }
-  return ''
-})
+// All local state, composable usage, and handlers related to 
+// selectedVote, dialogs, submitting, deleting are removed.
+// onMounted is removed as fetchVotes is handled by parent.
 
-const { votes, isLoadingVotes, fetchVotes, createNewVote, handleVoteSubmit, deleteVote } = useGroupVotes(props.group.id)
-
-const showNewVoteDialog = ref(false)
-const selectedVote = ref(null)
-
-const openVoteDetails = (vote) => {
-  const now = new Date()
-  const startTime = new Date(vote.start_time)
-  const endTime = new Date(vote.end_time)
-  
-  let status = 'Upcoming'
-  if (now >= startTime && now <= endTime) {
-    status = 'Open'
-  } else if (now > endTime) {
-    status = 'Closed'
-  }
-  
-  selectedVote.value = {
-    ...vote,
-    status
-  }
-}
-
-const handleCreateVote = async (voteData) => {
-  try {
-    console.log('Creating vote with data:', voteData);
-    await createNewVote(voteData);
-    showNewVoteDialog.value = false;
-    await fetchVotes(); // Refresh the votes list
-  } catch (error) {
-    console.error('Failed to create vote:', error);
-    console.error('Error response:', error.response?.data);
-    alert('Failed to create vote: ' + (error.response?.data?.error || error.message));
-  }
-}
-
-const handleSubmitVote = async (voteData) => {
-  if (!selectedVote.value) return
-  
-  try {
-    console.log('Submitting vote with data:', voteData);
-    await handleVoteSubmit(voteData);
-    selectedVote.value = null;
-    await fetchVotes(); // Refresh the votes list
-  } catch (error) {
-    console.error('Failed to submit vote:', error);
-    console.error('Error response:', error.response?.data);
-    alert('Failed to submit vote: ' + (error.response?.data?.error || error.message));
-  }
-}
-
-const handleDeleteVote = async (voteId) => {
-  try {
-    await deleteVote(voteId)
-    selectedVote.value = null
-    await fetchVotes() // Refresh the votes list
-  } catch (error) {
-    console.error('Failed to delete vote:', error)
-  }
-}
-
-onMounted(fetchVotes)
 </script>

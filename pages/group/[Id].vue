@@ -56,10 +56,11 @@
       :votes="votes"
       :current-user="currentUser"
       :is-current-user-admin="isCurrentUserAdmin"
+      :is-loading-votes="isLoadingVotes"
       @create-post="showNewPostDialog = true"
       @open-post="selectedPost = $event"
       @create-vote="showNewVoteDialog = true"
-      @open-vote="selectedVote = $event"
+      @open-vote="handleOpenVote($event.id)"
       @add-member="showAddMemberDialog = true"
       @search-user="showUserSearchDialog = true"
       @csv-import="handleCsvImport"
@@ -77,8 +78,10 @@
       :show-new-vote-dialog="showNewVoteDialog"
       :show-add-member-dialog="showAddMemberDialog"
       :show-user-search-dialog="showUserSearchDialog"
+      :show-vote-details="showVoteDetailsDialog"
       :selected-post="selectedPost"
       :selected-vote="selectedVote"
+      :is-loading-vote-details="isLoadingDetails"
       :group="group"
       :current-user="currentUser"
       :is-current-user-admin="isCurrentUserAdmin"
@@ -88,7 +91,7 @@
       @close-add-member="showAddMemberDialog = false"
       @close-user-search="showUserSearchDialog = false"
       @close-post-details="selectedPost = null"
-      @close-vote-details="selectedVote = null"
+      @close-vote-details="closeVoteDetailsHandler"
       @group-updated="handleGroupUpdated"
       @group-deleted="handleGroupDeleted"
       @vote-created="handleVoteCreated"
@@ -104,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Users, Settings, LogOut } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -156,8 +159,8 @@ const showNewPostDialog = ref(false)
 const showNewVoteDialog = ref(false)
 const showAddMemberDialog = ref(false)
 const showUserSearchDialog = ref(false)
+const showVoteDetailsDialog = ref(false)
 const selectedPost = ref(null)
-const selectedVote = ref(null)
 
 // Use group data and functionality
 const { 
@@ -195,11 +198,23 @@ const {
 // Use group votes functionality
 const { 
   votes, 
+  selectedVote,
+  isLoadingVotes, 
+  isLoadingDetails, 
   fetchVotes, 
-  createNewVote, 
-  handleVoteSubmit, 
-  deleteVote 
+  openVoteDetails,
+  createNewVote
 } = useGroupVotes(groupId)
+
+// WATCHER FOR DEBUGGING
+watch(selectedVote, (newValue, oldValue) => {
+  console.log(`[pages/group/[id].vue] selectedVote ref changed:`, {
+    oldValue,
+    newValue,
+    isTruthy: !!newValue
+  });
+});
+// END WATCHER
 
 // Initialize
 onMounted(async () => {
@@ -211,7 +226,7 @@ onMounted(async () => {
       fetchCurrentUser(),
       fetchGroup(),
       fetchPosts(),
-      fetchVotes()
+      fetchVotes() // Use destructured function
     ])
 
     // Check if the user has pending status and redirect if needed
@@ -323,9 +338,9 @@ const navigateToProfile = () => {
 }
 
 // Action handlers
-const handleGroupUpdated = async (updatedGroup) => {
+const handleGroupUpdated = async (updatedGroupData) => {
   try {
-    await updateGroupSettings(updatedGroup)
+    await updateGroupSettings(updatedGroupData)
     showSettingsDialog.value = false
   } catch (err) {
     console.error('Failed to update group:', err)
@@ -336,7 +351,7 @@ const handleGroupUpdated = async (updatedGroup) => {
 const handleGroupDeleted = async () => {
   try {
     await confirmDeleteGroup()
-    // Navigation is handled in the confirmDeleteGroup function
+    router.push('/')
   } catch (err) {
     console.error('Failed to delete group:', err)
     alert('Failed to delete group: ' + (err.response?.data?.error || err.message))
@@ -344,179 +359,167 @@ const handleGroupDeleted = async () => {
 }
 
 const handleVoteCreated = async (voteData) => {
+  console.log("[pages/group/[id].vue] handleVoteCreated called with data:", voteData);
   try {
-    await createNewVote(voteData)
-    showNewVoteDialog.value = false
+    await createNewVote(voteData); // Call the composable function
+    showNewVoteDialog.value = false;
+    await fetchVotes(); // Refresh list after successful creation
+    // Optional: Show success message
+    // alert("Vote created successfully!"); 
   } catch (err) {
-    console.error('Failed to create vote:', err)
+    console.error("[pages/group/[id].vue] Failed to create vote:", err);
+    // Error alert is likely handled within createNewVote, but could add one here too
   }
+};
+
+const handlePostCreated = async () => {
+  showNewPostDialog.value = false
+  await fetchPosts()
 }
 
-const handlePostCreated = async (postData) => {
-  try {
-    console.log('Creating post with data:', postData);
-    const newPost = await createNewPost(postData);
-    console.log('Post created successfully:', newPost);
-    addNewPostToList(newPost); //  Use the renamed function
-    showNewPostDialog.value = false;
-  } catch (err) {
-    console.error('Failed to create post:', err);
-    console.error('Error response:', err.response?.data);
-    alert('Failed to create post: ' + (err.response?.data?.error || err.message));
-  }
+const handleMemberAdded = async () => {
+  showAddMemberDialog.value = false
+  await fetchGroup()
 }
 
-const handleMemberAdded = async (memberData) => {
-  try {
-    await addMember(memberData)
-    showAddMemberDialog.value = false
-  } catch (err) {
-    console.error('Failed to add member:', err)
+const handlePostEdited = (editedPost) => {
+  const index = posts.value.findIndex(p => p.id === editedPost.id)
+  if (index !== -1) {
+    posts.value[index] = editedPost
   }
+  selectedPost.value = null
 }
 
-const handlePostEdited = async (post) => {
-  try {
-    await editPost(post)
-    selectedPost.value = null
-  } catch (err) {
-    console.error('Failed to edit post:', err)
-  }
+const handlePostDeleted = async (postId) => {
+  posts.value = posts.value.filter(p => p.id !== postId)
+  selectedPost.value = null
 }
 
-const handlePostDeleted = async (post) => {
-  try {
-    console.log('Deleting post with ID:', post.id);
-    await deletePost(post);
-    console.log('Post deleted successfully');
-    // Optionally refresh the posts list
-    // await fetchPosts();
-  } catch (err) {
-    console.error('Failed to delete post:', err);
-    console.error('Error response:', err.response?.data);
-    alert('Failed to delete post: ' + (err.response?.data?.error || err.message));
-  }
-}
-
-const handleVoteSubmitted = async (voteData) => {
-  try {
-    await handleVoteSubmit(voteData)
-  } catch (err) {
-    console.error('Failed to submit vote:', err)
-  }
+const handleVoteSubmitted = async () => {
+  selectedVote.value = null // Close dialog using destructured ref
+  await fetchVotes() // Use destructured function
 }
 
 const handleVoteDeleted = async (voteId) => {
-  try {
-    await deleteVote(voteId)
-  } catch (err) {
-    console.error('Failed to delete vote:', err)
+  // Call the backend API to delete the vote
+  try { 
+    console.log(`[pages/group/[id].vue] Sending delete request for vote ID: ${voteId}`);
+    const response = await axios.delete(`/votes/${voteId}`)
+    console.log(`[pages/group/[id].vue] Vote deleted successfully on backend:`, response.data);
+    
+    // Remove from frontend list only after successful backend deletion
+    votes.value = votes.value.filter(v => v.id !== voteId) 
+    selectedVote.value = null 
+    showVoteDetailsDialog.value = false 
+
+    alert("Vote deleted successfully."); // Optional success message
+
+  } catch (err) { 
+    console.error(`[pages/group/[id].vue] Failed to delete vote ID ${voteId}:`, err);
+    alert(`Failed to delete vote: ${err.response?.data?.error || err.message}`);
+    // Optionally, you might not want to close the dialog if deletion fails
+    // selectedVote.value = null 
+    // showVoteDetailsDialog.value = false 
   }
 }
 
-// Use the existing functions from the useGroupMembers composable
+const handleUserAdded = async () => {
+  showUserSearchDialog.value = false
+  await fetchGroup()
+}
+
+// Wrapper for the group member add action
+const handleAddMemberWrapper = async (email) => {
+  await addMember(email)
+  await fetchGroup()
+}
+
+// Wrapper for promoting member
+const handleMemberPromoted = async (memberId) => {
+  await promoteMember(memberId)
+  await fetchGroup()
+}
+
+// Wrapper for demoting member
+const handleMemberDemoted = async (memberId) => {
+  await demoteMember(memberId)
+  await fetchGroup()
+}
+
+// Wrapper for removing member
+const handleMemberRemoveEvent = async (memberId) => {
+  await handleMemberRemove(memberId)
+  await fetchGroup()
+}
+
+// Handle CSV Import
 const handleCsvImport = async (file) => {
-  try {
-    await importCsvMembers({ target: { files: [file] } })
-  } catch (err) {
-    console.error('Failed to import members:', err)
-  }
-}
-
-const handleMemberPromoted = async (member) => {
-  try {
-    await promoteMember(member)
-  } catch (err) {
-    console.error('Failed to promote member:', err)
-  }
-}
-
-const handleMemberDemoted = async (member) => {
-  try {
-    await demoteMember(member)
-  } catch (err) {
-    console.error('Failed to demote member:', err)
-  }
-}
-
-const handleMemberRemoveEvent = async (member) => {
-  console.log('Group page - Member removal event received for:', member.name, {
-    id: member.id,
-    userId: member.userId,
-    user_id: member.user_id,
-    user: member.user && member.user.id
-  });
-  
-  try {
-    await handleMemberRemove(member);
-    console.log('Group page - Member removed successfully');
-  } catch (err) {
-    console.error('Group page - Failed to remove member:', err);
-    alert('Failed to remove member: ' + (err.response?.data?.error || err.message));
-  }
+  await importCsvMembers(file)
+  await fetchGroup()
 }
 
 const refreshGroupData = async () => {
-  try {
-    await fetchGroup()
-    await fetchPosts()
-    await fetchVotes()
-  } catch (err) {
-    console.error('Failed to refresh group data:', err)
-  }
+  await fetchGroup()
 }
 
-// Computed property for group picture URL
-const groupPictureUrl = computed(() => {
-  if (!group.value?.picture) return null
-  
-  // Check if it's already a full URL
-  if (group.value.picture.startsWith('http://') || group.value.picture.startsWith('https://')) {
-    return group.value.picture
-  }
-  
-  // Otherwise, prepend the API base URL
-  const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
-  return `${apiBaseUrl}${group.value.picture}`
-})
-
-// Add a handler for admin status updates
-const handleAdminStatusUpdate = (isAdmin) => {
-  console.log('Group page received admin status update:', isAdmin)
+const handleAdminStatusUpdate = (newAdminStatus) => {
   if (group.value) {
-    console.log('Updating group.currentUserIsAdmin from', group.value.currentUserIsAdmin, 'to', isAdmin)
-    group.value.currentUserIsAdmin = isAdmin
-    
-    // Dispatch an event to notify components that group data has been updated
-    window.dispatchEvent(new CustomEvent('group-data-updated'))
+    group.value.isCurrentUserAdmin = newAdminStatus
   }
 }
 
-// New function to handle leaving the group
+// Function to trigger opening the vote dialog and fetching details
+const handleOpenVote = async (voteId) => {
+  console.log(`[pages/group/[id].vue] handleOpenVote triggered with ID: ${voteId}`);
+  if (!voteId) {
+    console.error("[pages/group/[id].vue] handleOpenVote received undefined voteId!");
+    return;
+  }
+  await openVoteDetails(voteId); // Use destructured function
+  if (selectedVote.value) { // Check destructured ref
+      console.log("[pages/group/[id].vue] Vote data before showing dialog:", JSON.parse(JSON.stringify(selectedVote.value))); 
+      console.log(`[pages/group/[id].vue] Vote status: ${selectedVote.value?.status}, Choices length: ${selectedVote.value?.choices?.length}`);
+      console.log("[pages/group/[id].vue] Vote details loaded, setting showVoteDetailsDialog to true.");
+      showVoteDetailsDialog.value = true;
+  } else {
+      console.error("[pages/group/[id].vue] Failed to load vote details, dialog will not open.");
+  }
+};
+
+// New handler for closing the vote details dialog
+const closeVoteDetailsHandler = () => {
+    console.log("[pages/group/[id].vue] Closing vote details dialog.");
+    showVoteDetailsDialog.value = false;
+    selectedVote.value = null; // Clear the destructured ref
+};
+
+// Handle leaving the group
 const handleLeaveGroup = async () => {
   if (confirm('Are you sure you want to leave this group?')) {
-    try {
-      await leaveGroup()
-      // Navigation is handled in the leaveGroup function
-    } catch (err) {
-      console.error('Failed to leave group:', err)
-      alert('Failed to leave group: ' + (err.response?.data?.error || err.message))
-    }
+    await leaveGroup()
+    router.push('/')
   }
 }
 
-const handleUserAdded = async (userData) => {
-  try {
-    await processUserAdded(userData);
-    
-    // Dispatch a custom event to refresh the pending members list
-    window.dispatchEvent(new CustomEvent('refresh-pending-members', {
-      detail: { groupId: groupId }
-    }));
-    
-    showUserSearchDialog.value = false;
-  } catch (err) {
-    console.error('Failed to add user:', err);
+// Group picture URL
+const groupPictureUrl = computed(() => {
+  const picturePath = group.value?.picture;
+  if (!picturePath) return null;
+
+  // If it's already an absolute URL (e.g., from S3), use it directly
+  if (picturePath.startsWith('http')) {
+    return picturePath;
+  } 
+
+  // If it's a relative path (likely starting with '/uploads/...' from backend),
+  // just prepend the base URL.
+  // Ensure no double slashes if picturePath starts with '/'.
+  const baseUrl = 'http://localhost:8080'; // Consider making this configurable
+  if (picturePath.startsWith('/')) {
+      return `${baseUrl}${picturePath}`;
+  } else {
+      // Handle cases where it might just be a filename (less likely based on error)
+      return `${baseUrl}/uploads/groups/${picturePath}`; 
   }
-}
+});
 </script>

@@ -48,7 +48,7 @@
 
     <!-- Vote Details Dialog -->
     <VoteDetailsDialog
-      v-if="selectedVote"
+      v-if="showVoteDetails"
       :vote="selectedVote"
       :current-user-id="currentUser?.id"
       @close="$emit('close-vote-details')"
@@ -67,7 +67,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue'
+import { defineProps, defineEmits, watch } from 'vue'
 import GroupSettingsDialog from '~/components/groups/GroupSettingsDialog.vue'
 import NewVoteDialog from '~/components/votes/NewVoteDialog.vue'
 import NewPostDialog from '~/components/posts/NewPostDialog.vue'
@@ -82,6 +82,7 @@ const props = defineProps({
   showNewPostDialog: Boolean,
   showAddMemberDialog: Boolean,
   showUserSearchDialog: Boolean,
+  showVoteDetails: Boolean,
   selectedPost: Object,
   selectedVote: Object,
   group: Object,
@@ -91,6 +92,15 @@ const props = defineProps({
     default: false
   }
 })
+
+// Add a watcher to log the prop value when it changes
+watch(() => props.selectedVote, (newValue, oldValue) => {
+  console.log(`[GroupDialogs.vue] selectedVote prop changed:`, {
+    oldValue,
+    newValue,
+    isTruthy: !!newValue
+  });
+});
 
 defineEmits([
   'close-settings',

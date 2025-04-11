@@ -4,6 +4,7 @@ import axios from '~/src/utils/axios'
 export function useGroupVotes(groupId) {
   const votes = ref([])
   const isLoadingVotes = ref(true)
+  const isLoadingDetails = ref(false)
   const selectedVote = ref(null)
 
   // Fetch all votes for the group
@@ -28,6 +29,23 @@ export function useGroupVotes(groupId) {
       isLoadingVotes.value = false
     }
   }
+
+  // Fetch detailed information for a single vote (including eligibility)
+  const fetchVoteDetails = async (voteId) => {
+    try {
+      isLoadingDetails.value = true;
+      console.log(`[useGroupVotes.js] fetchVoteDetails starting for vote ID: ${voteId}`);
+      const response = await axios.get(`/votes/${voteId}`);
+      console.log(`[useGroupVotes.js] fetchVoteDetails successful for ${voteId}:`, response.data);
+      return response.data; 
+    } catch (error) {
+      console.error(`[useGroupVotes.js] fetchVoteDetails FAILED for vote ${voteId}:`, error);
+      alert(`Failed to load vote details: ${error.response?.data?.error || error.message}`);
+      return null; 
+    } finally {
+      isLoadingDetails.value = false;
+    }
+  };
 
   // Create a new vote
   const createNewVote = async (data) => {
@@ -62,24 +80,16 @@ export function useGroupVotes(groupId) {
     }
   }
 
-  // Open vote details
-  const openVoteDetails = (vote) => {
-    // Add status to the vote object
-    const now = new Date()
-    const startTime = new Date(vote.start_time)
-    const endTime = new Date(vote.end_time)
-    
-    let status = 'Upcoming'
-    if (now >= startTime && now <= endTime) {
-      status = 'Open'
-    } else if (now > endTime) {
-      status = 'Closed'
-    }
-    
-    // Create a new object with the status field added
-    selectedVote.value = {
-      ...vote,
-      status
+  // Open vote details dialog by fetching full data
+  const openVoteDetails = async (voteId) => {
+    console.log(`[useGroupVotes.js] openVoteDetails starting for vote ID: ${voteId}`);
+    const detailedVoteData = await fetchVoteDetails(voteId);
+    if (detailedVoteData) {
+      selectedVote.value = detailedVoteData;
+      console.log('[useGroupVotes.js] Selected vote set with detailed data:', selectedVote.value);
+    } else {
+      selectedVote.value = null;
+      console.error('[useGroupVotes.js] Could not set selectedVote because details failed to load.');
     }
   }
 
@@ -162,8 +172,10 @@ export function useGroupVotes(groupId) {
   return {
     votes,
     isLoadingVotes,
+    isLoadingDetails,
     selectedVote,
     fetchVotes,
+    fetchVoteDetails,
     createNewVote,
     openVoteDetails,
     handleVoteSubmit,

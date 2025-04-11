@@ -12,7 +12,9 @@
       <VotesTab 
         :group="group" 
         :current-user="currentUser" 
-        @show-new-vote="$emit('create-vote')"
+        :votes="votes"
+        :loading="isLoadingVotes"
+        @create-vote="$emit('create-vote')"
         @open-vote="$emit('open-vote', $event)"
       />
     </TabsContent>
@@ -79,6 +81,10 @@ const props = defineProps({
   votes: {
     type: Array,
     default: () => []
+  },
+  isLoadingVotes: {
+    type: Boolean,
+    default: false
   }
 })
 
