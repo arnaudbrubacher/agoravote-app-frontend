@@ -51,10 +51,17 @@
       v-if="showVoteDetails"
       :vote="selectedVote"
       :current-user-id="currentUser?.id"
-      :user-tracker-hash="selectedVote?.user_tracker_hash"
+      :user-tracker-hash="userTrackerHash"
+      :encrypted-ballot-data="encryptedBallotData"
+      :is-encrypting="isEncrypting"
+      :is-submitting="isSubmitting"
+      :spoiled-selection-details="spoiledSelectionDetails"
       @close="$emit('close-vote-details')"
-      @submit-vote="$emit('vote-submitted', $event)"
       @delete="$emit('vote-deleted', $event)"
+      @encrypt-vote="$emit('encrypt-vote', $event)"
+      @cast-vote="$emit('cast-vote', $event)"
+      @spoil-vote="$emit('spoil-vote', $event)"
+      @clear-spoiled-details="$emit('clear-spoiled-details')"
     />
 
     <!-- User Search Dialog -->
@@ -91,7 +98,12 @@ const props = defineProps({
   isCurrentUserAdmin: {
     type: Boolean,
     default: false
-  }
+  },
+  userTrackerHash: String,
+  encryptedBallotData: Object,
+  isEncrypting: Boolean,
+  isSubmitting: Boolean,
+  spoiledSelectionDetails: Object
 })
 
 // Add a watcher to log the prop value when it changes
@@ -120,6 +132,10 @@ defineEmits([
   'vote-deleted',
   'post-edited',
   'post-deleted',
-  'user-added'
+  'user-added',
+  'encrypt-vote',
+  'cast-vote',
+  'spoil-vote',
+  'clear-spoiled-details'
 ])
 </script>

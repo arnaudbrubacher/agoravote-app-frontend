@@ -85,6 +85,11 @@
       :group="group"
       :current-user="currentUser"
       :is-current-user-admin="isCurrentUserAdmin"
+      :user-tracker-hash="selectedVote?.user_tracker_hash"
+      :encrypted-ballot-data="encryptedBallotData"
+      :is-encrypting="isEncrypting"
+      :is-submitting="isSubmittingVote"
+      :spoiled-selection-details="spoiledSelectionDetails"
       @close-settings="showSettingsDialog = false"
       @close-new-post="showNewPostDialog = false"
       @close-new-vote="showNewVoteDialog = false"
@@ -99,9 +104,12 @@
       @member-added="handleMemberAdded"
       @post-edited="handlePostEdited"
       @post-deleted="handlePostDeleted"
-      @vote-submitted="handleVoteSubmitted"
       @vote-deleted="handleVoteDeleted"
       @user-added="handleUserAdded"
+      @encrypt-vote="handleEncryptVote"
+      @cast-vote="handleCastVote"
+      @spoil-vote="handleSpoilVote"
+      @clear-spoiled-details="handleClearSpoiledDetails"
     />
   </div>
 </template>
@@ -205,6 +213,13 @@ const {
   openVoteDetails,
   createNewVote
 } = useGroupVotes(groupId)
+
+// --- NEW State for Multi-Step Voting --- 
+const encryptedBallotData = ref(null); // Stores { tracker_hash: string, ... } after successful encryption
+const isEncrypting = ref(false); // Loading state for encryption API call
+const isSubmittingVote = ref(false); // Loading state for cast/spoil API call
+const spoiledSelectionDetails = ref(null); // Stores plaintext of spoiled ballot { choiceId, writeIn }
+// --- END NEW State --- 
 
 // WATCHER FOR DEBUGGING
 watch(selectedVote, (newValue, oldValue) => {
@@ -395,77 +410,130 @@ const handlePostDeleted = async (postId) => {
   selectedPost.value = null
 }
 
-const handleVoteSubmitted = async (voteSubmitData) => {
-  const voteId = selectedVote.value?.id; // Get vote ID from the currently selected vote
-  const selectedEgChoiceId = voteSubmitData.selectedEgChoiceId;
+// --- NEW Multi-Step Vote Handlers ---
 
-  if (!voteId || !selectedEgChoiceId || !currentUser.value?.id) {
-      console.error("Missing data for vote submission:", { voteId, selectedEgChoiceId, userId: currentUser.value?.id });
-      alert("Cannot submit vote. Missing necessary information.");
+// Step 1: Handle the 'encrypt-vote' event from BallotForm (via VoteDetailsDialog)
+const handleEncryptVote = async (payload) => {
+  console.log(`[pages/group/[id].vue] handleEncryptVote function CALLED with payload:`, payload);
+  if (!currentUser.value?.id || !payload.voteId || !payload.selectedEgChoiceId) {
+    console.error("Missing data for vote encryption:", { payload, userId: currentUser.value?.id });
+    alert("Cannot encrypt vote. Missing necessary information.");
+    return;
+  }
+
+  console.log(`[pages/group/[id].vue] handleEncryptVote called for vote ${payload.voteId}`);
+  isEncrypting.value = true;
+  encryptedBallotData.value = null; // Clear any previous attempts
+
+  try {
+    const encryptPayload = {
+        voter_id: currentUser.value.id,
+        selections: {
+            [String(payload.voteId)]: payload.selectedEgChoiceId
+        },
+        // Include write-in if applicable (adjust key based on backend expectation)
+        ...(payload.writeIn !== undefined && { write_in: payload.writeIn })
+    };
+
+    console.log("Sending encryption payload:", encryptPayload);
+    // TODO: Verify backend endpoint and payload structure
+    const response = await axios.post(`/votes/${payload.voteId}/encrypt`, encryptPayload);
+    
+    console.log("Encryption successful. Response:", response.data);
+    if (!response.data?.tracker_hash) {
+      throw new Error("Encryption response did not include a tracker hash.");
+    }
+
+    // Store the necessary data for the next step (casting/spoiling)
+    // Backend might return more than just the hash, store what's needed.
+    encryptedBallotData.value = { 
+        tracker_hash: response.data.tracker_hash, 
+        // Include other relevant data from response if needed by submit endpoint 
+        // encrypted_ballot_id: response.data.encrypted_ballot_id
+    }; 
+    console.log("Stored encryptedBallotData:", encryptedBallotData.value);
+
+  } catch (err) {
+    console.error("[pages/group/[id].vue] Vote encryption failed:", err);
+    alert(`Vote encryption failed: ${err.response?.data?.error || err.message}`);
+    encryptedBallotData.value = null; // Clear data on error
+  } finally {
+    isEncrypting.value = false;
+  }
+};
+
+// Step 2a: Handle the 'cast-vote' event
+const handleCastVote = async (encryptedData) => {
+  // Cast uses the original payload structure (just encrypted data)
+  await submitBallotAction('cast', encryptedData);
+};
+
+// Step 2b: Handle the 'spoil-vote' event
+const handleSpoilVote = async (payload) => {
+  // Spoil now expects a payload: { encryptedData: {...}, plaintextSelection: {...} }
+  if (!payload || !payload.encryptedData || !payload.plaintextSelection) {
+      console.error("Invalid payload received for spoil-vote:", payload);
+      alert("Cannot spoil ballot: internal error preparing data.");
+      return;
+  }
+  await submitBallotAction('spoil', payload.encryptedData, payload.plaintextSelection);
+};
+
+// Common function for casting or spoiling
+const submitBallotAction = async (action, encryptedData, plaintextSelection = null) => {
+  if (!encryptedData?.tracker_hash) {
+      console.error("Missing tracker hash for submitting ballot action:", action, encryptedData);
+      alert(`Cannot ${action} ballot. Missing tracker hash.`);
       return;
   }
 
-  console.log(`[pages/group/[id].vue] handleVoteSubmitted called for vote ${voteId} with selection ${selectedEgChoiceId}`);
-  
-  // Find the selected choice text for user feedback (optional)
-  const choiceText = selectedVote.value?.choices?.find(c => getEgSelectionId(voteId, selectedVote.value.choices.indexOf(c)) === selectedEgChoiceId)?.text || selectedEgChoiceId;
-
-  if (!confirm(`You selected "${choiceText}". Confirm submission?`)) {
-      return; // User cancelled
-  }
-
-  // --- Start submission process --- 
-  // Ideally, set a global loading/submitting state here
+  console.log(`[pages/group/[id].vue] handle${action.charAt(0).toUpperCase() + action.slice(1)}Vote called with tracker ${encryptedData.tracker_hash}`);
+  isSubmittingVote.value = true;
 
   try {
-    // 1. Encrypt the ballot
-    console.log(`Encrypting ballot for vote ${voteId}...`);
-    const encryptPayload = {
-        voter_id: currentUser.value.id, // Assuming currentUser ref holds the logged-in user info
-        selections: {
-            [String(voteId)]: selectedEgChoiceId // Backend expects map[string]string { voteId: choiceId }
-        }
-    };
-    const encryptResponse = await axios.post(`/votes/${voteId}/encrypt`, encryptPayload);
-    const trackerHash = encryptResponse.data.tracker_hash;
-    console.log(`Encryption successful. Tracker: ${trackerHash}`);
-
-    if (!trackerHash) {
-        throw new Error("Encryption response did not include a tracker hash.");
-    }
-
-    // 2. Submit (Cast) the ballot using the tracker
-    console.log(`Submitting ballot with tracker ${trackerHash}...`);
     const submitPayload = {
-        tracker_hash: trackerHash,
-        action: 'cast' 
+        tracker_hash: encryptedData.tracker_hash,
+        action: action // 'cast' or 'spoil'
     };
+    console.log(`Submitting ballot with payload:`, submitPayload);
     const submitResponse = await axios.post(`/ballots/submit`, submitPayload);
-    console.log("Ballot submission successful:", submitResponse.data);
+    console.log(`Ballot ${action} successful:`, submitResponse.data);
 
     // --- Success --- 
-    alert(`Vote successfully submitted! Your tracker hash is: ${trackerHash}`);
+    alert(`Ballot successfully ${action}ed! ${action === 'spoil' ? 'It will not be counted.' : 'Your tracker hash is: ' + encryptedData.tracker_hash}`);
     
-    // Close dialog and refresh list on full success
-    showVoteDetailsDialog.value = false; 
-    selectedVote.value = null; 
-    await fetchVotes(); 
+    // Clear the temporary encrypted data state
+    encryptedBallotData.value = null;
+
+    if (action === 'cast') {
+      // If CAST succeeds, update the user's tracker hash in the selectedVote object
+      if (selectedVote.value) {
+          selectedVote.value.user_tracker_hash = encryptedData.tracker_hash;
+          console.log("[pages/group/[id].vue] Updated selectedVote.user_tracker_hash after cast.");
+      }
+    } else if (action === 'spoil') {
+      // If SPOIL succeeds, store the plaintext details to display confirmation
+      spoiledSelectionDetails.value = plaintextSelection;
+      console.log("[pages/group/[id].vue] Ballot spoiled. Storing plaintext for confirmation:", plaintextSelection);
+    }
 
   } catch (err) {
-    console.error("[pages/group/[id].vue] Vote submission failed:", err);
-    alert(`Vote submission failed: ${err.response?.data?.error || err.message}`);
-    // Decide if dialog should remain open on failure
-    // showVoteDetailsDialog.value = false; 
-    // selectedVote.value = null; 
+    console.error(`[pages/group/[id].vue] Ballot ${action} failed:`, err);
+    alert(`Ballot ${action} failed: ${err.response?.data?.error || err.message}`);
+    // Keep dialog open and encrypted data available for retry?
+    // encryptedBallotData.value = null; // Optional: Clear data even on failure?
   } finally {
-    // Clear global loading/submitting state here
+    isSubmittingVote.value = false;
   }
 };
 
-// Helper to construct EG Selection Object ID (duplicate from dialog, consider moving to composable/utils)
-const getEgSelectionId = (voteId, index) => {
-  return `selection-${voteId}-${index + 1}`;
-};
+// Handler to clear the spoiled confirmation state
+const handleClearSpoiledDetails = () => {
+    console.log("[pages/group/[id].vue] Clearing spoiled selection details.");
+    spoiledSelectionDetails.value = null;
+}
+
+// --- END NEW Multi-Step Vote Handlers ---
 
 const handleVoteDeleted = async (voteId) => {
   // Call the backend API to delete the vote
@@ -537,6 +605,11 @@ const handleAdminStatusUpdate = (newAdminStatus) => {
 
 // Function to trigger opening the vote dialog and fetching details
 const handleOpenVote = async (voteId) => {
+  // Clear previous encryption state when opening a new vote dialog
+  encryptedBallotData.value = null;
+  isEncrypting.value = false;
+  isSubmittingVote.value = false;
+  
   console.log(`[pages/group/[id].vue] handleOpenVote triggered with ID: ${voteId}`);
   if (!voteId) {
     console.error("[pages/group/[id].vue] handleOpenVote received undefined voteId!");
@@ -558,6 +631,10 @@ const closeVoteDetailsHandler = () => {
     console.log("[pages/group/[id].vue] Closing vote details dialog.");
     showVoteDetailsDialog.value = false;
     selectedVote.value = null; // Clear the destructured ref
+    // Clear encryption state as well when closing
+    encryptedBallotData.value = null;
+    isEncrypting.value = false;
+    isSubmittingVote.value = false;
 };
 
 // Handle leaving the group
