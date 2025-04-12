@@ -22,7 +22,19 @@
 
           <!-- Voting Section for Open Votes -->
           <div v-if="vote.status === 'open'" class="mt-6 pt-4 border-t">
-            <form @submit.prevent="submitVote" class="space-y-4">
+            <!-- Show this if user has already voted -->
+            <div v-if="hasUserVoted" class="space-y-3 text-center p-4 bg-green-50 border border-green-200 rounded-md">
+              <LucideIcon name="CheckCircle" class="mx-auto h-10 w-10 text-green-500" />
+              <p class="font-medium text-green-800">You have already voted in this election.</p>
+              <p class="text-sm text-muted-foreground">Your ballot tracking hash is:</p>
+              <code class="block text-sm font-mono bg-gray-100 p-2 rounded break-all">{{ userTrackerHash }}</code>
+              <p class="text-xs text-muted-foreground pt-2">
+                You can use this hash later to verify your vote was included in the final tally (verification feature coming soon).
+              </p>
+            </div>
+
+            <!-- Show voting form if user hasn't voted -->
+            <form v-else @submit.prevent="submitVote" class="space-y-4">
               <RadioGroup v-model="selectedEgChoiceId" class="space-y-2">
                 <div v-for="(choice, index) in vote.choices" :key="choice.id || choice.text" class="flex items-center space-x-2">
                    <RadioGroupItem 
@@ -121,6 +133,10 @@ const props = defineProps({
   currentUserId: {
     type: String,
     default: ''
+  },
+  userTrackerHash: {
+    type: String,
+    default: null
   }
 })
 
@@ -144,6 +160,10 @@ const canDelete = computed(() => {
     !props.vote.creator_id
   )
 })
+
+const hasUserVoted = computed(() => {
+  return !!props.userTrackerHash;
+});
 
 const isValidVote = computed(() => {
   return !!selectedEgChoiceId.value;

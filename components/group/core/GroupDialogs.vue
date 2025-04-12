@@ -51,6 +51,7 @@
       v-if="showVoteDetails"
       :vote="selectedVote"
       :current-user-id="currentUser?.id"
+      :user-tracker-hash="selectedVote?.user_tracker_hash"
       @close="$emit('close-vote-details')"
       @submit-vote="$emit('vote-submitted', $event)"
       @delete="$emit('vote-deleted', $event)"
