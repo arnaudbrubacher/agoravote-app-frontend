@@ -20,36 +20,24 @@
             Members can write in their own answer
           </div>
 
-          <div class="text-sm">
-            <span class="text-muted-foreground">Selection:</span> 
-            Members must select between {{ vote.minChoices }} and {{ vote.maxChoices }} choices
-          </div>
-
           <!-- Voting Section for Open Votes -->
-          <div v-if="vote.status === 'Open'" class="mt-6 pt-4 border-t">
-            <h4 class="font-medium mb-4">Cast Your Vote</h4>
+          <div v-if="vote.status === 'open'" class="mt-6 pt-4 border-t">
             <form @submit.prevent="submitVote" class="space-y-4">
-              <div class="space-y-2">
-                <div v-for="choice in vote.choices" :key="choice.text" class="flex items-center space-x-2">
-                  <Checkbox
-                    :id="choice.text"
-                    v-model:checked="selectedChoices"
-                    :value="choice.text"
-                    :disabled="!vote.can_vote || (!canSelectMore && !selectedChoices.includes(choice.text))"
-                  />
-                  <Label :for="choice.text">{{ choice.text }}</Label>
+              <RadioGroup v-model="selectedEgChoiceId" class="space-y-2">
+                <div v-for="(choice, index) in vote.choices" :key="choice.id || choice.text" class="flex items-center space-x-2">
+                   <RadioGroupItem 
+                     :id="`choice-${vote.id}-${index}`" 
+                     :value="getEgSelectionId(vote.id, index)"
+                     :disabled="!vote.can_vote" 
+                   />
+                  <Label :for="`choice-${vote.id}-${index}`">{{ choice.text }}</Label>
                 </div>
-              </div>
+              </RadioGroup>
 
               <div v-if="vote.allowWriteIn" class="space-y-2">
                 <Label>Write-in Answer</Label>
                 <Input v-model="writeInAnswer" placeholder="Enter your answer" />
               </div>
-
-              <p class="text-sm text-muted-foreground">
-                Select {{ vote.minChoices === vote.maxChoices ? vote.minChoices : `${vote.minChoices}-${vote.maxChoices}` }} 
-                {{ vote.maxChoices === 1 ? 'option' : 'options' }}
-              </p>
 
               <div class="flex justify-end">
                 <Button
@@ -115,7 +103,7 @@ import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Dialog,
   DialogContent,
@@ -139,9 +127,15 @@ const props = defineProps({
 const emit = defineEmits(['close', 'submit-vote', 'delete'])
 
 // State management
-const selectedChoices = ref([])
+const selectedEgChoiceId = ref(null)
 const writeInAnswer = ref('')
 const isSubmitting = ref(false)
+
+// Helper to construct EG Selection Object ID consistent with backend manifest generation
+const getEgSelectionId = (voteId, index) => {
+  // Assumes sequence order starts at 1, matching backend logic
+  return `selection-${voteId}-${index + 1}`;
+};
 
 // Computed properties
 const canDelete = computed(() => {
@@ -151,15 +145,8 @@ const canDelete = computed(() => {
   )
 })
 
-const canSelectMore = computed(() => {
-  return selectedChoices.value.length < props.vote.maxChoices
-})
-
 const isValidVote = computed(() => {
-  const numChoices = selectedChoices.value.length
-  return numChoices >= props.vote.minChoices && 
-         numChoices <= props.vote.maxChoices &&
-         (!props.vote.allowWriteIn || !writeInAnswer.value || selectedChoices.value.length > 0)
+  return !!selectedEgChoiceId.value;
 })
 
 // Methods
@@ -175,17 +162,19 @@ const submitVote = async () => {
   isSubmitting.value = true
   
   try {
+    // Emit the selected EG Choice ID
     const voteData = {
-      choices: selectedChoices.value,
-      writeInAnswer: writeInAnswer.value
+      selectedEgChoiceId: selectedEgChoiceId.value 
     }
-
+    console.log("[VoteDetailsDialog] Emitting submit-vote with payload:", voteData);
     emit('submit-vote', voteData)
   } catch (error) {
     console.error('Failed to submit vote:', error)
-  } finally {
-    isSubmitting.value = false
-  }
+     // Stop spinner even if emit fails locally (less likely)
+    isSubmitting.value = false; 
+  } 
+  // Do not set submitting to false here if emit triggers async parent handler
+  // Parent handler should ideally notify back on completion/error
 }
 
 const formatDate = (dateStr) => {

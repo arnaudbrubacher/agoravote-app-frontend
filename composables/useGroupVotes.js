@@ -50,15 +50,12 @@ export function useGroupVotes(groupId) {
   // Create a new vote
   const createNewVote = async (data) => {
     try {
-      // Format the data for the API, ensuring proper ISO format for dates
+      // Format the data for the API
       const formattedData = {
         title: data.title,
         question: data.question,
         choices: data.choices.map(choice => ({ text: choice.text })),
-        allowWriteIn: data.allowWriteIn,
         isSecret: data.isSecret,
-        minChoices: parseInt(data.minChoices),
-        maxChoices: parseInt(data.maxChoices),
         startTime: new Date(data.startTime).toISOString(),
         endTime: new Date(data.endTime).toISOString()
       }

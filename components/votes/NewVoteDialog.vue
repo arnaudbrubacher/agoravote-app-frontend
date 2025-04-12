@@ -10,93 +10,49 @@
       
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <!-- Vote Title -->
-        <div>
-          <Label for="title">Title</Label>
-          <Input 
-            id="title"
-            v-model="formData.title"
-            placeholder="Vote title" 
-            required
-          />
-        </div>
-        
-        <!-- Vote Question -->
-        <div>
-          <Label for="question">Question</Label>
-          <Textarea 
-            id="question"
-            v-model="formData.question"
-            placeholder="What are you asking the group to vote on?"
-            required
-          />
-        </div>
-        
-        <!-- Vote Choices -->
-        <div>
-          <div class="flex justify-between items-center mb-2">
-            <Label>Choices</Label>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              @click="addChoice"
-            >
-              <LucideIcon name="Plus" size="4" class="h-4 w-4 mr-1" />
-              Add Choice
-            </Button>
+        <div class="grid gap-4 py-4">
+          <!-- Title Input -->
+          <div class="grid grid-cols-4 items-center gap-4">
+            <Label for="title" class="text-right">Title</Label>
+            <Input id="title" v-model="formData.title" class="col-span-3" />
           </div>
-          
-          <div v-for="(choice, index) in formData.choices" :key="index" class="flex items-center space-x-2 mb-2">
-            <Input 
-              v-model="choice.text"
-              placeholder="Choice option"
-              class="flex-grow"
-            />
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="icon"
-              @click="removeChoice(index)"
-              v-if="formData.choices.length > 2"
-            >
-              <LucideIcon name="Trash" size="4" class="h-4 w-4" />
-            </Button>
+          <!-- Question Input -->
+          <div class="grid grid-cols-4 items-center gap-4">
+            <Label for="question" class="text-right">Question</Label>
+            <Input id="question" v-model="formData.question" class="col-span-3" />
           </div>
-        </div>
-        
-        <!-- Vote Settings -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Vote Type -->
-          <div>
-            <Label>Vote Type</Label>
-            <div class="flex items-center space-x-2 mt-2">
-              <Checkbox id="isSecret" v-model="formData.isSecret" />
-              <Label for="isSecret">Secret ballot (votes are anonymous)</Label>
+          <!-- Choices Input -->
+          <div class="grid grid-cols-4 items-start gap-4">
+            <Label class="text-right pt-2">Choices</Label>
+            <div class="col-span-3 space-y-2">
+              <div v-for="(choice, index) in formData.choices" :key="index" class="flex items-center gap-2">
+                <Input v-model="choice.text" placeholder="Enter choice text" />
+                <Button variant="ghost" size="icon" @click="removeChoice(index)" :disabled="formData.choices.length <= 2">
+                  <LucideIcon name="Trash" class="h-4 w-4" />
+                </Button>
+              </div>
+              <Button variant="outline" size="sm" @click="addChoice">Add Choice</Button>
             </div>
           </div>
-          <!-- Empty div to maintain grid layout if needed -->
-          <div></div> 
-        </div>
-        
-        <!-- Vote Schedule -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label for="startTime">Start Time</Label>
-            <Input 
-              id="startTime"
-              v-model="formData.startTime"
-              type="datetime-local"
-              required
-            />
+          <!-- Settings Section -->
+          <div class="grid grid-cols-4 items-center gap-4">
+            <Label class="text-right">Settings</Label>
+            <div class="col-span-3 space-y-2">
+              <div class="flex items-center space-x-2">
+                <Switch id="isSecret" v-model:checked="formData.isSecret" />
+                <Label for="isSecret">Secret Ballot (using ElectionGuard)</Label>
+              </div>
+            </div>
           </div>
-          <div>
-            <Label for="endTime">End Time</Label>
-            <Input 
-              id="endTime"
-              v-model="formData.endTime"
-              type="datetime-local"
-              required
-            />
+          <!-- Start Time Input -->
+          <div class="grid grid-cols-4 items-center gap-4">
+            <Label for="startTime" class="text-right">Start Time</Label>
+            <Input id="startTime" type="datetime-local" v-model="formData.startTime" class="col-span-3" />
+          </div>
+          <!-- End Time Input -->
+          <div class="grid grid-cols-4 items-center gap-4">
+            <Label for="endTime" class="text-right">End Time</Label>
+            <Input id="endTime" type="datetime-local" v-model="formData.endTime" class="col-span-3" />
           </div>
         </div>
         
@@ -130,14 +86,9 @@ import {
   DialogTitle,
   DialogDescription
 } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 
-defineProps({
-  group: {
-    type: Object,
-    required: true
-  }
-})
-
+const props = defineProps({ group: Object })
 const emit = defineEmits(['close', 'submit'])
 
 const formData = ref({
@@ -148,46 +99,37 @@ const formData = ref({
     { text: '' }
   ],
   isSecret: true,
-  startTime: formatDateForInput(new Date()),
-  endTime: formatDateForInput(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // Default to 1 week later
+  startTime: '',
+  endTime: ''
 })
-
-function formatDateForInput(date) {
-  return new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
-    .toISOString()
-    .substring(0, 16)
-}
 
 function addChoice() {
   formData.value.choices.push({ text: '' })
 }
 
 function removeChoice(index) {
-  formData.value.choices.splice(index, 1)
+  if (formData.value.choices.length > 2) {
+    formData.value.choices.splice(index, 1)
+  }
 }
 
 function handleSubmit() {
-  // Filter out any empty choices
-  const validChoices = formData.value.choices.filter(choice => choice.text.trim() !== '')
-  
-  if (validChoices.length < 2) {
-    alert('Please provide at least 2 valid choices')
+  // Basic validation
+  if (!formData.value.title || !formData.value.question || !formData.value.startTime || !formData.value.endTime) {
+    alert('Please fill in Title, Question, Start Time, and End Time.')
+    return
+  }
+  if (formData.value.choices.length < 2 || formData.value.choices.some(c => !c.text)) {
+    alert('Please provide at least two choices with text.')
     return
   }
   
-  const startTime = new Date(formData.value.startTime)
-  const endTime = new Date(formData.value.endTime)
-  
-  if (startTime >= endTime) {
-    alert('End time must be after start time')
-    return
-  }
-  
-  const voteData = {
-    ...formData.value,
-    choices: validChoices
-  }
-  
-  emit('submit', voteData)
+  // Format data for submission (min/max removed)
+  const submissionData = {
+      ...formData.value,
+      choices: formData.value.choices.filter(c => c.text.trim() !== '') // Ensure choices aren't just whitespace
+  };
+
+  emit('submit', submissionData)
 }
 </script>

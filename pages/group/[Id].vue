@@ -395,10 +395,77 @@ const handlePostDeleted = async (postId) => {
   selectedPost.value = null
 }
 
-const handleVoteSubmitted = async () => {
-  selectedVote.value = null // Close dialog using destructured ref
-  await fetchVotes() // Use destructured function
-}
+const handleVoteSubmitted = async (voteSubmitData) => {
+  const voteId = selectedVote.value?.id; // Get vote ID from the currently selected vote
+  const selectedEgChoiceId = voteSubmitData.selectedEgChoiceId;
+
+  if (!voteId || !selectedEgChoiceId || !currentUser.value?.id) {
+      console.error("Missing data for vote submission:", { voteId, selectedEgChoiceId, userId: currentUser.value?.id });
+      alert("Cannot submit vote. Missing necessary information.");
+      return;
+  }
+
+  console.log(`[pages/group/[id].vue] handleVoteSubmitted called for vote ${voteId} with selection ${selectedEgChoiceId}`);
+  
+  // Find the selected choice text for user feedback (optional)
+  const choiceText = selectedVote.value?.choices?.find(c => getEgSelectionId(voteId, selectedVote.value.choices.indexOf(c)) === selectedEgChoiceId)?.text || selectedEgChoiceId;
+
+  if (!confirm(`You selected "${choiceText}". Confirm submission?`)) {
+      return; // User cancelled
+  }
+
+  // --- Start submission process --- 
+  // Ideally, set a global loading/submitting state here
+
+  try {
+    // 1. Encrypt the ballot
+    console.log(`Encrypting ballot for vote ${voteId}...`);
+    const encryptPayload = {
+        voter_id: currentUser.value.id, // Assuming currentUser ref holds the logged-in user info
+        selections: {
+            [String(voteId)]: selectedEgChoiceId // Backend expects map[string]string { voteId: choiceId }
+        }
+    };
+    const encryptResponse = await axios.post(`/votes/${voteId}/encrypt`, encryptPayload);
+    const trackerHash = encryptResponse.data.tracker_hash;
+    console.log(`Encryption successful. Tracker: ${trackerHash}`);
+
+    if (!trackerHash) {
+        throw new Error("Encryption response did not include a tracker hash.");
+    }
+
+    // 2. Submit (Cast) the ballot using the tracker
+    console.log(`Submitting ballot with tracker ${trackerHash}...`);
+    const submitPayload = {
+        tracker_hash: trackerHash,
+        action: 'cast' 
+    };
+    const submitResponse = await axios.post(`/ballots/submit`, submitPayload);
+    console.log("Ballot submission successful:", submitResponse.data);
+
+    // --- Success --- 
+    alert(`Vote successfully submitted! Your tracker hash is: ${trackerHash}`);
+    
+    // Close dialog and refresh list on full success
+    showVoteDetailsDialog.value = false; 
+    selectedVote.value = null; 
+    await fetchVotes(); 
+
+  } catch (err) {
+    console.error("[pages/group/[id].vue] Vote submission failed:", err);
+    alert(`Vote submission failed: ${err.response?.data?.error || err.message}`);
+    // Decide if dialog should remain open on failure
+    // showVoteDetailsDialog.value = false; 
+    // selectedVote.value = null; 
+  } finally {
+    // Clear global loading/submitting state here
+  }
+};
+
+// Helper to construct EG Selection Object ID (duplicate from dialog, consider moving to composable/utils)
+const getEgSelectionId = (voteId, index) => {
+  return `selection-${voteId}-${index + 1}`;
+};
 
 const handleVoteDeleted = async (voteId) => {
   // Call the backend API to delete the vote
