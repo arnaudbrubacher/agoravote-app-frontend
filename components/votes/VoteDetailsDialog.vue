@@ -37,28 +37,23 @@
             />
 
           <!-- Results Section for Closed or Decrypted Votes -->
-          <div v-if="vote.status === 'closed' || vote.status === 'decrypted'" class="mt-6 pt-4 border-t">
+          <div v-else-if="vote.status === 'closed' || vote.status === 'decrypted'" class="mt-6 pt-4 border-t">
             <h4 class="font-medium mb-4">Results</h4>
             
             <div v-if="vote.status === 'closed'" class="text-sm text-muted-foreground">
               Vote is closed. Results need to be tallied and decrypted.
             </div>
 
+            <!-- Decrypted Results Display -->
             <div v-else-if="vote.status === 'decrypted'" class="space-y-4">
-              <!-- TODO: Parse and display plaintext_tally_results -->
-              <p class="text-sm text-green-600 font-medium">Results have been decrypted.</p>
-              <p class="text-xs text-muted-foreground">Displaying the decrypted results requires parsing the tally data. (To be implemented)</p>
-              
-              <!-- Placeholder for parsed results - adapt when structure is known -->
-              <!--
-              <p class="text-sm text-muted-foreground">
-                Total votes cast: {{ getTotalVotesFromDecrypted() }}
-              </p>
-
-              <div v-for="choice in getChoicesFromDecrypted()" :key="choice.text" class="space-y-2">
-                 ...
+              <div v-if="parsedTallyResults">
+                <ElectionResults :results="parsedTallyResults" :vote="vote" />
               </div>
-              -->
+              <div v-else>
+                 <p class="text-sm text-red-600 font-medium">Results decrypted, but could not be parsed.</p>
+                 <p class="text-xs text-muted-foreground">Check the console or backend logs for details.</p>
+                 <pre v-if="vote.plaintext_tally_results" class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">{{ vote.plaintext_tally_results }}</pre>
+              </div>
             </div>
           </div>
         </div>
@@ -86,6 +81,7 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
 import BallotForm from '@/components/votes/BallotForm.vue'
+import ElectionResults from '@/components/votes/ElectionResults.vue'
 import { ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -221,4 +217,48 @@ const confirmDelete = () => {
     emit('delete', props.vote.id)
   }
 }
+
+// Computed property to handle results (which might be string or object from backend)
+const parsedTallyResults = computed(() => {
+  const resultsData = props.vote?.plaintext_tally_results;
+  
+  if (!resultsData) {
+    console.log("[VoteDetailsDialog] plaintext_tally_results is missing or null.");
+    return null;
+  }
+
+  // Case 1: It's already an object (likely parsed by backend for GET /votes/{id})
+  if (typeof resultsData === 'object' && resultsData !== null) {
+      console.log("[VoteDetailsDialog] Using pre-parsed results object:", resultsData);
+      return resultsData;
+  }
+
+  // Case 2: It's a string (potentially double-encoded)
+  if (typeof resultsData === 'string') {
+      console.log("[VoteDetailsDialog] Attempting to parse results string:", resultsData);
+      try {
+          let parsed = JSON.parse(resultsData);
+          // Handle potential double-encoding
+          if (typeof parsed === 'string') {
+              console.warn("[VoteDetailsDialog] Detected potentially double-encoded JSON string. Attempting second parse.");
+              parsed = JSON.parse(parsed);
+          }
+          // Ensure the final result is a non-null object
+          if (typeof parsed === 'object' && parsed !== null) {
+              return parsed;
+          } else {
+              console.error("[VoteDetailsDialog] Parsed string result is not a valid object:", parsed);
+              return null;
+          }
+      } catch (e) {
+          console.error("[VoteDetailsDialog] Failed to parse plaintext_tally_results JSON string:", e);
+          console.error("[VoteDetailsDialog] Raw results string:", resultsData);
+          return null;
+      }
+  }
+
+  // Fallback: Unexpected type
+  console.error("[VoteDetailsDialog] Unexpected type for plaintext_tally_results:", typeof resultsData);
+  return null;
+});
 </script>
