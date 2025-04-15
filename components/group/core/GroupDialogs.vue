@@ -48,7 +48,7 @@
 
     <!-- Vote Details Dialog -->
     <VoteDetailsDialog
-      v-if="showVoteDetails"
+      v-if="showVoteDetails && selectedVote"
       :vote="selectedVote"
       :current-user-id="currentUser?.id"
       :user-tracker-hash="userTrackerHash"
@@ -62,6 +62,8 @@
       @cast-vote="$emit('cast-vote', $event)"
       @spoil-vote="$emit('spoil-vote', $event)"
       @clear-spoiled-details="$emit('clear-spoiled-details')"
+      @end-vote="$emit('end-vote', $event)"
+      @tally-decrypt="$emit('tally-decrypt', $event)"
     />
 
     <!-- User Search Dialog -->
@@ -136,6 +138,8 @@ defineEmits([
   'encrypt-vote',
   'cast-vote',
   'spoil-vote',
-  'clear-spoiled-details'
+  'clear-spoiled-details',
+  'end-vote',
+  'tally-decrypt'
 ])
 </script>

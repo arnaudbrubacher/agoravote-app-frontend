@@ -153,6 +153,35 @@ export function useGroupVotes(groupId) {
     return new Date(vote.start_time) > now
   }
 
+  // NEW: End a vote prematurely
+  const endVoteEarly = async (voteId) => {
+    try {
+      console.log(`[useGroupVotes] Sending request to end vote ${voteId} early.`);
+      const response = await axios.post(`/votes/${voteId}/end`);
+      console.log(`[useGroupVotes] Vote ${voteId} ended successfully:`, response.data);
+      return response.data; // Return data which might include updated vote status/end time
+    } catch (err) {
+      console.error(`[useGroupVotes] Failed to end vote ${voteId} early:`, err);
+      // Rethrow or handle error as needed, maybe format it
+      throw new Error(`Failed to end vote: ${err.response?.data?.error || err.message}`);
+    }
+  };
+
+  // NEW: Tally and Decrypt a closed vote
+  const tallyAndDecrypt = async (voteId) => {
+    try {
+      console.log(`[useGroupVotes] Sending request to tally and decrypt vote ${voteId}.`);
+      // The backend endpoint handles both tallying and decryption in one call
+      const response = await axios.post(`/votes/${voteId}/decrypt`); 
+      console.log(`[useGroupVotes] Vote ${voteId} tallied and decrypted successfully:`, response.data);
+      // The response likely contains the plaintext tally results
+      return response.data; 
+    } catch (err) {
+      console.error(`[useGroupVotes] Failed to tally/decrypt vote ${voteId}:`, err);
+      throw new Error(`Failed to tally and decrypt vote: ${err.response?.data?.error || err.message}`);
+    }
+  };
+
   // Format date for display
   const formatDateShort = (dateStr) => {
     if (!dateStr) return 'N/A'
@@ -179,6 +208,8 @@ export function useGroupVotes(groupId) {
     deleteVote,
     isVoteActive,
     isVoteUpcoming,
-    formatDateShort
+    formatDateShort,
+    endVoteEarly,
+    tallyAndDecrypt
   }
 }

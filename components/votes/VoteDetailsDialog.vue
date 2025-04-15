@@ -36,46 +36,47 @@
               @clear-spoiled-details="handleClearSpoiledDetails"
             />
 
-          <!-- Results Section for Closed Votes -->
-          <div v-if="vote.status === 'Closed'" class="mt-6 pt-4 border-t">
+          <!-- Results Section for Closed or Decrypted Votes -->
+          <div v-if="vote.status === 'closed' || vote.status === 'decrypted'" class="mt-6 pt-4 border-t">
             <h4 class="font-medium mb-4">Results</h4>
             
-            <div class="space-y-4">
+            <div v-if="vote.status === 'closed'" class="text-sm text-muted-foreground">
+              Vote is closed. Results need to be tallied and decrypted.
+            </div>
+
+            <div v-else-if="vote.status === 'decrypted'" class="space-y-4">
+              <!-- TODO: Parse and display plaintext_tally_results -->
+              <p class="text-sm text-green-600 font-medium">Results have been decrypted.</p>
+              <p class="text-xs text-muted-foreground">Displaying the decrypted results requires parsing the tally data. (To be implemented)</p>
+              
+              <!-- Placeholder for parsed results - adapt when structure is known -->
+              <!--
               <p class="text-sm text-muted-foreground">
-                Total votes cast: {{ getTotalVotes() }}
+                Total votes cast: {{ getTotalVotesFromDecrypted() }}
               </p>
 
-              <div v-for="choice in vote.choices" :key="choice.text" class="space-y-2">
-                <div class="flex justify-between text-sm">
-                  <span>{{ choice.text }}</span>
-                  <span>{{ getVoteCount(choice) }} votes ({{ getVotePercentage(choice) }}%)</span>
-                </div>
-                <div class="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    class="h-full bg-primary" 
-                    :style="{ width: `${getVotePercentage(choice)}%` }"
-                  ></div>
-                </div>
+              <div v-for="choice in getChoicesFromDecrypted()" :key="choice.text" class="space-y-2">
+                 ...
               </div>
-
-              <div v-if="vote.allowWriteIn && vote.writeInResponses?.length" class="mt-4">
-                <h4 class="font-medium mb-2">Write-in Responses:</h4>
-                <ul class="space-y-1">
-                  <li v-for="response in vote.writeInResponses" :key="response.text" class="text-sm">
-                    {{ response.text }} ({{ response.count }} votes)
-                  </li>
-                </ul>
-              </div>
+              -->
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Bottom Action Button -->
-      <div class="border-t pt-4 flex justify-start" v-if="canDelete">
-        <Button variant="destructive" size="sm" @click="confirmDelete">
+      <!-- Bottom Action Buttons -->
+      <div class="border-t pt-4 flex justify-start space-x-2">
+        <Button v-if="canDelete" variant="destructive" size="sm" @click="confirmDelete">
           <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
           Delete
+        </Button>
+        <Button v-if="canEndEarly" variant="secondary" size="sm" @click="confirmEndEarly">
+          <LucideIcon name="TimerOff" size="4" class="h-4 w-4 mr-1" />
+          End Vote Early
+        </Button>
+        <Button v-if="canTally" variant="default" size="sm" @click="confirmTally">
+          <LucideIcon name="ListChecks" size="4" class="h-4 w-4 mr-1" />
+          Tally & Decrypt
         </Button>
       </div>
     </DialogContent>
@@ -133,8 +134,14 @@ const emit = defineEmits([
     'cast-vote',
     'spoil-vote',
     // 'update:encryptedBallotData',
-    'clear-spoiled-details'
+    'clear-spoiled-details',
+    'end-vote',
+    'tally-decrypt'
 ])
+
+const canEndEarly = computed(() => {
+  return props.vote.status === 'open' && props.currentUserId === props.vote.creator_id;
+})
 
 const canDelete = computed(() => {
   return (
@@ -142,6 +149,10 @@ const canDelete = computed(() => {
     !props.vote.creator_id
   )
 })
+
+const canTally = computed(() => {
+  return props.vote.status === 'closed' && props.currentUserId === props.vote.creator_id;
+});
 
 const handleEncryptVote = (payload) => {
   console.log("[VoteDetailsDialog] Relaying encrypt-vote event with payload:", payload);
@@ -190,6 +201,20 @@ const getVotePercentage = (choice) => {
   if (total === 0) return 0
   return Math.round((getVoteCount(choice) / total) * 100)
 }
+
+const confirmEndEarly = () => {
+  if (confirm(`Are you sure you want to end this vote early: "${props.vote.title}"? This will close the vote immediately.`)) {
+    console.log(`[VoteDetailsDialog] Emitting end-vote event for vote ID: ${props.vote.id}`);
+    emit('end-vote', props.vote.id);
+  }
+}
+
+const confirmTally = () => {
+  if (confirm(`Are you sure you want to tally and decrypt the results for "${props.vote.title}"? This uses the ElectionGuard process.`)) {
+    console.log(`[VoteDetailsDialog] Emitting tally-decrypt event for vote ID: ${props.vote.id}`);
+    emit('tally-decrypt', props.vote.id);
+  }
+};
 
 const confirmDelete = () => {
   if (confirm(`Are you sure you want to delete this vote: "${props.vote.title}"?`)) {

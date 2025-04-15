@@ -81,7 +81,7 @@
       :show-vote-details="showVoteDetailsDialog"
       :selected-post="selectedPost"
       :selected-vote="selectedVote"
-      :is-loading-vote-details="isLoadingDetails"
+      :is-loading-vote-details="isLoadingDetails || isTallying"
       :group="group"
       :current-user="currentUser"
       :is-current-user-admin="isCurrentUserAdmin"
@@ -104,12 +104,14 @@
       @member-added="handleMemberAdded"
       @post-edited="handlePostEdited"
       @post-deleted="handlePostDeleted"
-      @vote-deleted="handleVoteDeleted"
+      @vote-deleted="handleDeleteVote"
       @user-added="handleUserAdded"
       @encrypt-vote="handleEncryptVote"
       @cast-vote="handleCastVote"
       @spoil-vote="handleSpoilVote"
       @clear-spoiled-details="handleClearSpoiledDetails"
+      @end-vote="handleEndVote"
+      @tally-decrypt="handleTallyDecrypt"
     />
   </div>
 </template>
@@ -123,6 +125,7 @@ import LoadingError from '@/components/group/core/LoadingError.vue'
 import GroupTabs from '@/components/group/core/GroupTabs.vue'
 import GroupDialogs from '@/components/group/core/GroupDialogs.vue'
 import axios from '~/src/utils/axios'
+import { useToast } from '@/components/ui/toast/use-toast'
 
 // Define page layout
 definePageMeta({
@@ -196,11 +199,9 @@ const {
 const { 
   posts, 
   fetchPosts,
-  createNewPost,
-  // Rename this to avoid the conflict
-  handlePostCreated: addNewPostToList, // 👈 Rename when destructuring
+  createNewPost: createNewPostApi,
   editPost, 
-  deletePost 
+  deletePost: deletePostApi
 } = useGroupPosts(groupId)
 
 // Use group votes functionality
@@ -211,7 +212,10 @@ const {
   isLoadingDetails, 
   fetchVotes, 
   openVoteDetails,
-  createNewVote
+  createNewVote,
+  endVoteEarly,
+  deleteVote,
+  tallyAndDecrypt
 } = useGroupVotes(groupId)
 
 // --- NEW State for Multi-Step Voting --- 
@@ -220,6 +224,8 @@ const isEncrypting = ref(false); // Loading state for encryption API call
 const isSubmittingVote = ref(false); // Loading state for cast/spoil API call
 const spoiledSelectionDetails = ref(null); // Stores plaintext of spoiled ballot { choiceId, writeIn }
 // --- END NEW State --- 
+
+const isTallying = ref(false); // Add loading state for tally
 
 // WATCHER FOR DEBUGGING
 watch(selectedVote, (newValue, oldValue) => {
@@ -376,21 +382,40 @@ const handleGroupDeleted = async () => {
 const handleVoteCreated = async (voteData) => {
   console.log("[pages/group/[id].vue] handleVoteCreated called with data:", voteData);
   try {
-    await createNewVote(voteData); // Call the composable function
+    await createNewVote(voteData); // Call the vote creation function
     showNewVoteDialog.value = false;
     await fetchVotes(); // Refresh list after successful creation
-    // Optional: Show success message
-    // alert("Vote created successfully!"); 
+    toast({
+      title: 'Vote Created',
+      description: 'The new vote has been successfully created.',
+    })
   } catch (err) {
     console.error("[pages/group/[id].vue] Failed to create vote:", err);
-    // Error alert is likely handled within createNewVote, but could add one here too
+    toast({
+      variant: 'destructive',
+      title: 'Error Creating Vote',
+      description: err.message || 'Could not create the vote.',
+    })
   }
 };
 
-const handlePostCreated = async () => {
-  showNewPostDialog.value = false
-  await fetchPosts()
-}
+const handlePostCreated = async (postData) => {
+  try {
+    await createNewPostApi(postData); // Call the renamed post creation function
+    showNewPostDialog.value = false;
+    await fetchPosts(); // Refresh posts list
+     toast({
+      title: 'Post Created',
+      description: 'The new post has been successfully created.',
+    })
+  } catch (err) {
+     toast({
+      variant: 'destructive',
+      title: 'Error Creating Post',
+      description: err.message || 'Could not create the post.',
+    })
+  }
+};
 
 const handleMemberAdded = async () => {
   showAddMemberDialog.value = false
@@ -406,9 +431,22 @@ const handlePostEdited = (editedPost) => {
 }
 
 const handlePostDeleted = async (postId) => {
-  posts.value = posts.value.filter(p => p.id !== postId)
-  selectedPost.value = null
-}
+  try {
+    await deletePostApi(postId); // Call the renamed post deletion function
+    // Assuming UI update happens within deletePostApi or requires fetchPosts()
+    await fetchPosts(); 
+     toast({
+      title: 'Post Deleted',
+      description: 'The post has been successfully deleted.',
+    })
+  } catch (error) { 
+     toast({
+      variant: 'destructive',
+      title: 'Error Deleting Post',
+      description: error.message || 'Could not delete the post.',
+    })
+  }
+};
 
 // --- NEW Multi-Step Vote Handlers ---
 
@@ -666,4 +704,76 @@ const groupPictureUrl = computed(() => {
       return `${baseUrl}/uploads/groups/${picturePath}`; 
   }
 });
+
+const { toast } = useToast()
+
+const handleEndVote = async (voteId) => {
+  console.log(`[pages/group/[id].vue] Received end-vote event for vote ID: ${voteId}`);
+  try {
+    const result = await endVoteEarly(voteId); // Call the API function
+    toast({
+      title: 'Vote Ended',
+      description: `Vote "${selectedVote.value?.title || voteId}" has been closed successfully.`,
+    })
+
+    // Update UI
+    closeVoteDetailsHandler(); // Close dialog
+    await fetchVotes(); // Refresh the votes list
+
+  } catch (error) {
+    console.error('Failed to end vote:', error);
+    toast({
+      variant: 'destructive',
+      title: 'Error Ending Vote',
+      description: error.message || 'Could not end the vote.',
+    })
+  }
+};
+
+const handleDeleteVote = async (voteId) => {
+  try {
+    await deleteVote(voteId); // Call the vote deletion function
+    // UI update (closing dialog, refetching) is likely handled within deleteVote
+    toast({
+      title: 'Vote Deleted',
+      description: 'The vote has been successfully deleted.',
+    })
+  } catch (error) {
+    toast({
+      variant: 'destructive',
+      title: 'Error Deleting Vote',
+      description: error.message || 'Could not delete the vote.',
+    })
+  }
+}
+
+const handleTallyDecrypt = async (voteId) => {
+  console.log(`[pages/group/[id].vue] Received tally-decrypt event for vote ID: ${voteId}`);
+  isTallying.value = true;
+  try {
+    const result = await tallyAndDecrypt(voteId); // Call the API function
+    toast({
+      title: 'Tally Completed',
+      description: `Vote "${selectedVote.value?.title || voteId}" results decrypted successfully.`,
+    })
+
+    // Update UI - Refetch votes to get updated status and results string
+    await fetchVotes(); 
+    // Optionally, re-fetch details for the *currently open* dialog to update its view
+    if (selectedVote.value && selectedVote.value.id === voteId) {
+      await openVoteDetails(voteId);
+    }
+    // Keep dialog open to show decrypted status/results placeholder
+
+  } catch (error) {
+    console.error('Failed to tally/decrypt vote:', error);
+    toast({
+      variant: 'destructive',
+      title: 'Error Tallying Vote',
+      description: error.message || 'Could not tally and decrypt the vote results.',
+    })
+  } finally {
+    isTallying.value = false;
+  }
+};
 </script>
