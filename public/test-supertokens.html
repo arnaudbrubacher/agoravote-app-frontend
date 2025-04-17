@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperTokens Test</title>
+</head>
+<body>
+    <h1>SuperTokens API Test</h1>
+    <p>Open the browser console (F12) to see the results</p>
+    
+    <button id="testEmailExists">Test Email Exists</button>
+    <button id="testSignUp">Test Sign Up</button>
+    <button id="testSignIn">Test Sign In</button>
+    
+    <script>
+        const apiDomain = 'http://localhost:8080';
+        const apiBasePath = '/auth';
+        
+        // Test if email exists
+        document.getElementById('testEmailExists').addEventListener('click', async () => {
+            try {
+                console.log('Testing if email exists...');
+                const response = await fetch(`${apiDomain}${apiBasePath}/signup/email/exists`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com'
+                    }),
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                console.log('Email exists response:', data);
+            } catch (error) {
+                console.error('Error testing email exists:', error);
+            }
+        });
+        
+        // Test sign up
+        document.getElementById('testSignUp').addEventListener('click', async () => {
+            try {
+                console.log('Testing sign up...');
+                const response = await fetch(`${apiDomain}${apiBasePath}/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        formFields: [
+                            {
+                                id: "email",
+                                value: "test" + Math.floor(Math.random() * 10000) + "@example.com"
+                            },
+                            {
+                                id: "password",
+                                value: "Testpassword123!"
+                            }
+                        ]
+                    }),
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                console.log('Sign up response:', data);
+            } catch (error) {
+                console.error('Error during sign up:', error);
+            }
+        });
+        
+        // Test sign in
+        document.getElementById('testSignIn').addEventListener('click', async () => {
+            try {
+                console.log('Testing sign in...');
+                const response = await fetch(`${apiDomain}${apiBasePath}/signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        formFields: [
+                            {
+                                id: "email",
+                                value: "test@example.com"
+                            },
+                            {
+                                id: "password",
+                                value: "Testpassword123!"
+                            }
+                        ]
+                    }),
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                console.log('Sign in response:', data);
+            } catch (error) {
+                console.error('Error during sign in:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

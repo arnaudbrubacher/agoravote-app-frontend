@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import axios from '~/src/utils/axios'
 import { useRouter } from 'vue-router'
 
@@ -14,17 +14,40 @@ export function useUserProfile() {
     try {
       loading.value = true
       error.value = null
+      const userId = localStorage.getItem('userId')
       
-      console.log('Fetching current user profile...')
-      const response = await axios.get('/users/me')
-      console.log('Current user profile response:', response.data)
+      if (!userId) {
+        console.error('No user ID found in localStorage')
+        error.value = 'No active session found'
+        router.push('/auth')
+        return null
+      }
       
-      userData.value = response.data
-      console.log('Updated userData.value:', userData.value)
-      
-      return userData.value
+      // Try first endpoint format
+      try {
+        const response = await axios.get(`/users/${userId}`)
+        userData.value = response.data.user || response.data
+        return userData.value
+      } catch (err) {
+        console.log('First endpoint attempt failed, trying alternative endpoint...')
+        
+        // Try second endpoint format
+        try {
+          const response = await axios.get(`/user/${userId}`)
+          userData.value = response.data.user || response.data
+          return userData.value
+        } catch (err) {
+          console.log('Second endpoint attempt failed, trying /user/profile/:id endpoint...')
+          
+          // Try third endpoint format - this is the correct backend endpoint
+          const response = await axios.get(`/user/profile/${userId}`)
+          console.log('Response from /user/profile/:id endpoint:', response.data)
+          userData.value = response.data.user || response.data
+          return userData.value
+        }
+      }
     } catch (err) {
-      console.error('Failed to fetch user profile:', err)
+      console.error('Failed to fetch current user profile:', err)
       error.value = err.response?.data?.error || 'Failed to load user profile'
       
       if (err.response?.status === 401) {
@@ -44,18 +67,101 @@ export function useUserProfile() {
       loading.value = true
       error.value = null
       
-      const response = await axios.get(`/user/profile/${userId}`)
-      userData.value = response.data
-      
-      // Check if common groups data is available
-      if (response.data.commonGroups) {
-        commonGroups.value = response.data.commonGroups
+      // Try first endpoint format
+      try {
+        const response = await axios.get(`/users/${userId}`)
+        userData.value = response.data.user || response.data
+        
+        // Check if common groups data is available
+        if (response.data.commonGroups) {
+          commonGroups.value = response.data.commonGroups
+        }
+        
+        return userData.value
+      } catch (err) {
+        console.log('First endpoint attempt failed, trying alternative endpoint...')
+        
+        // Try second endpoint format
+        try {
+          const response = await axios.get(`/user/${userId}`)
+          userData.value = response.data.user || response.data
+          
+          // Check if common groups data is available
+          if (response.data.commonGroups) {
+            commonGroups.value = response.data.commonGroups
+          }
+          
+          return userData.value
+        } catch (err) {
+          console.log('Second endpoint attempt failed, trying /user/profile/:id endpoint...')
+          
+          // Try third endpoint format - this is the correct backend endpoint
+          const response = await axios.get(`/user/profile/${userId}`)
+          userData.value = response.data.user || response.data
+          
+          // Check if common groups data is available
+          if (response.data.commonGroups) {
+            commonGroups.value = response.data.commonGroups
+          }
+          
+          return userData.value
+        }
       }
-      
-      return userData.value
     } catch (err) {
       console.error('Failed to fetch user profile:', err)
       error.value = err.response?.data?.error || 'Failed to load user profile'
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // Function to create a user profile if it doesn't exist
+  const createUserProfile = async () => {
+    const userId = localStorage.getItem('userId')
+    if (!userId) {
+      throw new Error('No user ID available to create profile')
+    }
+    
+    // Get basic user info from localStorage if available
+    const name = localStorage.getItem('userName') || 'User'
+    const email = localStorage.getItem('userEmail') || ''
+    
+    console.log('Creating user profile for ID:', userId)
+    
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Try creating user profile with different endpoint formats
+      // since we're not sure which one the backend uses
+      let response = null
+      const userData = {
+        id: userId,
+        name,
+        email,
+        bio: '',
+        profile_picture: ''
+      }
+      
+      try {
+        response = await axios.post('/users', userData)
+      } catch (err) {
+        console.log('First endpoint attempt failed, trying alternate endpoint')
+        try {
+          response = await axios.post('/user', userData)
+        } catch (err2) {
+          console.log('Second endpoint attempt failed, trying final endpoint')
+          response = await axios.post('/user/profile', userData)
+        }
+      }
+      
+      console.log('User profile created:', response.data)
+      userData.value = response.data
+      return userData.value
+    } catch (err) {
+      console.error('Failed to create user profile:', err)
+      error.value = err.response?.data?.error || 'Failed to create user profile'
+      throw err
     } finally {
       loading.value = false
     }
@@ -123,6 +229,7 @@ export function useUserProfile() {
     commonGroups,
     fetchCurrentUserProfile,
     fetchUserProfile,
+    createUserProfile,
     updateProfilePicture,
     resendVerificationEmail
   }

@@ -22,6 +22,9 @@
                 <Label for="password">Password</Label>
                 <Input id="password" v-model="loginPassword" type="password" />
               </div>
+              <div v-if="loginError" class="text-sm text-red-500 mb-2">
+                {{ loginError }}
+              </div>
               <Button type="submit" class="w-full">Login</Button>
             </form>
           </CardContent>
@@ -45,6 +48,7 @@
               <div class="space-y-2">
                 <Label for="signup-password">Password</Label>
                 <Input id="signup-password" v-model="signupPassword" type="password" />
+                <p class="text-xs text-gray-500">Password must be at least 8 characters long and include a number</p>
               </div>
               <div class="space-y-2">
                 <Label for="signup-password-confirm">Confirm Password</Label>
@@ -55,6 +59,9 @@
                   :class="{ 'border-red-500': passwordError }"
                 />
                 <p v-if="passwordError" class="text-sm text-red-500">Passwords do not match</p>
+              </div>
+              <div v-if="signupError" class="text-sm text-red-500 mb-2">
+                {{ signupError }}
               </div>
               <Button type="submit" class="w-full">Create Account</Button>
             </form>
@@ -89,6 +96,8 @@ const signupEmail = ref('')
 const signupPassword = ref('')
 const signupPasswordConfirm = ref('')
 const passwordError = ref(false)
+const signupError = ref('')
+const loginError = ref('')
 
 // Check if user has any groups
 const checkUserGroups = async () => {
@@ -113,15 +122,18 @@ const handlePostAuthNavigation = async (isNewUser = false) => {
 }
 
 const handleLogin = async () => {
+  loginError.value = ''
   try {
     await login(loginEmail.value, loginPassword.value)
     await handlePostAuthNavigation(false) // Not a new user
   } catch (error) {
     console.error('Login failed:', error)
+    loginError.value = error.message || 'Login failed. Please try again.'
   }
 }
 
 const handleSignup = async () => {
+  signupError.value = ''
   if (signupPassword.value !== signupPasswordConfirm.value) {
     passwordError.value = true
     return
@@ -132,6 +144,18 @@ const handleSignup = async () => {
     await handlePostAuthNavigation(true) // New user
   } catch (error) {
     console.error('Signup failed:', error)
+    
+    // Handle server errors
+    if (error.status === 500 || (error.response && error.response.status === 500)) {
+      signupError.value = 'Server error. Please try again later or contact support.'
+    } else if (error.message && error.message.includes('already exists')) {
+      signupError.value = error.message
+      // Switch to login tab when email already exists
+      activeTab.value = 'login'
+      loginEmail.value = signupEmail.value
+    } else {
+      signupError.value = error.message || 'Signup failed. Please try again.'
+    }
   }
 }
 </script>

@@ -187,6 +187,11 @@ const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false
+  },
+  pendingGroups: {
+    type: Array,
+    required: true,
+    default: () => []
   }
 })
 

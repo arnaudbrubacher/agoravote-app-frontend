@@ -106,6 +106,7 @@ import Postslist from '@/components/posts/Postslist.vue'
 import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 import { useAlert } from '@/composables/useAlert'
+import axios from 'axios'
 
 const router = useRouter()
 const fileInput = ref(null)
@@ -119,7 +120,8 @@ const {
   error, 
   fetchCurrentUserProfile, 
   updateProfilePicture,
-  resendVerificationEmail
+  resendVerificationEmail,
+  createUserProfile
 } = useUserProfile()
 
 const {
@@ -199,8 +201,25 @@ const profilePictureUrl = computed(() => {
   return `${baseUrl}/${userData.value.profile_picture}`
 })
 
-onMounted(() => {
-  fetchCurrentUserProfile()
+onMounted(async () => {
+  try {
+    await fetchCurrentUserProfile()
+  } catch (error) {
+    console.error('Failed to fetch profile:', error)
+    
+    // Check for 404 or other indication the profile doesn't exist
+    if (error.response?.status === 404 || error.message?.includes('not found')) {
+      console.log('Profile not found, attempting to create it...')
+      try {
+        // Try to create the user profile using the createUserProfile function
+        await createUserProfile()
+        console.log('Profile created successfully')
+      } catch (createError) {
+        console.error('Failed to create user profile:', createError)
+      }
+    }
+  }
+  
   fetchPosts()
   document.title = 'My Profile - AgoraVote'
 })

@@ -290,7 +290,7 @@ const formStatus = ref({
 })
 
 const openApp = () => {
-  router.push('/auth')
+  window.location.href = '/auth'
 }
 
 const scrollToHowItWorks = () => {

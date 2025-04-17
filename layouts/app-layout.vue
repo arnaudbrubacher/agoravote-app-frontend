@@ -73,7 +73,7 @@
     <!-- User Settings Sheet Component -->
     <UserSettingsSheet 
       v-model:open="isUserSettingsOpen" 
-      :userData="userData"
+      :userData="userData || {}"
       @refresh-user-data="fetchUserData"
     />
     
@@ -119,8 +119,9 @@
     
     <!-- User Settings Dialog -->
     <UserSettingsDialog 
-      :show="showUserSettingsDialog" 
-      @close="showUserSettingsDialog = false" 
+      v-model:open="showUserSettingsDialog"
+      :userData="userData || {}"
+      @refresh-user-data="fetchUserData"
     />
     
     <!-- Global Alert Dialog -->
@@ -152,6 +153,7 @@ import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 import NewGroupDialog from '@/components/groups/NewGroupDialog.vue'
 import UserSettingsDialog from '@/components/users/UserSettingsDialog.vue'
 import GlobalAlertDialog from '@/components/common/GlobalAlertDialog.vue'
+import Session from 'supertokens-web-js/recipe/session'
 
 const router = useRouter()
 const route = useRoute()
@@ -160,6 +162,8 @@ const loading = ref(false)
 const isUserSettingsOpen = ref(false)
 const isDashboardSidebarOpen = ref(false)
 const showFallbackIcon = ref(false)
+const showUserSettingsDialog = ref(false)
+const pendingGroups = ref([])
 
 // Groups data
 const userGroups = ref([])
@@ -210,8 +214,224 @@ const isReviewMode = ref(false)
 
 // Check if user is authenticated
 const isAuthenticated = computed(() => {
-  return !!localStorage.getItem('token')
+  // This computed property will primarily react to userData presence.
+  // Actual auth check happens in loadLayoutData using Session.doesSessionExist()
+  return !!userData.value; 
 })
+
+// Fetch user data if authenticated
+const fetchUserData = async () => {
+  // ... (keep existing try/catch, but maybe remove the router.push on 401 here?)
+  // Let loadLayoutData handle the auth flow redirect.
+  try {
+    loading.value = true;
+    const response = await axios.get('/users/me');
+    userData.value = response.data;
+    console.log('User data fetched in app-layout:', userData.value);
+  } catch (error) {
+    console.error('Failed to fetch user data:', error);
+    userData.value = null; // Clear user data on fetch error
+    if (error.response?.status === 401) {
+      // If unauthorized, let loadLayoutData handle redirect/state clearing
+      console.log('fetchUserData received 401, will re-run loadLayoutData check.');
+    } else {
+      // Handle other errors if necessary
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Fetch user groups
+const fetchUserGroups = async () => {
+  try {
+    isLoadingGroups.value = true;
+    const response = await axios.get('/user/groups');
+    console.log('Raw API response for user groups:', response.data);
+
+    if (Array.isArray(response.data)) {
+      userGroups.value = response.data;
+      console.log('User groups set:', userGroups.value);
+    } else {
+      console.warn('/user/groups did not return an array, received:', response.data);
+      userGroups.value = []; // Default to empty array if response is not an array
+    }
+    updateLastUsedGroup();
+  } catch (error) {
+    console.error('Failed to fetch user groups:', error);
+    userGroups.value = []; // Clear groups on error
+    // Don't redirect here, let loadLayoutData handle auth errors
+  } finally {
+    isLoadingGroups.value = false;
+  }
+}
+
+// Helper function to update last used group after fetching
+const updateLastUsedGroup = () => {
+  if (userGroups.value.length > 0) {
+    const storedLastUsedGroupId = localStorage.getItem('lastUsedGroupId')
+    const lastGroupExists = storedLastUsedGroupId && userGroups.value.some(g => g.id === storedLastUsedGroupId);
+
+    if (!lastGroupExists) {
+      lastUsedGroupId.value = userGroups.value[0].id
+      localStorage.setItem('lastUsedGroupId', userGroups.value[0].id)
+
+      const currentPath = route.path
+      const groupMatch = currentPath.match(/\/group\/([^/]+)/);
+      if (groupMatch && groupMatch[1] === storedLastUsedGroupId) {
+        console.log('User is on a group page they no longer belong to, redirecting to profile')
+        router.push('/profile')
+      }
+    } else {
+      lastUsedGroupId.value = storedLastUsedGroupId
+    }
+  } else {
+    lastUsedGroupId.value = null
+    localStorage.removeItem('lastUsedGroupId')
+  }
+}
+
+// Encapsulated data loading function with SuperTokens check
+const loadLayoutData = async () => {
+  console.log('loadLayoutData checking session...');
+  const sessionExists = await Session.doesSessionExist();
+  console.log('Session.doesSessionExist() result:', sessionExists);
+
+  if (sessionExists) {
+    console.log('Session exists. Proceeding to fetch data.');
+    // Fetch user data if not already loaded or if it was nullified by a previous error
+    if (!userData.value) { 
+      console.log('Fetching user data in loadLayoutData...');
+      await fetchUserData();
+      // If fetchUserData failed (e.g., 401), userData will be null, 
+      // and we should re-check session and potentially redirect.
+      if (!userData.value) {
+        console.log('User data is null after fetch attempt, re-checking session...');
+        const stillExists = await Session.doesSessionExist();
+        if (!stillExists) {
+          console.log('Session lost after user data fetch failure. Clearing state and redirecting.');
+          clearAuthDataAndRedirect();
+          return; // Stop further execution
+        }
+      }
+    }
+    // Fetch groups only if authenticated and groups are empty
+    if (userData.value && userGroups.value.length === 0) { // Ensure user data is present before fetching groups
+      console.log('Fetching user groups in loadLayoutData...');
+      await fetchUserGroups();
+    } else {
+      console.log('Skipping groups fetch: User data missing or groups already loaded.');
+    }
+  } else {
+    console.log('No active session found by SuperTokens. Clearing state and redirecting.');
+    clearAuthDataAndRedirect();
+  }
+}
+
+// Helper to clear local auth state and redirect
+const clearAuthDataAndRedirect = () => {
+  console.log('Clearing auth data and redirecting to /auth');
+  userData.value = null;
+  userGroups.value = [];
+  lastUsedGroupId.value = null;
+  localStorage.removeItem('token'); // Clear potential stale token
+  localStorage.removeItem('userId'); // Clear potential stale userId
+  localStorage.removeItem('lastUsedGroupId');
+  // Check if already on auth page to prevent loop
+  if (route.path !== '/auth') {
+     router.push('/auth');
+  }
+}
+
+// Computed property for the last used group picture URL
+const groupPictureUrl = computed(() => {
+  console.log('Last used group:', lastUsedGroup.value);
+  if (!lastUsedGroup.value) return null;
+  
+  // Check for both camelCase and snake_case versions of the picture property
+  const picture = lastUsedGroup.value.picture || lastUsedGroup.value.profile_picture || lastUsedGroup.value.image;
+  
+  if (!picture) {
+    console.log('No picture found for group using any property name');
+    return null;
+  }
+  
+  // Check if it's already a full URL
+  if (picture.startsWith('http://') || picture.startsWith('https://')) {
+    console.log('Using full URL for group picture:', picture);
+    return picture;
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  
+  // Ensure the path starts with a slash
+  const picturePath = picture.startsWith('/') ? picture : `/${picture}`;
+  const fullUrl = `${baseUrl}${picturePath}`;
+  
+  console.log('Using relative URL for group picture:', fullUrl);
+  return fullUrl;
+})
+
+// Computed property for profile picture URL
+const profilePictureUrl = computed(() => {
+  if (!userData.value?.profile_picture) return null
+  
+  // If the profile picture is a full URL, return it as is
+  if (userData.value.profile_picture.startsWith('http')) {
+    return userData.value.profile_picture
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${baseUrl}/${userData.value.profile_picture}`
+})
+
+// Provide user data and refresh function to child components
+provide('appUserData', userData)
+provide('refreshAppUserData', fetchUserData) // Keep old provide for compatibility if needed
+provide('loadLayoutData', loadLayoutData); // Provide new loader
+
+// Watch for authentication status changes - Keep this simple now
+// We rely more on explicit calls and Session checks
+watch(isAuthenticated, (newVal) => {
+  console.log('isAuthenticated computed changed to:', newVal);
+  // Maybe trigger loadLayoutData if newVal becomes true after being false?
+  // This needs careful handling to avoid loops.
+  // For now, let explicit triggers manage loading.
+}, { immediate: false }); // Run only on change, not immediately
+
+// Watch for route changes primarily to update last used group ID visually
+watch(
+  () => route.path,
+  (newPath) => {
+    console.log('Route path changed:', newPath);
+    const groupMatch = newPath.match(/\/group\/([^/]+)/);
+    if (groupMatch && groupMatch[1]) {
+      const newGroupId = groupMatch[1];
+      if (newGroupId !== lastUsedGroupId.value) {
+         console.log('Updating last used group ID based on route:', newGroupId);
+         lastUsedGroupId.value = newGroupId;
+         localStorage.setItem('lastUsedGroupId', newGroupId);
+         // Optionally re-fetch groups if needed, but maybe not necessary
+         // fetchUserGroups();
+      }
+    }
+    // Consider if other route changes necessitate data refresh
+    // if (!newPath.startsWith('/group/')) {
+    //    loadLayoutData(); // Example: refresh layout data if navigating away from groups?
+    // }
+  }
+);
+
+// Watch for changes to lastUsedGroup to reset the fallback icon
+watch(
+  () => lastUsedGroup.value,
+  () => {
+    // Reset the fallback icon when the group changes
+    showFallbackIcon.value = false;
+  }
+)
 
 // Open user settings sheet
 const openUserSettings = () => {
@@ -392,163 +612,6 @@ const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false
     alert('Failed to join group: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
-
-// Fetch user groups
-const fetchUserGroups = async () => {
-  if (!isAuthenticated.value) return
-  
-  try {
-    isLoadingGroups.value = true
-    const response = await axios.get('/user/groups')
-    console.log('Raw API response for user groups:', response.data);
-    
-    // Check if the response data has the expected structure
-    if (Array.isArray(response.data)) {
-      console.log('First group in response:', response.data[0]);
-    }
-    
-    userGroups.value = response.data
-    
-    // After fetching groups, check if we need to update the last used group
-    if (userGroups.value.length > 0) {
-      // Get the last used group ID from localStorage
-      const storedLastUsedGroupId = localStorage.getItem('lastUsedGroupId')
-      
-      // Check if the last used group still exists in the user's groups
-      const lastGroupExists = storedLastUsedGroupId && userGroups.value.some(g => g.id === storedLastUsedGroupId)
-      
-      if (!lastGroupExists) {
-        // If the last used group doesn't exist in the current groups, update it to the first available group
-        lastUsedGroupId.value = userGroups.value[0].id
-        localStorage.setItem('lastUsedGroupId', userGroups.value[0].id)
-        
-        // If we're currently on the group page of a group that no longer exists in the user's groups,
-        // redirect to the profile page
-        const currentPath = route.path
-        const groupMatch = currentPath.match(/\/group\/([^/]+)/)
-        
-        if (groupMatch && groupMatch[1] === storedLastUsedGroupId) {
-          console.log('User is on a group page they no longer belong to, redirecting to profile')
-          router.push('/profile')
-        }
-      } else {
-        // If the last used group still exists, update the lastUsedGroupId ref
-        lastUsedGroupId.value = storedLastUsedGroupId
-      }
-    } else {
-      // If the user has no groups, clear the last used group ID
-      lastUsedGroupId.value = null
-      localStorage.removeItem('lastUsedGroupId')
-    }
-  } catch (error) {
-    console.error('Failed to fetch user groups:', error)
-  } finally {
-    isLoadingGroups.value = false
-  }
-}
-
-// Computed property for the last used group picture URL
-const groupPictureUrl = computed(() => {
-  console.log('Last used group:', lastUsedGroup.value);
-  if (!lastUsedGroup.value) return null;
-  
-  // Check for both camelCase and snake_case versions of the picture property
-  const picture = lastUsedGroup.value.picture || lastUsedGroup.value.profile_picture || lastUsedGroup.value.image;
-  
-  if (!picture) {
-    console.log('No picture found for group using any property name');
-    return null;
-  }
-  
-  // Check if it's already a full URL
-  if (picture.startsWith('http://') || picture.startsWith('https://')) {
-    console.log('Using full URL for group picture:', picture);
-    return picture;
-  }
-  
-  // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  
-  // Ensure the path starts with a slash
-  const picturePath = picture.startsWith('/') ? picture : `/${picture}`;
-  const fullUrl = `${baseUrl}${picturePath}`;
-  
-  console.log('Using relative URL for group picture:', fullUrl);
-  return fullUrl;
-})
-
-// Computed property for profile picture URL
-const profilePictureUrl = computed(() => {
-  if (!userData.value?.profile_picture) return null
-  
-  // If the profile picture is a full URL, return it as is
-  if (userData.value.profile_picture.startsWith('http')) {
-    return userData.value.profile_picture
-  }
-  
-  // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-  return `${baseUrl}/${userData.value.profile_picture}`
-})
-
-// Fetch user data if authenticated
-const fetchUserData = async () => {
-  if (isAuthenticated.value) {
-    try {
-      loading.value = true
-      // Use axios instance with proper configuration
-      const response = await axios.get('/users/me')
-      userData.value = response.data
-    } catch (error) {
-      console.error('Failed to fetch user data:', error)
-      if (error.response?.status === 401) {
-        // Handle unauthorized access
-        localStorage.removeItem('token')
-        localStorage.removeItem('userId')
-        router.push('/auth')
-      }
-    } finally {
-      loading.value = false
-    }
-  }
-}
-
-// Provide user data to child components
-provide('appUserData', userData)
-provide('refreshAppUserData', fetchUserData)
-
-// Watch for route changes to refresh user data
-watch(
-  () => route.path,
-  () => {
-    if (isAuthenticated.value) {
-      fetchUserData()
-    }
-  }
-)
-
-// Watch for route changes to update last used group
-watch(
-  () => route.path,
-  (newPath) => {
-    // Check if the current route is a group page
-    const groupMatch = newPath.match(/\/group\/([^/]+)/)
-    if (groupMatch && groupMatch[1]) {
-      // Update last used group ID
-      lastUsedGroupId.value = groupMatch[1]
-      localStorage.setItem('lastUsedGroupId', groupMatch[1])
-    }
-  }
-)
-
-// Watch for changes to lastUsedGroup to reset the fallback icon
-watch(
-  () => lastUsedGroup.value,
-  () => {
-    // Reset the fallback icon when the group changes
-    showFallbackIcon.value = false;
-  }
-)
 
 // Handle admission form submission
 const handleAdmissionSubmit = async (admissionData) => {
@@ -731,50 +794,22 @@ const handleGroupImageError = (event) => {
 }
 
 onMounted(async () => {
-  // First fetch user data
-  await fetchUserData()
-   
-  // Then fetch user groups
-  await fetchUserGroups()
-      
-  // Check if the current route is a group page
-  const currentPath = route.path
-  const groupMatch = currentPath.match(/\/group\/([^/]+)/)
-   
-  if (groupMatch && groupMatch[1]) {
-    const groupId = groupMatch[1]
-     
-    // Check if the user is a member of this group
-    const isMember = userGroups.value.some(g => g.id === groupId)
-     
-    if (!isMember) {
-      console.log('User is not a member of the current group, redirecting to profile')
-      router.push('/profile')
-    }
-  }
-    
-  // Listen for the global user-data-updated event
-  window.addEventListener('user-data-updated', fetchUserData)
-   
-  // Listen for the global group-data-updated event
-  window.addEventListener('group-data-updated', handleGroupDataUpdated)
-   
-  // Listen for the close-dashboard-sidebar event to also close the FindGroupDialog
+  console.log('app-layout onMounted - calling loadLayoutData');
+  await loadLayoutData(); // Initial load attempt
+
+  // Add event listeners
+  // Consider changing 'user-data-updated' to trigger loadLayoutData if necessary
+  window.addEventListener('user-data-updated', loadLayoutData); 
+  window.addEventListener('group-data-updated', handleGroupDataUpdated);
   window.addEventListener('close-dashboard-sidebar', () => {
-    showFindGroupDialog.value = false
-  })
-  
-  // Listen for the user-left-group event
-  window.addEventListener('user-left-group', handleUserLeftGroup)
-})
-  
-// Clean up event listeners
+    showFindGroupDialog.value = false;
+  });
+  window.addEventListener('user-left-group', handleUserLeftGroup);
+});
+
 onBeforeUnmount(() => {
-  window.removeEventListener('user-data-updated', fetchUserData)
-  window.removeEventListener('group-data-updated', handleGroupDataUpdated)
-  window.removeEventListener('close-dashboard-sidebar', () => {
-    showFindGroupDialog.value = false
-  })
-  window.removeEventListener('user-left-group', handleUserLeftGroup)
-})
+  console.log('app-layout onBeforeUnmount');
+  window.removeEventListener('user-data-updated', loadLayoutData);
+  // ... remove other listeners ...
+});
 </script>
