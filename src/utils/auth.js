@@ -1,26 +1,9 @@
 import axios from './axios'
 import SuperTokens from 'supertokens-web-js'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
-import Session from 'supertokens-web-js/recipe/session'
-
-// Initialize SuperTokens only on the client side
-if (typeof window !== 'undefined') {
-  // Browser-only code
-  SuperTokens.init({
-    appInfo: {
-      appName: "AgoraVote",
-      apiDomain: "http://localhost:8080",
-      apiBasePath: "/auth",
-    },
-    recipeList: [
-      EmailPassword.init(),
-      Session.init()
-    ]
-  })
-}
+import Session, { addAxiosInterceptors } from 'supertokens-web-js/recipe/session'
 
 // Adding a backup authentication system using localStorage
-// This is a temporary solution until SuperTokens compatibility issues are resolved
 
 // Simple local auth system 
 const localUsers = {
@@ -68,7 +51,27 @@ const localUsers = {
 // const USE_LOCAL_AUTH = false
 const USE_LOCAL_AUTH = false // Commented out and forced to false - only SuperTokens is used now
 
+let supertokensInitialized = false;
+
+export function ensureSuperTokensInit() {
+  if (!supertokensInitialized && typeof window !== 'undefined') {
+    SuperTokens.init({
+      appInfo: {
+        appName: "AgoraVote",
+        apiDomain: "http://localhost:8080",
+        apiBasePath: "/auth",
+      },
+      recipeList: [
+        EmailPassword.init(),
+        Session.init()
+      ]
+    });
+    supertokensInitialized = true;
+  }
+}
+
 export const login = async (email, password) => {
+  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     console.error('Cannot perform login on server-side')
@@ -103,7 +106,7 @@ export const login = async (email, password) => {
         const userId = await Session.getUserId()
         
         // Store in localStorage for backwards compatibility
-        localStorage.setItem('userId', userId)
+    localStorage.setItem('userId', userId)
         
         return { token: "session-exists", userId }
       } else {
@@ -119,6 +122,7 @@ export const login = async (email, password) => {
 }
 
 export const signup = async (name, email, password) => {
+  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     console.error('Cannot perform signup on server-side')
@@ -223,7 +227,7 @@ export const signup = async (name, email, password) => {
           console.log('User ID retrieved:', userId)
           
           // Store in localStorage for backwards compatibility
-          localStorage.setItem('userId', userId)
+    localStorage.setItem('userId', userId)
           
           // Add the user's name to our database (SuperTokens doesn't store this by default)
           try {
@@ -295,6 +299,7 @@ export const signup = async (name, email, password) => {
 }
 
 export const getUserIdFromToken = async () => {
+  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -317,6 +322,7 @@ export const getUserIdFromToken = async () => {
 }
 
 export const fetchUserProfile = async () => {
+  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -325,7 +331,7 @@ export const fetchUserProfile = async () => {
   // Use local auth if SuperTokens is having issues
   /*
   if (USE_LOCAL_AUTH) {
-    const userId = localStorage.getItem('userId')
+  const userId = localStorage.getItem('userId')
     if (!userId) throw new Error('No active session found')
     
     try {
@@ -349,8 +355,8 @@ export const fetchUserProfile = async () => {
       const userId = await Session.getUserId()
       localStorage.setItem('userId', userId) // Ensure userId is in localStorage
       
-      const response = await axios.get(`/user/profile/${userId}`)
-      return response.data.user
+    const response = await axios.get(`/user/profile/${userId}`)
+    return response.data.user
     } else {
       throw new Error('No active session found')
     }
@@ -361,75 +367,87 @@ export const fetchUserProfile = async () => {
 }
 
 export const deleteUserAccount = async () => {
-  // Only run on client-side
+  ensureSuperTokensInit();
+
   if (typeof window === 'undefined') {
-    return null
+    return null;
   }
-  
-  // Use local auth if SuperTokens is having issues
-  /*
-  if (USE_LOCAL_AUTH) {
-    const userId = localStorage.getItem('userId')
-    if (!userId) throw new Error('No active session found')
+
+  try {
+    // Check if we have an active session
+    if (!(await Session.doesSessionExist())) {
+      throw new Error('No active session found. Please log in again.');
+    }
     
+    // Get the user ID
+    const userId = await Session.getUserId();
+    if (!userId) {
+      throw new Error('User ID not found before delete attempt.');
+    }
+    
+    console.log('Attempting to delete user account with ID:', userId);
+    
+    // Force refresh session to ensure we have the most recent token
     try {
-      // Remove from backend
-      const response = await axios.delete(`/user/${userId}`)
+      await Session.attemptRefreshingSession();
+      console.log('Session refreshed successfully before delete operation');
+    } catch (refreshError) {
+      console.error('Failed to refresh session:', refreshError);
+      // Continue anyway - the session might still be valid
+    }
+    
+    // Try direct API request with SuperTokens interceptors
+    try {
+      const response = await axios.delete(`/user/${userId}`);
+      console.log('Account deletion response:', response.data);
       
-      // Remove from local storage
-      const users = localUsers.getUsers()
-      const filteredUsers = users.filter(u => u.userId !== userId)
-      localStorage.setItem('localUsers', JSON.stringify(filteredUsers))
+      // Clean up after successful deletion
+      localStorage.removeItem('userId');
       
-      // Sign out
-      localStorage.removeItem('userId')
+      // Sign out from SuperTokens
+      await EmailPassword.signOut();
       
-      return response.data
-    } catch (error) {
-      console.error('Failed to delete user account:', error)
+      return response.data;
+    } catch (deleteError) {
+      console.error('Delete request failed:', deleteError);
       
-      // Check for foreign key constraint violation
-      if (error.response?.data?.error && 
-          error.response.data.error.includes('violates foreign key constraint') && 
-          error.response.data.error.includes('posts')) {
-        throw new Error('Cannot delete account because you have posts. Please delete all your posts first and try again.')
+      if (deleteError.response?.status === 401) {
+        console.log('Received 401 Unauthorized, attempting to refresh session and retry...');
+        
+        // Attempt to refresh session and retry
+        await Session.attemptRefreshingSession();
+        console.log('Session refreshed, retrying delete request');
+        
+        // Retry delete request after refreshing
+        const retryResponse = await axios.delete(`/user/${userId}`);
+        console.log('Retry deletion response:', retryResponse.data);
+        
+        // Clean up after successful deletion
+        localStorage.removeItem('userId');
+        
+        // Sign out from SuperTokens
+        await EmailPassword.signOut();
+        
+        return retryResponse.data;
       }
       
-      throw error
-    }
-  }
-  */
-  
-  try {
-    if (await Session.doesSessionExist()) {
-      const userId = await Session.getUserId()
-      
-      const response = await axios.delete(`/user/${userId}`)
-      
-      // Sign out the user
-      await EmailPassword.signOut()
-      localStorage.removeItem('userId')
-      
-      return response.data
-    } else {
-      throw new Error('No active session found')
+      // Re-throw if not a 401 error
+      throw deleteError;
     }
   } catch (error) {
-    console.error('Failed to delete user account:', error)
-    
-    // Check for foreign key constraint violation
+    console.error('Failed to delete user account:', error);
     if (error.response?.data?.error && 
         error.response.data.error.includes('violates foreign key constraint') && 
         error.response.data.error.includes('posts')) {
-      throw new Error('Cannot delete account because you have posts. Please delete all your posts first and try again.')
+      throw new Error('Cannot delete account because you have posts. Please delete all your posts first and try again.');
     }
-    
-    throw error
+    throw error;
   }
-}
+};
 
 // Function to change user password
 export const changeUserPassword = async (userId, currentPassword, newPassword) => {
+  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -445,12 +463,12 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
       // Use SuperTokens to update the password
       // Note: SuperTokens doesn't have a direct method to change password while authenticated
       // So we'll use the backend API for this
-      const response = await axios.put(`/users/${userId}/password`, {
-        current_password: currentPassword,
-        new_password: newPassword
-      })
-      
-      return response.data
+    const response = await axios.put(`/users/${userId}/password`, {
+      current_password: currentPassword,
+      new_password: newPassword
+    })
+    
+    return response.data
     } else {
       throw new Error('No active session found')
     }
@@ -464,6 +482,7 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
 
 // Function to change group password
 export const changeGroupPassword = async (groupId, currentPassword, newPassword) => {
+  ensureSuperTokensInit();
   if (!groupId) throw new Error('Group ID is required')
 
   try {
@@ -485,6 +504,7 @@ export const changeGroupPassword = async (groupId, currentPassword, newPassword)
 
 // Function to change group password (EMERGENCY VERSION)
 export const emergencyChangeGroupPassword = async (groupId, newPassword) => {
+  ensureSuperTokensInit();
   if (!groupId) throw new Error('Group ID is required')
 
   try {
@@ -504,6 +524,7 @@ export const emergencyChangeGroupPassword = async (groupId, newPassword) => {
 }
 
 export const signOut = async () => {
+  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return

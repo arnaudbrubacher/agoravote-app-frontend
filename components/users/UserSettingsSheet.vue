@@ -197,7 +197,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUserProfile } from '@/composables/useUserProfile'
-import { changeUserPassword } from '@/src/utils/auth'
+import { changeUserPassword, deleteUserAccount as authDeleteUserAccount, signOut } from '@/src/utils/auth'
 import axios from '~/src/utils/axios'
 import UserCard from '@/components/users/UserCard.vue'
 import {
@@ -474,76 +474,21 @@ const debugLocalStorage = () => {
 // Delete user account
 const deleteAccount = async () => {
   try {
-    let userId = localStorage.getItem('userId')
-    const token = localStorage.getItem('token')
-    
-    console.log('Attempting to delete account with userId:', userId)
-    console.log('Token available:', !!token)
-    
-    // If userId is missing but token is available, try to extract userId from token
-    if ((!userId || userId === 'undefined') && token) {
-      console.log('Attempting to extract userId from token')
-      userId = extractUserIdFromToken(token)
-      console.log('Extracted userId from token:', userId)
-      
-      if (userId) {
-        // Update localStorage with the extracted userId
-        localStorage.setItem('userId', userId)
-        console.log('Updated localStorage with userId:', userId)
-      }
-    }
-    
-    if (!userId || userId === 'undefined') {
-      throw new Error('User ID not found. Please log out and log in again.')
-    }
-    
-    if (!token) {
-      throw new Error('Authentication token not found. Please log out and log in again.')
-    }
-    
-    // Make API call to delete account with explicit headers
-    console.log('Making DELETE request to:', `/user/${userId}`)
-    const response = await axios.delete(`/user/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    console.log('Delete account response:', response)
-    
-    // Clear local storage and redirect
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    router.push('/auth')
+    // 1. Call the utility function. This MUST be authenticated.
+    await authDeleteUserAccount();
+
+    // 2. Sign out frontend AFTER backend attempt.
+    // Backend revocation should prevent refresh loops now.
+    await signOut();
+
+    // 3. Use window.location.href for a full page reload to clear any lingering state.
+    // Redirect after delete attempt and sign out.
+    window.location.href = '/auth';
+
   } catch (error) {
     console.error('Failed to delete account:', error)
-    console.error('Error details:', {
-      message: error.message,
-      response: error.response,
-      request: error.request
-    })
-    
-    // More detailed error message
-    let errorMessage = 'Unknown error'
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      errorMessage = error.response.data?.error || `Server error: ${error.response.status}`
-      
-      // Check for foreign key constraint violation
-      if (errorMessage.includes('violates foreign key constraint') && errorMessage.includes('posts')) {
-        errorMessage = 'Cannot delete account because you have posts. Please delete all your posts first and try again.'
-      }
-    } else if (error.request) {
-      // The request was made but no response was received
-      errorMessage = 'No response from server. Please check your connection.'
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      errorMessage = error.message
-    }
-    
-    alert('Failed to delete account: ' + errorMessage)
+    alert(`Failed to delete account: ${error.message || 'Unknown error'}`)
+    console.error('Error details:', error.response?.data || error);
   }
 }
 
@@ -587,7 +532,6 @@ const resendVerificationEmail = async () => {
 
 // Log out user
 const logout = async () => {
-  // Show confirmation dialog first
   const confirmed = await confirm(
     'Are you sure you want to log out?',
     'Confirm Logout',
@@ -595,19 +539,14 @@ const logout = async () => {
   )
   
   if (confirmed) {
-    // First close the settings sheet
-    closeSheet()
-    
-    // Clear user session data
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('lastUsedGroupId') // Also clear any other user-related data
-    
-    // Add a small delay to ensure the sheet is closed before navigation
-    setTimeout(() => {
-      // Force navigation to auth page
-      window.location.href = '/auth'
-    }, 100)
+    try {
+      await signOut(); // Use the signOut utility from auth.js
+      // Force navigation to auth page after successful sign out
+      window.location.href = '/auth'; // Use window.location for a full refresh
+    } catch(error) {
+        console.error('Logout failed:', error);
+        alert('Logout failed. Please try again.');
+    }
   }
 }
 </script> 
