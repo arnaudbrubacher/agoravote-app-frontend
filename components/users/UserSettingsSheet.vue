@@ -334,10 +334,30 @@ const handleProfilePictureUpload = async (event) => {
   }
 }
 
+// Add these helper functions at the beginning of your script setup
+const getLocalStorage = (key, defaultValue = null) => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(key) || defaultValue;
+  }
+  return defaultValue;
+};
+
+const setLocalStorage = (key, value) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, value);
+  }
+};
+
+const removeLocalStorage = (key) => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(key);
+  }
+};
+
 // Save user settings
 const saveSettings = async () => {
   try {
-    const userId = localStorage.getItem('userId')
+    const userId = getLocalStorage('userId')
     
     if (!userId) {
       throw new Error('Authentication required')
@@ -396,7 +416,7 @@ const changePassword = async () => {
   
   try {
     // Get user ID from localStorage
-    const userId = localStorage.getItem('userId')
+    const userId = getLocalStorage('userId')
     
     if (!userId) {
       throw new Error('User ID not found')
@@ -437,25 +457,17 @@ const changePassword = async () => {
   }
 }
 
-// Confirm account deletion
-const confirmDeleteAccount = () => {
-  // Debug localStorage values
-  debugLocalStorage();
-  
-  if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-    deleteAccount()
-  }
-}
-
 // Debug localStorage values
 const debugLocalStorage = () => {
+  if (typeof window === 'undefined') return;
+  
   console.log('DEBUG: localStorage contents:');
-  console.log('userId:', localStorage.getItem('userId'));
-  console.log('token:', localStorage.getItem('token')?.substring(0, 20) + '...');
+  console.log('userId:', getLocalStorage('userId'));
+  console.log('token:', getLocalStorage('token')?.substring(0, 20) + '...');
   
   // Try to decode the token
   try {
-    const token = localStorage.getItem('token');
+    const token = getLocalStorage('token');
     if (token) {
       // Use window.atob to decode the base64 part of the token
       const tokenParts = token.split('.');
@@ -468,6 +480,16 @@ const debugLocalStorage = () => {
     }
   } catch (error) {
     console.error('Error decoding token:', error);
+  }
+}
+
+// Confirm account deletion
+const confirmDeleteAccount = () => {
+  // Debug localStorage values
+  debugLocalStorage();
+  
+  if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+    deleteAccount()
   }
 }
 

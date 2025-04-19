@@ -99,6 +99,20 @@ const passwordError = ref(false)
 const signupError = ref('')
 const loginError = ref('')
 
+// Add these helper functions
+const getLocalStorage = (key, defaultValue = null) => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(key) || defaultValue;
+  }
+  return defaultValue;
+};
+
+const setLocalStorage = (key, value) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, value);
+  }
+};
+
 // Check if user has any groups
 const checkUserGroups = async () => {
   try {
@@ -112,7 +126,7 @@ const checkUserGroups = async () => {
 
 // Get last used group ID
 const getLastUsedGroupId = () => {
-  return localStorage.getItem('lastUsedGroupId')
+  return getLocalStorage('lastUsedGroupId')
 }
 
 // Handle post-authentication navigation

@@ -9,12 +9,32 @@ export function useUserProfile() {
   const error = ref(null)
   const commonGroups = ref([])
   
+  // Safe localStorage functions
+  const getLocalStorage = (key, defaultValue = null) => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(key) || defaultValue;
+    }
+    return defaultValue;
+  };
+
+  const setLocalStorage = (key, value) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  };
+
+  const removeLocalStorage = (key) => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+  };
+  
   // Fetch current user's profile
   const fetchCurrentUserProfile = async () => {
     try {
       loading.value = true
       error.value = null
-      const userId = localStorage.getItem('userId')
+      const userId = getLocalStorage('userId')
       
       if (!userId) {
         console.error('No user ID found in localStorage')
@@ -52,8 +72,8 @@ export function useUserProfile() {
       
       if (err.response?.status === 401) {
         // Handle unauthorized access
-        localStorage.removeItem('token')
-        localStorage.removeItem('userId')
+        removeLocalStorage('token')
+        removeLocalStorage('userId')
         router.push('/auth')
       }
     } finally {
@@ -117,14 +137,14 @@ export function useUserProfile() {
   
   // Function to create a user profile if it doesn't exist
   const createUserProfile = async () => {
-    const userId = localStorage.getItem('userId')
+    const userId = getLocalStorage('userId')
     if (!userId) {
       throw new Error('No user ID available to create profile')
     }
     
     // Get basic user info from localStorage if available
-    const name = localStorage.getItem('userName') || 'User'
-    const email = localStorage.getItem('userEmail') || ''
+    const name = getLocalStorage('userName') || 'User'
+    const email = getLocalStorage('userEmail') || ''
     
     console.log('Creating user profile for ID:', userId)
     
@@ -177,7 +197,7 @@ export function useUserProfile() {
       formData.append('profile_picture', file)
       
       // Get user ID from localStorage
-      const userId = localStorage.getItem('userId')
+      const userId = getLocalStorage('userId')
       
       console.log('Uploading profile picture for user:', userId)
       
@@ -212,7 +232,7 @@ export function useUserProfile() {
   // Resend verification email
   const resendVerificationEmail = async () => {
     try {
-      const userId = localStorage.getItem('userId')
+      const userId = getLocalStorage('userId')
       
       await axios.post(`/users/${userId}/resend-verification`)
       return true

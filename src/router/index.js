@@ -30,13 +30,27 @@ const router = createRouter({
   routes
 })
 
+// Safe localStorage access for SSR
+const getLocalStorage = (key, defaultValue = null) => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(key) || defaultValue;
+  }
+  return defaultValue;
+};
+
+// Check if user is authenticated
+const isAuthenticated = () => {
+  const token = getLocalStorage('token')
+  // Add any additional authentication checks here
+  return !!token
+}
+
 // Navigation guard to check group membership
 router.beforeEach(async (to, from, next) => {
   // Check if the route requires authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
     // Check if user is authenticated
-    const token = localStorage.getItem('token')
-    if (!token) {
+    if (!isAuthenticated()) {
       // Redirect to login page if not authenticated
       return next('/auth')
     }

@@ -168,7 +168,29 @@ const pendingGroups = ref([])
 // Groups data
 const userGroups = ref([])
 const isLoadingGroups = ref(false)
-const lastUsedGroupId = ref(localStorage.getItem('lastUsedGroupId') || null)
+// Safely access localStorage for SSR
+const getLocalStorage = (key, defaultValue = null) => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(key) || defaultValue;
+  }
+  return defaultValue;
+};
+
+// Safely set localStorage for SSR
+const setLocalStorage = (key, value) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, value);
+  }
+};
+
+// Safely remove localStorage for SSR
+const removeLocalStorage = (key) => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(key);
+  }
+};
+
+const lastUsedGroupId = ref(getLocalStorage('lastUsedGroupId', null))
 
 // Computed properties to check current route
 const isOnGroupPage = computed(() => {
@@ -269,12 +291,12 @@ const fetchUserGroups = async () => {
 // Helper function to update last used group after fetching
 const updateLastUsedGroup = () => {
   if (userGroups.value.length > 0) {
-    const storedLastUsedGroupId = localStorage.getItem('lastUsedGroupId')
+    const storedLastUsedGroupId = getLocalStorage('lastUsedGroupId')
     const lastGroupExists = storedLastUsedGroupId && userGroups.value.some(g => g.id === storedLastUsedGroupId);
 
     if (!lastGroupExists) {
       lastUsedGroupId.value = userGroups.value[0].id
-      localStorage.setItem('lastUsedGroupId', userGroups.value[0].id)
+      setLocalStorage('lastUsedGroupId', userGroups.value[0].id)
 
       const currentPath = route.path
       const groupMatch = currentPath.match(/\/group\/([^/]+)/);
@@ -287,7 +309,7 @@ const updateLastUsedGroup = () => {
     }
   } else {
     lastUsedGroupId.value = null
-    localStorage.removeItem('lastUsedGroupId')
+    removeLocalStorage('lastUsedGroupId')
   }
 }
 
@@ -334,9 +356,9 @@ const clearAuthDataAndRedirect = () => {
   userData.value = null;
   userGroups.value = [];
   lastUsedGroupId.value = null;
-  localStorage.removeItem('token'); // Clear potential stale token
-  localStorage.removeItem('userId'); // Clear potential stale userId
-  localStorage.removeItem('lastUsedGroupId');
+  removeLocalStorage('token');
+  removeLocalStorage('userId');
+  removeLocalStorage('lastUsedGroupId');
   // Check if already on auth page to prevent loop
   if (route.path !== '/auth') {
      router.push('/auth');
@@ -412,7 +434,7 @@ watch(
       if (newGroupId !== lastUsedGroupId.value) {
          console.log('Updating last used group ID based on route:', newGroupId);
          lastUsedGroupId.value = newGroupId;
-         localStorage.setItem('lastUsedGroupId', newGroupId);
+         setLocalStorage('lastUsedGroupId', newGroupId);
          // Optionally re-fetch groups if needed, but maybe not necessary
          // fetchUserGroups();
       }
@@ -452,7 +474,7 @@ const openDashboardSidebar = () => {
 const navigateToGroup = (groupId) => {
   // Store the last used group ID
   lastUsedGroupId.value = groupId
-  localStorage.setItem('lastUsedGroupId', groupId)
+  setLocalStorage('lastUsedGroupId', groupId)
   
   // Close the sidebar and navigate
   isDashboardSidebarOpen.value = false
@@ -470,7 +492,7 @@ const handleGroupCreated = async (newGroup) => {
   // Navigate to the new group and set as last used
   if (newGroup && newGroup.id) {
     lastUsedGroupId.value = newGroup.id
-    localStorage.setItem('lastUsedGroupId', newGroup.id)
+    setLocalStorage('lastUsedGroupId', newGroup.id)
     router.push(`/group/${newGroup.id}`)
   }
 }
@@ -775,7 +797,7 @@ const handleUserLeftGroup = (event) => {
     // If this was the last used group, clear it
     if (lastUsedGroupId.value === event.detail.groupId) {
       lastUsedGroupId.value = null
-      localStorage.removeItem('lastUsedGroupId')
+      removeLocalStorage('lastUsedGroupId')
     }
     
     // Refresh the groups list

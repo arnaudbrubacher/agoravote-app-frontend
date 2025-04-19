@@ -4,12 +4,31 @@ import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import Session, { addAxiosInterceptors } from 'supertokens-web-js/recipe/session'
 
 // Adding a backup authentication system using localStorage
+// Safe localStorage functions to prevent SSR issues
+const getLocalStorage = (key, defaultValue = null) => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(key) || defaultValue;
+  }
+  return defaultValue;
+};
+
+const setLocalStorage = (key, value) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, value);
+  }
+};
+
+const removeLocalStorage = (key) => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(key);
+  }
+};
 
 // Simple local auth system 
 const localUsers = {
   getUsers: () => {
     try {
-      return JSON.parse(localStorage.getItem('localUsers') || '[]')
+      return JSON.parse(getLocalStorage('localUsers', '[]'))
     } catch (e) {
       console.error('Error parsing local users:', e)
       return []
@@ -20,7 +39,7 @@ const localUsers = {
       const users = localUsers.getUsers()
       const userId = 'user_' + Math.random().toString(36).substring(2, 15)
       users.push({ email, password, name, userId })
-      localStorage.setItem('localUsers', JSON.stringify(users))
+      setLocalStorage('localUsers', JSON.stringify(users))
       return userId
     } catch (e) {
       console.error('Error adding local user:', e)
@@ -84,7 +103,7 @@ export const login = async (email, password) => {
     const user = localUsers.findUser(email, password)
     if (user) {
       // Store in localStorage for backwards compatibility
-      localStorage.setItem('userId', user.userId)
+      setLocalStorage('userId', user.userId)
       return { token: "local-auth", userId: user.userId }
     } else {
       throw new Error("Invalid email or password")
@@ -106,7 +125,7 @@ export const login = async (email, password) => {
         const userId = await Session.getUserId()
         
         // Store in localStorage for backwards compatibility
-    localStorage.setItem('userId', userId)
+        setLocalStorage('userId', userId)
         
         return { token: "session-exists", userId }
       } else {
@@ -227,7 +246,7 @@ export const signup = async (name, email, password) => {
           console.log('User ID retrieved:', userId)
           
           // Store in localStorage for backwards compatibility
-    localStorage.setItem('userId', userId)
+          setLocalStorage('userId', userId)
           
           // Add the user's name to our database (SuperTokens doesn't store this by default)
           try {
@@ -307,7 +326,7 @@ export const getUserIdFromToken = async () => {
   
   // Use local auth if SuperTokens is having issues
   if (USE_LOCAL_AUTH) {
-    return localStorage.getItem('userId')
+    return getLocalStorage('userId')
   }
   
   try {
@@ -353,7 +372,7 @@ export const fetchUserProfile = async () => {
   try {
     if (await Session.doesSessionExist()) {
       const userId = await Session.getUserId()
-      localStorage.setItem('userId', userId) // Ensure userId is in localStorage
+      setLocalStorage('userId', userId) // Ensure userId is in localStorage
       
     const response = await axios.get(`/user/profile/${userId}`)
     return response.data.user
@@ -402,7 +421,7 @@ export const deleteUserAccount = async () => {
       console.log('Account deletion response:', response.data);
       
       // Clean up after successful deletion
-      localStorage.removeItem('userId');
+      removeLocalStorage('userId');
       
       // Sign out from SuperTokens
       await EmailPassword.signOut();
@@ -423,7 +442,7 @@ export const deleteUserAccount = async () => {
         console.log('Retry deletion response:', retryResponse.data);
         
         // Clean up after successful deletion
-        localStorage.removeItem('userId');
+        removeLocalStorage('userId');
         
         // Sign out from SuperTokens
         await EmailPassword.signOut();
@@ -539,17 +558,17 @@ export const signOut = async () => {
   
   try {
     await EmailPassword.signOut()
-    localStorage.removeItem('userId')
-    localStorage.removeItem('token')
-    localStorage.removeItem('lastUsedGroupId')
+    removeLocalStorage('userId')
+    removeLocalStorage('token')
+    removeLocalStorage('lastUsedGroupId')
     console.log('User signed out successfully')
     return true
   } catch (error) {
     console.error('Error signing out:', error)
     // Try to clean up local storage even if API fails
-    localStorage.removeItem('userId')
-    localStorage.removeItem('token')
-    localStorage.removeItem('lastUsedGroupId')
+    removeLocalStorage('userId')
+    removeLocalStorage('token')
+    removeLocalStorage('lastUsedGroupId')
     throw error
   }
 }
@@ -604,8 +623,8 @@ async function signUp(email, password, firstName, lastName) {
     console.log('Sign up response:', userInfo);
     
     // Store basic user info in localStorage for profile recovery if needed
-    localStorage.setItem('userEmail', email);
-    localStorage.setItem('userName', name);
+    setLocalStorage('userEmail', email);
+    setLocalStorage('userName', name);
     
     // If signup is successful, log in the user
     if (userInfo.status === "OK") {
