@@ -40,18 +40,38 @@ const getLocalStorage = (key, defaultValue = null) => {
 
 // Check if user is authenticated
 const isAuthenticated = () => {
+  // First check for token in localStorage
   const token = getLocalStorage('token')
-  // Add any additional authentication checks here
-  return !!token
+  const userId = getLocalStorage('userId')
+  
+  // Log detailed authentication state
+  console.log('Auth check:', { 
+    hasToken: !!token, 
+    hasUserId: !!userId,
+    tokenType: typeof token,
+    userIdType: typeof userId
+  })
+  
+  // Consider using Session.doesSessionExist() for a more reliable check
+  // But since that's async and we need a sync check here, we'll use localStorage
+  // Accept either token or userId as proof of authentication
+  return !!(token || userId)
 }
 
 // Navigation guard to check group membership
 router.beforeEach(async (to, from, next) => {
+  console.log(`Router guard: navigating from ${from.path} to ${to.path}`)
+  
   // Check if the route requires authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
+    // Log authentication check
+    const auth = isAuthenticated()
+    console.log(`Router guard: authentication check for ${to.path} - result: ${auth ? 'authenticated' : 'not authenticated'}`)
+    
     // Check if user is authenticated
-    if (!isAuthenticated()) {
+    if (!auth) {
       // Redirect to login page if not authenticated
+      console.warn(`Router guard: redirecting to /auth due to failed authentication check for ${to.path}`)
       return next('/auth')
     }
     
@@ -66,7 +86,10 @@ router.beforeEach(async (to, from, next) => {
         const userGroups = response.data
         
         // Check if the user is a member of this group
-        const isMember = userGroups.some(group => group.id === groupId)
+        const isMember = Array.isArray(userGroups) && userGroups.some(group => group.id === groupId)
+        
+        console.log(`Router guard: group membership check for ${groupId} - result: ${isMember ? 'member' : 'not member'}`, 
+                    { userGroupsType: typeof userGroups, isArray: Array.isArray(userGroups), groupsCount: Array.isArray(userGroups) ? userGroups.length : 0 })
         
         if (!isMember) {
           console.log('User is not a member of this group, redirecting to profile')

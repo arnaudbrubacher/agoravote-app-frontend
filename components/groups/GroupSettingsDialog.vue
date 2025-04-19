@@ -546,6 +546,15 @@ const refreshFormData = async () => {
     }
   } catch (error) {
     console.error('Error fetching group data directly on refresh:', error);
+    
+    // If 404 error (group doesn't exist anymore), close the dialog
+    if (error.response && error.response.status === 404) {
+      console.log('Group no longer exists, closing settings dialog');
+      if (typeof props.onClose === 'function') {
+        props.onClose();
+      }
+      return; // Exit early
+    }
   }
   
   // Direct check of the required_documents field on refresh

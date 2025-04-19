@@ -107,6 +107,8 @@ import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 import { useAlert } from '@/composables/useAlert'
 import axios from 'axios'
+import { ensureSuperTokensInit } from '@/src/utils/auth'
+import Session from 'supertokens-web-js/recipe/session'
 
 const router = useRouter()
 const fileInput = ref(null)
@@ -203,21 +205,23 @@ const profilePictureUrl = computed(() => {
 
 onMounted(async () => {
   try {
+    // Ensure SuperTokens is initialized
+    ensureSuperTokensInit()
+    
+    // Check for valid SuperTokens session
+    const sessionExists = await Session.doesSessionExist()
+    
+    console.log('Profile page - Session check: ', sessionExists)
+    
+    if (!sessionExists) {
+      console.warn('No active session found on profile page, redirecting to auth')
+      router.push('/auth')
+      return
+    }
+    
     await fetchCurrentUserProfile()
   } catch (error) {
     console.error('Failed to fetch profile:', error)
-    
-    // Check for 404 or other indication the profile doesn't exist
-    if (error.response?.status === 404 || error.message?.includes('not found')) {
-      console.log('Profile not found, attempting to create it...')
-      try {
-        // Try to create the user profile using the createUserProfile function
-        await createUserProfile()
-        console.log('Profile created successfully')
-      } catch (createError) {
-        console.error('Failed to create user profile:', createError)
-      }
-    }
   }
   
   fetchPosts()

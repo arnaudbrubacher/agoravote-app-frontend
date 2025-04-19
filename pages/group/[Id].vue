@@ -632,7 +632,17 @@ const handleCsvImport = async (file) => {
 }
 
 const refreshGroupData = async () => {
-  await fetchGroup()
+  try {
+    await fetchGroup()
+  } catch (error) {
+    console.warn('Error refreshing group data:', error)
+    // Check if this is a 404 error (group no longer exists)
+    if (error.response && error.response.status === 404) {
+      console.log('Group no longer exists, redirecting to profile page')
+      router.push('/profile')
+    }
+    // Don't rethrow the error - we've handled it
+  }
 }
 
 const handleAdminStatusUpdate = (newAdminStatus) => {

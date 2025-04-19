@@ -139,7 +139,8 @@ const handleLogin = async () => {
   loginError.value = ''
   try {
     await login(loginEmail.value, loginPassword.value)
-    await handlePostAuthNavigation(false) // Not a new user
+    // Login implies email is already verified or verification is not needed for login
+    await handlePostAuthNavigation(false)
   } catch (error) {
     console.error('Login failed:', error)
     loginError.value = error.message || 'Login failed. Please try again.'
@@ -154,15 +155,29 @@ const handleSignup = async () => {
   }
   passwordError.value = false
   try {
-    await signup(signupName.value, signupEmail.value, signupPassword.value)
-    await handlePostAuthNavigation(true) // New user
+    const signupResult = await signup(signupName.value, signupEmail.value, signupPassword.value)
+
+    if (signupResult.status === 'OK') {
+      console.log('Signup successful, skipping email verification and navigating directly to user profile.')
+      
+      // Check if user object and ID exist in the result
+      if (signupResult.user && signupResult.user.id) {
+        const userId = signupResult.user.id
+        router.push(`/user/${userId}`) // Navigate to the new user's profile page
+      } else {
+        // Fallback if user ID is somehow missing, though it shouldn't be on successful signup
+        console.error('Signup successful, but user ID not found in response. Navigating to generic profile.')
+        router.push('/profile') 
+      }
+    } else {
+      // Should not happen if signup function throws errors, but handle defensively
+      signupError.value = 'Signup failed with status: ' + signupResult.status
+    }
   } catch (error) {
-    console.error('Signup failed:', error)
+    console.error('Signup failed in component:', error)
     
-    // Handle server errors
-    if (error.status === 500 || (error.response && error.response.status === 500)) {
-      signupError.value = 'Server error. Please try again later or contact support.'
-    } else if (error.message && error.message.includes('already exists')) {
+    // Handle specific errors
+    if (error.message && error.message.includes('already exists')) {
       signupError.value = error.message
       // Switch to login tab when email already exists
       activeTab.value = 'login'

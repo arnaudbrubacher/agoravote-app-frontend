@@ -241,27 +241,121 @@ const isAuthenticated = computed(() => {
   return !!userData.value; 
 })
 
+// Encapsulated data loading function with SuperTokens check
+const loadLayoutData = async () => {
+  // Check if this is during intentional group deletion
+  const isIntentionalDeletion = localStorage.getItem('intentionalGroupDeletion') === 'true';
+  
+  if (isIntentionalDeletion) {
+    console.log('Skipping session check during intentional group deletion');
+    return; // Skip session check during intentional deletion
+  }
+  
+  console.log('loadLayoutData checking session...');
+  let sessionExists = false;
+  try {
+    sessionExists = await Session.doesSessionExist();
+  } catch (sessionError) {
+    console.error('Error checking SuperTokens session existence:', sessionError);
+    // Treat error during check as session not existing for safety
+    clearAuthDataAndRedirect();
+    return;
+  }
+  console.log('Session.doesSessionExist() result:', sessionExists);
+
+  if (sessionExists) {
+    console.log('Session exists. Proceeding to fetch data.');
+    let fetchUserSuccess = true;
+    // Fetch user data if not already loaded or if it was nullified by a previous error
+    if (!userData.value) { 
+      console.log('Fetching user data in loadLayoutData...');
+      try {
+        // Directly call fetchUserData which handles its own try/catch
+        await fetchUserData(); 
+        if (!userData.value) {
+          // Fetch succeeded but returned no data (shouldn't happen for /users/me)
+          // Or fetchUserData caught an error and set userData to null
+          console.warn('fetchUserData completed but userData is still null.');
+          fetchUserSuccess = false; // Mark as failed
+        }
+      } catch (fetchError) {
+        // This catch might be redundant if fetchUserData handles its own errors
+        // but added for safety
+        console.error('Error occurred during fetchUserData call:', fetchError);
+        fetchUserSuccess = false; // Mark as failed
+        userData.value = null; // Ensure userData is null on error
+      }
+    }
+    
+    // ---> MODIFICATION: Only redirect if session is definitively lost, 
+    // --->             otherwise handle data fetch failure gracefully.
+    if (!fetchUserSuccess) {
+        console.warn('Failed to fetch user data, but session still seems to exist. Will not redirect immediately.');
+        // Optionally: Show a non-blocking error message to the user in the UI
+        // Example: globalErrorState.value = "Could not load user profile. Please try refreshing.";
+        // We avoid redirecting here just because data fetch failed.
+        // Let the user stay logged in if the session token is still valid.
+    }
+    // ---> END MODIFICATION
+
+    // Fetch groups only if user data fetch was successful and groups are empty
+    if (userData.value && fetchUserSuccess && userGroups.value.length === 0) {
+      console.log('Fetching user groups in loadLayoutData...');
+      await fetchUserGroups(); // fetchUserGroups should also handle its own errors
+    } else {
+      console.log('Skipping groups fetch: User data missing/fetch failed or groups already loaded.');
+    }
+  } else {
+    console.log('No active session found by SuperTokens. Clearing state and redirecting.');
+    // ---> ADDED CHECK: Avoid redirecting if already on /auth page <---
+    if (route.path !== '/auth') {
+        clearAuthDataAndRedirect();
+    } else {
+        console.log('Already on /auth page, skipping redirect.');
+        // Ensure data is still cleared even if not redirecting
+        userData.value = null;
+        userGroups.value = [];
+        lastUsedGroupId.value = null;
+        removeLocalStorage('token');
+        removeLocalStorage('userId');
+        removeLocalStorage('lastUsedGroupId');
+    }
+    // ---> END ADDED CHECK <---
+  }
+}
+
+// Helper to clear local auth state and redirect
+const clearAuthDataAndRedirect = () => {
+  console.log('Clearing auth data and redirecting to /auth');
+  userData.value = null;
+  userGroups.value = [];
+  lastUsedGroupId.value = null;
+  removeLocalStorage('token');
+  removeLocalStorage('userId');
+  removeLocalStorage('lastUsedGroupId');
+  // Check if already on auth page to prevent loop (redundant with check above, but safe)
+  if (route.path !== '/auth') {
+     router.push('/auth');
+  }
+}
+
 // Fetch user data if authenticated
 const fetchUserData = async () => {
-  // ... (keep existing try/catch, but maybe remove the router.push on 401 here?)
-  // Let loadLayoutData handle the auth flow redirect.
   try {
-    loading.value = true;
+    // Removed loading.value toggle from here, manage in calling context if needed
+    console.log('Attempting to fetch /users/me');
     const response = await axios.get('/users/me');
-    userData.value = response.data;
-    console.log('User data fetched in app-layout:', userData.value);
+    userData.value = response.data; // Assuming response.data is the user object
+    console.log('User data fetched successfully:', userData.value);
+    // Clear any previous error state related to user fetch
+    // Example: globalErrorState.value = null;
   } catch (error) {
-    console.error('Failed to fetch user data:', error);
-    userData.value = null; // Clear user data on fetch error
-    if (error.response?.status === 401) {
-      // If unauthorized, let loadLayoutData handle redirect/state clearing
-      console.log('fetchUserData received 401, will re-run loadLayoutData check.');
-    } else {
-      // Handle other errors if necessary
-    }
-  } finally {
-    loading.value = false;
-  }
+    console.error('Failed to fetch user data (/users/me):', error);
+    userData.value = null; // CRITICAL: Ensure userData is null on failure
+    // Do not redirect here, let the caller (loadLayoutData) decide based on session status
+    // Re-throw the error if the caller needs to know about it
+    // throw error; 
+  } 
 }
 
 // Fetch user groups
@@ -271,18 +365,45 @@ const fetchUserGroups = async () => {
     const response = await axios.get('/user/groups');
     console.log('Raw API response for user groups:', response.data);
 
+    // Handle different response types
     if (Array.isArray(response.data)) {
+      // Normal case: API returns an array of groups
       userGroups.value = response.data;
       console.log('User groups set:', userGroups.value);
+    } else if (response.data === null) {
+      // Backend can return null if user has no groups
+      console.warn('/user/groups endpoint returned null, defaulting to empty array');
+      userGroups.value = []; // Use empty array when response is null
+    } else if (typeof response.data === 'object' && response.data !== null) {
+      // Handle case where response might be an object with groups inside
+      // (This branch might not be needed, but added for robustness)
+      const possibleGroups = response.data.groups || response.data.data || [];
+      console.warn('/user/groups returned an object instead of array, attempting to extract groups:', possibleGroups);
+      userGroups.value = Array.isArray(possibleGroups) ? possibleGroups : [];
     } else {
-      console.warn('/user/groups did not return an array, received:', response.data);
-      userGroups.value = []; // Default to empty array if response is not an array
+      // Any other unexpected response
+      console.warn('/user/groups returned unexpected data type:', typeof response.data);
+      userGroups.value = []; // Default to empty array
     }
+    
+    // Always update last used group after setting groups, 
+    // this handles the case where groups are now empty
     updateLastUsedGroup();
   } catch (error) {
     console.error('Failed to fetch user groups:', error);
-    userGroups.value = []; // Clear groups on error
-    // Don't redirect here, let loadLayoutData handle auth errors
+    
+    // Check if this is during intentional group deletion
+    const isIntentionalDeletion = localStorage.getItem('intentionalGroupDeletion') === 'true';
+    
+    // Only trigger session check on auth errors if not during intentional deletion
+    if (error.response && error.response.status === 401 && !isIntentionalDeletion) {
+      console.warn('Authentication error during groups fetch, checking session status');
+      // Use setTimeout to avoid immediate check during navigation
+      setTimeout(() => loadLayoutData(), 500);
+    } else {
+      userGroups.value = []; // Always set to empty array on error
+      updateLastUsedGroup(); // Also update last used group on error
+    }
   } finally {
     isLoadingGroups.value = false;
   }
@@ -310,58 +431,6 @@ const updateLastUsedGroup = () => {
   } else {
     lastUsedGroupId.value = null
     removeLocalStorage('lastUsedGroupId')
-  }
-}
-
-// Encapsulated data loading function with SuperTokens check
-const loadLayoutData = async () => {
-  console.log('loadLayoutData checking session...');
-  const sessionExists = await Session.doesSessionExist();
-  console.log('Session.doesSessionExist() result:', sessionExists);
-
-  if (sessionExists) {
-    console.log('Session exists. Proceeding to fetch data.');
-    // Fetch user data if not already loaded or if it was nullified by a previous error
-    if (!userData.value) { 
-      console.log('Fetching user data in loadLayoutData...');
-      await fetchUserData();
-      // If fetchUserData failed (e.g., 401), userData will be null, 
-      // and we should re-check session and potentially redirect.
-      if (!userData.value) {
-        console.log('User data is null after fetch attempt, re-checking session...');
-        const stillExists = await Session.doesSessionExist();
-        if (!stillExists) {
-          console.log('Session lost after user data fetch failure. Clearing state and redirecting.');
-          clearAuthDataAndRedirect();
-          return; // Stop further execution
-        }
-      }
-    }
-    // Fetch groups only if authenticated and groups are empty
-    if (userData.value && userGroups.value.length === 0) { // Ensure user data is present before fetching groups
-      console.log('Fetching user groups in loadLayoutData...');
-      await fetchUserGroups();
-    } else {
-      console.log('Skipping groups fetch: User data missing or groups already loaded.');
-    }
-  } else {
-    console.log('No active session found by SuperTokens. Clearing state and redirecting.');
-    clearAuthDataAndRedirect();
-  }
-}
-
-// Helper to clear local auth state and redirect
-const clearAuthDataAndRedirect = () => {
-  console.log('Clearing auth data and redirecting to /auth');
-  userData.value = null;
-  userGroups.value = [];
-  lastUsedGroupId.value = null;
-  removeLocalStorage('token');
-  removeLocalStorage('userId');
-  removeLocalStorage('lastUsedGroupId');
-  // Check if already on auth page to prevent loop
-  if (route.path !== '/auth') {
-     router.push('/auth');
   }
 }
 
@@ -413,38 +482,6 @@ const profilePictureUrl = computed(() => {
 provide('appUserData', userData)
 provide('refreshAppUserData', fetchUserData) // Keep old provide for compatibility if needed
 provide('loadLayoutData', loadLayoutData); // Provide new loader
-
-// Watch for authentication status changes - Keep this simple now
-// We rely more on explicit calls and Session checks
-watch(isAuthenticated, (newVal) => {
-  console.log('isAuthenticated computed changed to:', newVal);
-  // Maybe trigger loadLayoutData if newVal becomes true after being false?
-  // This needs careful handling to avoid loops.
-  // For now, let explicit triggers manage loading.
-}, { immediate: false }); // Run only on change, not immediately
-
-// Watch for route changes primarily to update last used group ID visually
-watch(
-  () => route.path,
-  (newPath) => {
-    console.log('Route path changed:', newPath);
-    const groupMatch = newPath.match(/\/group\/([^/]+)/);
-    if (groupMatch && groupMatch[1]) {
-      const newGroupId = groupMatch[1];
-      if (newGroupId !== lastUsedGroupId.value) {
-         console.log('Updating last used group ID based on route:', newGroupId);
-         lastUsedGroupId.value = newGroupId;
-         setLocalStorage('lastUsedGroupId', newGroupId);
-         // Optionally re-fetch groups if needed, but maybe not necessary
-         // fetchUserGroups();
-      }
-    }
-    // Consider if other route changes necessitate data refresh
-    // if (!newPath.startsWith('/group/')) {
-    //    loadLayoutData(); // Example: refresh layout data if navigating away from groups?
-    // }
-  }
-);
 
 // Watch for changes to lastUsedGroup to reset the fallback icon
 watch(
@@ -759,7 +796,24 @@ const handleReviewDocuments = async (groupId) => {
 const handleGroupDataUpdated = (event) => {
   console.log('Group data updated event received in app-layout');
   
-  // Check if the event has detail with groupId and isJoinRequest
+  // Check if this is a deletion event
+  if (event.detail && event.detail.isDeleted) {
+    console.log('Group deletion detected for group:', event.detail.groupId);
+    
+    // For group deletion, do minimal processing to avoid triggering session checks
+    // Clear the last used group if it matches the deleted group
+    if (lastUsedGroupId.value === event.detail.groupId) {
+      console.log('Clearing last used group ID since it was deleted');
+      lastUsedGroupId.value = null;
+      removeLocalStorage('lastUsedGroupId');
+    }
+    
+    // Empty the user groups array (will be refreshed on next view that needs it)
+    userGroups.value = [];
+    return; // Skip the rest of the processing
+  }
+  
+  // Non-deletion event handling (existing code)
   if (event.detail && event.detail.groupId && event.detail.isJoinRequest) {
     console.log('Join request detected for group:', event.detail.groupId);
     
@@ -776,7 +830,7 @@ const handleGroupDataUpdated = (event) => {
     }
   }
   
-  // Refresh the groups list
+  // Refresh the groups list (for non-deletion events)
   fetchUserGroups();
 }
 
@@ -821,7 +875,7 @@ onMounted(async () => {
 
   // Add event listeners
   // Consider changing 'user-data-updated' to trigger loadLayoutData if necessary
-  window.addEventListener('user-data-updated', loadLayoutData); 
+  window.addEventListener('user-data-updated', loadLayoutData);
   window.addEventListener('group-data-updated', handleGroupDataUpdated);
   window.addEventListener('close-dashboard-sidebar', () => {
     showFindGroupDialog.value = false;
@@ -832,6 +886,10 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   console.log('app-layout onBeforeUnmount');
   window.removeEventListener('user-data-updated', loadLayoutData);
-  // ... remove other listeners ...
+  window.removeEventListener('group-data-updated', handleGroupDataUpdated);
+  window.removeEventListener('close-dashboard-sidebar', () => {
+    showFindGroupDialog.value = false;
+  });
+  window.removeEventListener('user-left-group', handleUserLeftGroup);
 });
 </script>

@@ -2,6 +2,7 @@ import axios from './axios'
 import SuperTokens from 'supertokens-web-js'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import Session, { addAxiosInterceptors } from 'supertokens-web-js/recipe/session'
+import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 
 // Adding a backup authentication system using localStorage
 // Safe localStorage functions to prevent SSR issues
@@ -82,10 +83,33 @@ export function ensureSuperTokensInit() {
       },
       recipeList: [
         EmailPassword.init(),
-        Session.init()
+        Session.init({
+          onHandleEvent: (context) => {
+            console.log("[SuperTokens Session Event]:", context.action, context.sessionContext ? `User ID: ${context.sessionContext.userId}` : '(No Session Context)');
+            if (context.action === "UNAUTHORISED") {
+              console.warn("SuperTokens session UNAUTHORISED event caught. App should handle state based on Session.doesSessionExist().");
+            }
+            if (context.action === "SESSION_CREATED") {
+               console.log("SuperTokens SESSION_CREATED event.");
+            }
+            if (context.action === "SIGN_OUT") {
+               console.log("SuperTokens SIGN_OUT event.");
+            }
+            if (context.action === "SESSION_REFRESH") {
+                console.log("SuperTokens SESSION_REFRESH event.");
+            }
+            if (context.action === "API_INVALID_CLAIM") {
+                console.warn("SuperTokens API_INVALID_CLAIM event:", context.payload);
+            }
+          },
+        }),
+        EmailVerification.init()
       ]
     });
     supertokensInitialized = true;
+    console.log('SuperTokens frontend initialized with EmailPassword, Session, and EmailVerification');
+  } else if (typeof window === 'undefined') {
+    console.warn('Attempted to initialize SuperTokens on server-side. Skipping.');
   }
 }
 
@@ -226,94 +250,72 @@ export const signup = async (name, email, password) => {
     }
 
     if (response.status === "OK") {
-      console.log('Signup successful, attempting to sign in...')
+      console.log('Signup successful');
       
-      // Sign in the user immediately after signup
-      const loginResponse = await EmailPassword.signIn({
-        formFields: [
-          { id: "email", value: email },
-          { id: "password", value: password }
-        ]
-      })
-      
-      console.log('Login response after signup:', loginResponse)
+      const { user } = response;
+      const userId = user.id;
+      setLocalStorage('userId', userId);
 
-      if (loginResponse.status === "OK") {
-        // Check if session exists and get user ID
-        if (await Session.doesSessionExist()) {
-          console.log('Session exists after login')
-          const userId = await Session.getUserId()
-          console.log('User ID retrieved:', userId)
-          
-          // Store in localStorage for backwards compatibility
-          setLocalStorage('userId', userId)
-          
-          // Add the user's name to our database (SuperTokens doesn't store this by default)
-          try {
-            console.log('Creating user with data:', { id: userId, name, email })
-            
-            // First attempt to create the user in the database
-            let updateResponse = null
-            try {
-              // Try the POST /users endpoint
-              updateResponse = await axios.post('/users', { 
-                id: userId,
-                name: name,
-                email: email
-              })
-              console.log('User creation response:', updateResponse.data)
-            } catch (err) {
-              console.error('First user creation attempt failed:', err)
-              
-              // Fall back to PUT method as an alternative
-              try {
-                updateResponse = await axios.put(`/users/${userId}`, {
-                  name: name,
-                  email: email
-                })
-                console.log('User update via PUT response:', updateResponse.data)
-              } catch (putErr) {
-                // Try an alternative endpoint as last resort
-                try {
-                  updateResponse = await axios.post('/user', {
-                    id: userId,
-                    name: name,
-                    email: email
-                  })
-                  console.log('User creation via alternative endpoint response:', updateResponse.data)
-                } catch (lastErr) {
-                  console.error('All attempts to create user record failed:', lastErr)
-                  throw new Error('Failed to create user record in database')
-                }
+      // *** Log in the user immediately after successful signup ***
+      try {
+          console.log('Attempting to sign in user after signup...');
+          const loginResponse = await EmailPassword.signIn({
+              formFields: [
+                  { id: "email", value: email },
+                  { id: "password", value: password }
+              ]
+          });
+          if (loginResponse.status !== "OK") {
+              // Log error but don't block the flow, session might still be created by signup sometimes
+              console.error('Auto sign-in after signup failed:', loginResponse.status);
+          } else {
+              console.log('Auto sign-in successful after signup.');
+              // Ensure session exists after sign in before proceeding
+              if (!(await Session.doesSessionExist())) {
+                  console.error("CRITICAL: Session does not exist even after successful signIn call!");
+                  // Maybe throw an error here or handle appropriately
               }
-            }
-            
-            // If we get here, one of the user creation methods succeeded
-            console.log('User creation successful')
-            
-          } catch (updateError) {
-            console.error('Failed to create user record:', updateError)
-            // This is a critical error, don't continue - user needs to be in database
-            throw new Error('Registration failed: Unable to create user record')
           }
-          
-          return { token: "session-exists", userId }
-        } else {
-          console.error('No session exists after login')
-          throw new Error("Failed to create session after signup")
-        }
-      } else {
-        console.error('Auto-login failed with status:', loginResponse.status)
-        throw new Error("Auto-login after signup failed")
+      } catch (signInError) {
+          console.error('Error during auto sign-in after signup:', signInError);
+          // Decide if this should block the user - for now, let's log and continue
       }
+
+      // Call backend to potentially create/update user profile data
+      try {
+        console.log(`Calling backend /users endpoint for ID: ${userId}, Name: ${name}, Email: ${email}`)
+        await axios.post('/users', { 
+          id: userId, 
+          name: name, 
+          email: email 
+        })
+        console.log('Backend /users endpoint called successfully after signup.')
+      } catch (backendError) {
+        console.error('Failed to call backend /users endpoint after signup:', backendError)
+        // Decide if this is a critical error or just a warning
+        // For now, log it and continue, as core auth succeeded.
+      }
+
+      // *** Return the success status and user object ***
+      // We assume verification is not needed since we disabled it
+      return { 
+        status: response.status, // "OK"
+        user: user, // Contains user.id
+        needsVerification: false // Explicitly set to false as we are skipping it
+      };
+      
     } else {
-      console.error('Signup failed with status:', response.status)
-      throw new Error("Signup failed: " + response.status)
+      console.error('Signup failed with status:', response.status);
+      throw new Error("Signup failed: " + response.status);
     }
   } catch (error) {
-    console.error('Signup process error:', error)
-    console.error('Error details:', error.response?.data || error.message)
-    throw error
+    console.error('Signup failed:', error);
+    // Rethrow the specific error message if available
+    if (error.message) {
+      throw new Error(error.message);
+    } else {
+      throw new Error('An unexpected error occurred during signup.');
+    }
   }
 }
 
