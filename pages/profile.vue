@@ -203,28 +203,49 @@ const profilePictureUrl = computed(() => {
   return `${baseUrl}/${userData.value.profile_picture}`
 })
 
+// Initialize
 onMounted(async () => {
+  console.log('Profile page - checking session...')
+  
+  // Check and clear intentional group deletion flag
+  const wasIntentionalDeletion = localStorage.getItem('intentionalGroupDeletion') === 'true'
+  const deletedGroupId = localStorage.getItem('deletedGroupId')
+  
+  if (wasIntentionalDeletion) {
+    console.log('Profile page loaded after intentional group deletion:', deletedGroupId)
+    // Clear the flag immediately to prevent any issues with future operations
+    localStorage.removeItem('intentionalGroupDeletion')
+    localStorage.removeItem('deletedGroupId')
+    // Dispatch an event to refresh the UI components
+    window.dispatchEvent(new CustomEvent('group-deletion-complete'))
+  }
+  
   try {
     // Ensure SuperTokens is initialized
     ensureSuperTokensInit()
     
-    // Check for valid SuperTokens session
+    // Check if session exists
     const sessionExists = await Session.doesSessionExist()
-    
     console.log('Profile page - Session check: ', sessionExists)
     
     if (!sessionExists) {
-      console.warn('No active session found on profile page, redirecting to auth')
+      console.warn('No session found on profile page load, redirecting to auth...')
       router.push('/auth')
       return
     }
     
-    await fetchCurrentUserProfile()
+    // If we get here, session exists - fetch data
+    await Promise.all([
+      fetchCurrentUserProfile(),
+      fetchPosts()
+    ])
   } catch (error) {
-    console.error('Failed to fetch profile:', error)
+    console.error('Error initializing profile page:', error)
+    if (error.message.includes('session') || error.response?.status === 401) {
+      router.push('/auth')
+    } else {
+      error.value = 'Failed to load profile data'
+    }
   }
-  
-  fetchPosts()
-  document.title = 'My Profile - AgoraVote'
 })
 </script> 

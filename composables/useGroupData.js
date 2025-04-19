@@ -112,13 +112,14 @@ export function useGroupData(groupId) {
       // Store the current group ID before deletion
       const currentGroupId = groupId
       
+      // Set a flag in localStorage to indicate controlled deletion BEFORE the API call
+      // This will be used to prevent unwanted redirects in event handlers
+      localStorage.setItem('intentionalGroupDeletion', 'true')
+      localStorage.setItem('deletedGroupId', currentGroupId)
+      
       // Delete the group
       await axios.delete(`/groups/${groupId}`)
       console.log('Group deleted successfully, navigating to profile page.')
-      
-      // Set a flag in localStorage to indicate controlled deletion
-      // This will be used to prevent unwanted redirects in event handlers
-      localStorage.setItem('intentionalGroupDeletion', 'true')
       
       // Dispatch an event to update the dashboard sidebar immediately
       window.dispatchEvent(new CustomEvent('group-data-updated', {
@@ -128,17 +129,21 @@ export function useGroupData(groupId) {
         }
       }))
       
-      // Don't perform session checks here - it can cause issues with 
-      // SuperTokens checks during navigation
+      // Clear any cached data related to this group
+      localStorage.removeItem('lastVisitedGroupId')
       
-      // Simply redirect to profile page after successful deletion
-      router.push('/profile')
-      
-      // Clear the flag after a short delay (after navigation complete)
+      // Use a cleaner approach for navigation - a full page reload to /profile
+      // This ensures a clean state without any component issues
       setTimeout(() => {
-        localStorage.removeItem('intentionalGroupDeletion')
-      }, 1000)
+        // Use location.replace to prevent back button from returning to the deleted group
+        window.location.replace('/profile')
+        
+        // No need to clear the flag here, it will be handled by profile page load
+      }, 200)
     } catch (error) {
+      // Clear the flag if deletion fails
+      localStorage.removeItem('intentionalGroupDeletion')
+      localStorage.removeItem('deletedGroupId')
       console.error('Failed to delete group:', error)
       throw error
     }

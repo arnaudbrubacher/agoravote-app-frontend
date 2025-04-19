@@ -233,6 +233,7 @@ const showAdmissionForm = ref(false)
 const selectedGroup = ref(null)
 const admissionError = ref('')
 const isReviewMode = ref(false)
+const appLayoutHandlers = ref({}) // Store event handler references
 
 // Check if user is authenticated
 const isAuthenticated = computed(() => {
@@ -871,25 +872,63 @@ const handleGroupImageError = (event) => {
 
 onMounted(async () => {
   console.log('app-layout onMounted - calling loadLayoutData');
+  
+  // Handle case where we are coming from a group deletion
+  const wasIntentionalDeletion = localStorage.getItem('intentionalGroupDeletion') === 'true';
+  const deletedGroupId = localStorage.getItem('deletedGroupId');
+  
+  if (wasIntentionalDeletion) {
+    console.log('App layout loaded after intentional group deletion:', deletedGroupId);
+    // We'll handle this specially to avoid unnecessary API calls to the deleted group
+    userGroups.value = []; // Start with empty groups
+    lastUsedGroupId.value = null; // Clear last used group
+    removeLocalStorage('lastUsedGroupId'); // Also remove from storage
+  }
+  
   await loadLayoutData(); // Initial load attempt
 
+  // Define handlers with consistent references for proper cleanup
+  const handleCloseDashboardSidebar = () => {
+    showFindGroupDialog.value = false;
+  };
+  
+  const handleGroupDeletionComplete = () => {
+    console.log('Group deletion complete, refreshing groups');
+    fetchUserGroups();
+  };
+
   // Add event listeners
-  // Consider changing 'user-data-updated' to trigger loadLayoutData if necessary
   window.addEventListener('user-data-updated', loadLayoutData);
   window.addEventListener('group-data-updated', handleGroupDataUpdated);
-  window.addEventListener('close-dashboard-sidebar', () => {
-    showFindGroupDialog.value = false;
-  });
+  window.addEventListener('group-deletion-complete', handleGroupDeletionComplete);
+  window.addEventListener('close-dashboard-sidebar', handleCloseDashboardSidebar);
   window.addEventListener('user-left-group', handleUserLeftGroup);
+  
+  // Store handlers for cleanup
+  appLayoutHandlers.value = {
+    handleCloseDashboardSidebar,
+    handleGroupDeletionComplete
+  };
 });
 
 onBeforeUnmount(() => {
   console.log('app-layout onBeforeUnmount');
+  
+  // Remove event listeners
   window.removeEventListener('user-data-updated', loadLayoutData);
   window.removeEventListener('group-data-updated', handleGroupDataUpdated);
-  window.removeEventListener('close-dashboard-sidebar', () => {
-    showFindGroupDialog.value = false;
-  });
+  
+  // Use stored handler references for proper cleanup
+  if (appLayoutHandlers.value.handleGroupDeletionComplete) {
+    window.removeEventListener('group-deletion-complete', 
+      appLayoutHandlers.value.handleGroupDeletionComplete);
+  }
+  
+  if (appLayoutHandlers.value.handleCloseDashboardSidebar) {
+    window.removeEventListener('close-dashboard-sidebar', 
+      appLayoutHandlers.value.handleCloseDashboardSidebar);
+  }
+  
   window.removeEventListener('user-left-group', handleUserLeftGroup);
 });
 </script>
