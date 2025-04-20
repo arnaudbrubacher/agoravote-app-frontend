@@ -172,39 +172,8 @@ export const signup = async (name, email, password) => {
     return null
   }
   
-  /*
-  if (USE_LOCAL_AUTH) {
-    console.log('Using local auth for signup')
-    
-    // Check if email already exists
-    if (localUsers.emailExists(email)) {
-      throw new Error('An account with this email already exists. Please login instead.')
-    }
-    
-    // Add new user
-    const userId = localUsers.addUser(email, password, name)
-    localStorage.setItem('userId', userId)
-    
-    // Also store user in a format compatible with our existing UI
-    try {
-      const updateResponse = await axios.post('/users', { 
-        id: userId,
-        name: name,
-        email: email
-      })
-      console.log('User update response:', updateResponse.data)
-    } catch (updateError) {
-      console.error('Failed to update user with name:', updateError)
-      // Continue anyway since the core authentication was successful
-    }
-    
-    return { token: "local-auth", userId }
-  }
-  */
-  
   try {
     console.log('Starting signup process with SuperTokens...', { email, name })
-    console.log('API endpoint:', 'http://localhost:8080/auth/signup')
     
     // First, check if the email already exists to avoid internal server error
     try {
@@ -248,74 +217,61 @@ export const signup = async (name, email, password) => {
       const fieldErrors = response.formFields.map(field => `${field.id}: ${field.error}`).join(', ')
       throw new Error(`Signup validation failed: ${fieldErrors}`)
     }
-
+    
     if (response.status === "OK") {
-      console.log('Signup successful');
+      // After signup, if successful, attempt to create a session
+      await EmailPassword.signIn({
+        formFields: [
+          { id: "email", value: email },
+          { id: "password", value: password }
+        ]
+      })
       
-      const { user } = response;
-      const userId = user.id;
-      setLocalStorage('userId', userId);
-
-      // *** Log in the user immediately after successful signup ***
-      try {
-          console.log('Attempting to sign in user after signup...');
-          const loginResponse = await EmailPassword.signIn({
-              formFields: [
-                  { id: "email", value: email },
-                  { id: "password", value: password }
-              ]
-          });
-          if (loginResponse.status !== "OK") {
-              // Log error but don't block the flow, session might still be created by signup sometimes
-              console.error('Auto sign-in after signup failed:', loginResponse.status);
-          } else {
-              console.log('Auto sign-in successful after signup.');
-              // Ensure session exists after sign in before proceeding
-              if (!(await Session.doesSessionExist())) {
-                  console.error("CRITICAL: Session does not exist even after successful signIn call!");
-                  // Maybe throw an error here or handle appropriately
-              }
-          }
-      } catch (signInError) {
-          console.error('Error during auto sign-in after signup:', signInError);
-          // Decide if this should block the user - for now, let's log and continue
+      // Update user profile with name
+      if (await Session.doesSessionExist()) {
+        const userId = await Session.getUserId()
+        
+        // Update user display name
+        try {
+          await axios.post('/users', { 
+            id: userId,
+            name: name,
+            email: email
+          })
+          console.log('User profile updated with name')
+        } catch (updateError) {
+          console.error('Failed to update user with name:', updateError)
+          // Continue anyway since authentication was successful
+        }
+        
+        // Check email verification status
+        let isVerified = false
+        try {
+          isVerified = await EmailVerification.isEmailVerified()
+        } catch (error) {
+          console.warn('Failed to check email verification status:', error)
+        }
+        
+        console.log('Email verification status:', isVerified)
+        
+        // If email verification is not enabled or email is verified, proceed normally
+        // Otherwise, we'll redirect to verify-email page from the component
+        
+        return { 
+          status: "OK", 
+          user: { id: userId, email, name },
+          isEmailVerified: isVerified
+        }
+      } else {
+        console.error('Failed to create session after signup')
+        return { status: "OK", error: "Failed to create session" }
       }
-
-      // Call backend to potentially create/update user profile data
-      try {
-        console.log(`Calling backend /users endpoint for ID: ${userId}, Name: ${name}, Email: ${email}`)
-        await axios.post('/users', { 
-          id: userId, 
-          name: name, 
-          email: email 
-        })
-        console.log('Backend /users endpoint called successfully after signup.')
-      } catch (backendError) {
-        console.error('Failed to call backend /users endpoint after signup:', backendError)
-        // Decide if this is a critical error or just a warning
-        // For now, log it and continue, as core auth succeeded.
-      }
-
-      // *** Return the success status and user object ***
-      // We assume verification is not needed since we disabled it
-      return { 
-        status: response.status, // "OK"
-        user: user, // Contains user.id
-        needsVerification: false // Explicitly set to false as we are skipping it
-      };
-      
     } else {
-      console.error('Signup failed with status:', response.status);
-      throw new Error("Signup failed: " + response.status);
+      throw new Error(`Signup failed with status: ${response.status}`)
     }
   } catch (error) {
-    console.error('Signup failed:', error);
-    // Rethrow the specific error message if available
-    if (error.message) {
-      throw new Error(error.message);
-    } else {
-      throw new Error('An unexpected error occurred during signup.');
-    }
+    console.error('Signup error:', error)
+    throw error
   }
 }
 
@@ -643,5 +599,116 @@ async function signUp(email, password, firstName, lastName) {
     console.error('Signup error:', error);
     // Pass through the error
     throw error;
+  }
+}
+
+// Add function to check if email is verified
+export const isEmailVerified = async () => {
+  ensureSuperTokensInit();
+  
+  if (typeof window === 'undefined') {
+    console.error('Cannot check email verification on server-side')
+    return { status: 'ERROR', isVerified: false }
+  }
+  
+  try {
+    // First check if a session exists
+    if (await Session.doesSessionExist()) {
+      // Then check if email is verified
+      const response = await EmailVerification.isEmailVerified()
+      console.log('Raw verification response:', response)
+      
+      // Ensure we return a structured response
+      if (typeof response === 'boolean') {
+        return { status: 'OK', isVerified: response }
+      } else if (response && typeof response === 'object') {
+        // If it's already an object with isVerified, ensure it has the property
+        return { 
+          ...response, 
+          isVerified: response.isVerified === true
+        }
+      }
+      
+      return { status: 'OK', isVerified: false }
+    }
+    return { status: 'NO_SESSION', isVerified: false }
+  } catch (error) {
+    console.error('Error checking email verification status:', error)
+    return { status: 'ERROR', isVerified: false, error: error.message }
+  }
+}
+
+// Add a utility function to get authentication headers
+export const getAuthHeader = async () => {
+  ensureSuperTokensInit();
+  
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  
+  try {
+    if (await Session.doesSessionExist()) {
+      const accessToken = await Session.getAccessToken();
+      return {
+        'Authorization': `Bearer ${accessToken}`
+      };
+    }
+  } catch (error) {
+    console.error('Error getting auth header:', error);
+  }
+  
+  return {};
+};
+
+export const sendVerificationEmail = async () => {
+  ensureSuperTokensInit();
+  
+  if (typeof window === 'undefined') {
+    console.error('Cannot send verification email on server-side')
+    return { status: 'ERROR' }
+  }
+  
+  try {
+    // Call SuperTokens API first
+    console.log('Sending verification email via SuperTokens API')
+    const response = await EmailVerification.sendVerificationEmail()
+    
+    // Also call our custom endpoints to ensure it's sent through Resend
+    try {
+      const userId = getLocalStorage('userId')
+      const userEmail = getLocalStorage('userEmail')
+      
+      if (userId) {
+        console.log('Also sending verification email via custom endpoints for userId:', userId)
+        
+        // Get auth headers
+        const headers = await getAuthHeader();
+        console.log('Using auth headers:', Object.keys(headers).length > 0 ? 'Authorization header present' : 'No auth headers');
+        
+        const axiosInstance = await import('./axios').then(module => module.default)
+        
+        // Try both endpoints for maximum reliability
+        try {
+          // Try the original endpoint first
+          await axiosInstance.post(`/users/${userId}/resend-verification`, {}, { headers })
+          console.log('Successfully sent verification request to /users endpoint')
+        } catch (error1) {
+          console.warn('First endpoint failed, trying alternate endpoint:', error1.message)
+          
+          // For the fallback, use email if available (more reliable) or userId as fallback
+          const identifier = userEmail || userId
+          await axiosInstance.post(`/auth-verify/${identifier}`, {}, { headers })
+          console.log('Successfully sent verification request to /auth-verify endpoint')
+        }
+      }
+    } catch (customError) {
+      console.error('Error calling custom verification endpoints:', customError)
+      // Don't fail if this fails, we still have the SuperTokens flow
+    }
+    
+    return response
+  } catch (error) {
+    console.error('Error sending verification email:', error)
+    return { status: 'ERROR', error: error.message }
   }
 }

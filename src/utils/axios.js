@@ -1,5 +1,5 @@
 import axios from 'axios'
-import Session, { addAxiosInterceptors } from 'supertokens-web-js/recipe/session'
+import Session from 'supertokens-web-js/recipe/session'
 
 const instance = axios.create({
   baseURL: 'http://localhost:8080', // Your backend API URL
@@ -31,6 +31,7 @@ instance.interceptors.response.use(
   }
 );
 
-// SuperTokens will automatically add its interceptors - no need to call addAxiosInterceptors
+// SuperTokens automatically adds XMLHttpRequest interceptors which support axios
+// Do not call addAxiosInterceptors as recommended by SuperTokens warnings
 
 export default instance

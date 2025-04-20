@@ -79,7 +79,7 @@ definePageMeta({
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login, signup } from '~/src/utils/auth'
+import { login, signup, isEmailVerified } from '~/src/utils/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -139,8 +139,21 @@ const handleLogin = async () => {
   loginError.value = ''
   try {
     await login(loginEmail.value, loginPassword.value)
-    // Login implies email is already verified or verification is not needed for login
-    await handlePostAuthNavigation(false)
+    
+    // Check if email is verified
+    const verificationResponse = await isEmailVerified()
+    console.log('Login - Email verification status:', verificationResponse)
+    
+    if (!verificationResponse.isVerified) {
+      // Redirect to email verification page if email is not verified
+      router.push({
+        path: '/verify-email',
+        query: { email: loginEmail.value }
+      })
+    } else {
+      // Email is verified, proceed with normal post-auth navigation
+      await handlePostAuthNavigation(false)
+    }
   } catch (error) {
     console.error('Login failed:', error)
     loginError.value = error.message || 'Login failed. Please try again.'
@@ -158,17 +171,13 @@ const handleSignup = async () => {
     const signupResult = await signup(signupName.value, signupEmail.value, signupPassword.value)
 
     if (signupResult.status === 'OK') {
-      console.log('Signup successful, skipping email verification and navigating directly to user profile.')
+      console.log('Signup successful, redirecting to email verification page.')
       
-      // Check if user object and ID exist in the result
-      if (signupResult.user && signupResult.user.id) {
-        const userId = signupResult.user.id
-        router.push(`/user/${userId}`) // Navigate to the new user's profile page
-      } else {
-        // Fallback if user ID is somehow missing, though it shouldn't be on successful signup
-        console.error('Signup successful, but user ID not found in response. Navigating to generic profile.')
-        router.push('/profile') 
-      }
+      // Redirect to the verification page with email parameter
+      router.push({
+        path: '/verify-email',
+        query: { email: signupEmail.value }
+      })
     } else {
       // Should not happen if signup function throws errors, but handle defensively
       signupError.value = 'Signup failed with status: ' + signupResult.status

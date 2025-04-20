@@ -44,7 +44,7 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import SuperTokens from 'supertokens-web-js'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 import Session from 'supertokens-web-js/recipe/session'
-import { ensureSuperTokensInit } from '~/src/utils/auth'
+import { ensureSuperTokensInit, isEmailVerified, sendVerificationEmail } from '~/src/utils/auth'
 
 // Ensure SuperTokens is initialized
 ensureSuperTokensInit();
@@ -61,33 +61,28 @@ const resendError = ref('')
 onMounted(async () => {
   userEmail.value = route.query.email || 'your email address'
 
-  // --- REMOVED Automatic Verification Check on Load ---
-  // This was causing a 500 error on the backend GET /auth/user/email/verify endpoint.
-  // The page's main purpose is informational; the user verifies by clicking the link.
-  // We keep the resend functionality.
-  /*
+  // Check if user is already verified - add more robust error handling
   try {
-    const sessionExists = await Session.doesSessionExist();
-    console.log("[verify-email.vue] Checking session before isEmailVerified call...");
-    console.log("[verify-email.vue] Session.doesSessionExist():", sessionExists);
+    // First check if we have a session
+    const sessionExists = await Session.doesSessionExist()
+    console.log("[verify-email.vue] Session exists:", sessionExists)
+    
     if (sessionExists) {
-      const userId = await Session.getUserId();
-      console.log("[verify-email.vue] Session User ID:", userId);
+      const verificationResponse = await isEmailVerified()
+      console.log("[verify-email.vue] Email verified status:", verificationResponse)
       
-      // Attempting to check verification status
-      const isVerified = await EmailVerification.isEmailVerified(); 
-      if (isVerified) {
-        console.log('Email already verified, redirecting to profile.');
-        router.push('/profile');
+      if (verificationResponse && verificationResponse.isVerified) {
+        console.log('Email already verified, redirecting to profile.')
+        router.push('/profile')
+      } else {
+        console.log('Email not verified yet. Staying on verification page.')
       }
     } else {
-      console.log("[verify-email.vue] No session detected on frontend.");
+      console.log("[verify-email.vue] No session detected. User may need to log in again.")
     }
   } catch (error) {
-    console.error('Error checking verification status:', error);
+    console.error('Error checking verification status:', error)
   }
-  */
-  // --- END REMOVED Check ---
 })
 
 const resendVerificationEmail = async () => {
@@ -95,13 +90,13 @@ const resendVerificationEmail = async () => {
   resendError.value = ''
   emailSent.value = false
   try {
-    const response = await EmailVerification.sendVerificationEmail()
+    const response = await sendVerificationEmail()
     if (response.status === "OK") {
       emailSent.value = true
       setTimeout(() => { emailSent.value = false }, 5000) // Reset button after 5 seconds
     } else if (response.status === "EMAIL_ALREADY_VERIFIED_ERROR") {
       resendError.value = 'Your email is already verified.'
-      // Optionally redirect if already verified
+      // Redirect if already verified
       setTimeout(() => router.push('/profile'), 2000)
     } else {
       resendError.value = 'Failed to resend verification email. Please try again.'
