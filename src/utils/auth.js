@@ -254,6 +254,18 @@ export const signup = async (name, email, password) => {
         
         console.log('Email verification status:', isVerified)
         
+        // ADDED: Explicitly send verification email
+        if (!isVerified) {
+          console.log('Sending verification email after signup')
+          try {
+            await sendVerificationEmail()
+            console.log('Verification email sent successfully after signup')
+          } catch (verificationError) {
+            console.error('Failed to send verification email after signup:', verificationError)
+            // Continue anyway since we can resend later
+          }
+        }
+        
         // If email verification is not enabled or email is verified, proceed normally
         // Otherwise, we'll redirect to verify-email page from the component
         
@@ -687,18 +699,28 @@ export const sendVerificationEmail = async () => {
         
         const axiosInstance = await import('./axios').then(module => module.default)
         
-        // Try both endpoints for maximum reliability
+        // Try the endpoint that requires authentication
         try {
-          // Try the original endpoint first
+          // Try the original endpoint first (with authentication)
           await axiosInstance.post(`/users/${userId}/resend-verification`, {}, { headers })
           console.log('Successfully sent verification request to /users endpoint')
         } catch (error1) {
-          console.warn('First endpoint failed, trying alternate endpoint:', error1.message)
+          console.warn('First endpoint failed:', error1.message)
           
-          // For the fallback, use email if available (more reliable) or userId as fallback
-          const identifier = userEmail || userId
-          await axiosInstance.post(`/auth-verify/${identifier}`, {}, { headers })
-          console.log('Successfully sent verification request to /auth-verify endpoint')
+          // Only use the fallback method if we actually have an email
+          if (userEmail) {
+            console.log('Using email for verification request:', userEmail)
+            try {
+              // Don't include auth headers to prevent 401 -> retry loop
+              await axiosInstance.post(`/auth-verify/${userEmail}`, {}, { 
+                headers: { 'Content-Type': 'application/json' } // Only basic headers, no auth
+              })
+              console.log('Successfully sent verification request to /auth-verify endpoint')
+            } catch (error2) {
+              console.error('Error with fallback verification endpoint:', error2.message)
+              // Don't retry automatically - this prevents infinite loops
+            }
+          }
         }
       }
     } catch (customError) {
