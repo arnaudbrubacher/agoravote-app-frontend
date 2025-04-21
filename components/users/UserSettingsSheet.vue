@@ -321,7 +321,14 @@ const handleProfilePictureUpload = async (event) => {
   
   try {
     // Use the updateProfilePicture method from the composable
-    const result = await updateProfilePicture(file)
+    // Pass the userId from props
+    const userId = props.userData?.id
+    if (!userId) {
+        console.error('User data not available. Cannot upload profile picture.')
+        alert('User data not available. Cannot upload profile picture.')
+        return
+    }
+    const result = await updateProfilePicture(userId, file)
     
     // Emit event to refresh user data in parent
     emit('refresh-user-data')
@@ -357,10 +364,10 @@ const removeLocalStorage = (key) => {
 // Save user settings
 const saveSettings = async () => {
   try {
-    const userId = getLocalStorage('userId')
+    const userId = props.userData?.id
     
     if (!userId) {
-      throw new Error('Authentication required')
+      throw new Error('User data not available. Cannot save settings.')
     }
     
     // Check if email has changed
@@ -415,11 +422,10 @@ const changePassword = async () => {
   }
   
   try {
-    // Get user ID from localStorage
-    const userId = getLocalStorage('userId')
+    const userId = props.userData?.id
     
     if (!userId) {
-      throw new Error('User ID not found')
+      throw new Error('User data not available. Cannot change password.')
     }
     
     // Use the changeUserPassword utility function
@@ -535,10 +541,10 @@ const extractUserIdFromToken = (token) => {
 // Resend verification email
 const resendVerificationEmail = async () => {
   try {
-    const userId = localStorage.getItem('userId')
+    const userId = props.userData?.id
     
     if (!userId) {
-      throw new Error('Authentication required')
+      throw new Error('User data not available. Cannot resend verification email.')
     }
     
     // Make API call to resend verification email

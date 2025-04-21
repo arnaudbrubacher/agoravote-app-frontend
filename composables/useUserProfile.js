@@ -95,13 +95,9 @@ export function useUserProfile() {
   }
   
   // Function to create a user profile if it doesn't exist
-  const createUserProfile = async () => {
-    const userId = getLocalStorage('userId') // Still need ID from SuperTokens for creation
-    const name = getLocalStorage('userName') || 'User'
-    const email = getLocalStorage('userEmail') || ''
-    
+  const createUserProfile = async (userId, name, email) => {
     if (!userId || !email) { // Require ID and email for creation
-      console.error('Cannot create profile: Missing userId or email in localStorage')
+      console.error('Cannot create profile: Missing userId or email')
       error.value = 'User ID or email not found for profile creation.'
       return null; 
     }
@@ -137,7 +133,7 @@ export function useUserProfile() {
   }
   
   // Update profile picture
-  const updateProfilePicture = async (file) => {
+  const updateProfilePicture = async (userId, file) => {
     try {
       if (!file) return null
       
@@ -145,8 +141,11 @@ export function useUserProfile() {
       const formData = new FormData()
       formData.append('profile_picture', file)
       
-      // Get user ID from localStorage
-      const userId = getLocalStorage('userId')
+      // Use the provided userId
+      if (!userId) {
+          console.error('User ID not provided for profile picture upload')
+          throw new Error('User ID is required to upload profile picture.')
+      }
       
       console.log('Uploading profile picture for user:', userId)
       
@@ -179,9 +178,15 @@ export function useUserProfile() {
   }
   
   // Resend verification email
-  const resendVerificationEmail = async () => {
+  const resendVerificationEmail = async (userId) => {
     try {
-      const userId = getLocalStorage('userId')
+      // const userId = getLocalStorage('userId') // Removed
+      
+      // Use the provided userId
+      if (!userId) {
+          console.error('User ID not provided for resend verification email')
+          throw new Error('User ID is required to resend verification email.')
+      }
       
       await axios.post(`/users/${userId}/resend-verification`)
       return true
