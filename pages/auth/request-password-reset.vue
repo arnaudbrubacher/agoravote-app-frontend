@@ -18,7 +18,7 @@
             {{ loading ? 'Sending...' : 'Send Reset Link' }}
           </Button>
           <div class="text-center text-sm">
-            <NuxtLink to="/auth" class="text-blue-600 hover:underline">Back to Login</NuxtLink>
+            <NuxtLink to="/auth" class="text-gray-700 hover:underline">Back to Login</NuxtLink>
           </div>
         </form>
       </CardContent>
@@ -28,6 +28,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { sendPasswordResetEmail } from 'supertokens-web-js/recipe/emailpassword'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,6 +39,7 @@ definePageMeta({
   layout: 'auth-layout'
 })
 
+const router = useRouter()
 const email = ref('')
 const loading = ref(false)
 const message = ref('')
@@ -56,15 +58,10 @@ const handleRequestReset = async () => {
       }]
     })
 
-    if (response.status === "OK") {
-      message.value = "Password reset link sent. Please check your email."
-      messageIsError.value = false
-    } else if (response.status === "UNKNOWN_USER_ID_ERROR") {
-       // To prevent user enumeration, show a generic success message even if the email doesn't exist.
-      message.value = "If an account with this email exists, a password reset link has been sent."
-       messageIsError.value = false
+    if (response.status === "OK" || response.status === "UNKNOWN_USER_ID_ERROR") {
+      window.alert("If an account with this email exists, a password reset link has been sent. Please check your email.");
+      router.push('/auth');
     } else {
-      // Handle other potential errors if needed
       message.value = "An unexpected error occurred. Please try again."
       messageIsError.value = true
       console.error("Password reset request failed:", response)

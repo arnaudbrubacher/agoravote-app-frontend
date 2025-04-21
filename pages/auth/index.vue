@@ -22,7 +22,7 @@
                 <Label for="password">Password</Label>
                 <Input id="password" v-model="loginPassword" type="password" />
                 <div class="text-right text-sm">
-                  <NuxtLink to="/auth/request-password-reset" class="text-blue-600 hover:underline">Forgot Password?</NuxtLink>
+                  <NuxtLink to="/auth/request-password-reset" class="text-gray-700 hover:underline">Forgot Password?</NuxtLink>
                 </div>
               </div>
               <div v-if="loginError" class="text-sm text-red-500 mb-2">
