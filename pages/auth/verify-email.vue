@@ -16,10 +16,10 @@
       <div class="mt-8 space-y-6">
         <Button 
           v-if="verificationStatus === 'success'"
-          @click="goToProfile"
+          @click="handleSuccessRedirect"
           class="w-full"
         >
-          Go to Profile
+          {{ successButtonText }}
         </Button>
         <Button 
           v-else-if="verificationStatus === 'error'"
@@ -37,22 +37,26 @@
 </template>
 
 <script setup>
+// console.log('[VerifyEmail] SCRIPT SETUP EXECUTING!') // Keep commented/remove
+
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import LucideIcon from '@/components/LucideIcon.vue'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
+import Session from 'supertokens-web-js/recipe/session'
 import { ensureSuperTokensInit } from '~/src/utils/auth'
 
 // Ensure SuperTokens is initialized
 ensureSuperTokensInit();
 
-definePageMeta({ layout: false }) // Use a simple layout or no layout
+definePageMeta({ layout: false })
 
 const route = useRoute()
 const router = useRouter()
 const verificationStatus = ref('loading') // loading, success, error
 const error = ref('')
+const hasSessionAfterVerification = ref(false)
 
 // Computed properties for UI
 const statusIcon = computed(() => {
@@ -81,47 +85,68 @@ const statusTitle = computed(() => {
 
 const statusMessage = computed(() => {
   switch (verificationStatus.value) {
-    case 'success': return 'Your email has been successfully verified. You can now access all features of the application.'
+    case 'success': 
+      return hasSessionAfterVerification.value 
+        ? 'Your email has been successfully verified. You can now proceed to your profile.' 
+        : 'Your email has been successfully verified. Please proceed to login.'
     case 'error': return 'We could not verify your email. The link may have expired or is invalid.'
     default: return 'Please wait while we verify your email address...'
   }
 })
 
+const successButtonText = computed(() => {
+  return hasSessionAfterVerification.value ? 'Go to Profile' : 'Go to Login'
+})
+
 onMounted(async () => {
-  // Extract token and tenantId from URL
+  // Restore original onMounted logic with detailed logs
   const token = route.query.token
   const tenantId = route.query.tenantId || 'public'
+
+  console.log(`[VerifyEmail] Page mounted. Token: ${token ? 'present' : 'missing'}, TenantId: ${tenantId}`)
 
   if (!token) {
     verificationStatus.value = 'error'
     error.value = 'Verification token is missing'
+    console.error('[VerifyEmail] Verification token is missing in URL query.')
     return
   }
 
   try {
+    console.log('[VerifyEmail] Attempting to verify email...')
     // Call the SuperTokens verification endpoint
     const response = await EmailVerification.verifyEmail({
       token,
       tenantId
     })
 
-    console.log('Email verification response:', response)
+    console.log('[VerifyEmail] Email verification API response:', JSON.stringify(response))
 
     if (response.status === 'OK') {
+      console.log('[VerifyEmail] Verification successful (status OK).')
       verificationStatus.value = 'success'
+      // Check if session exists AFTER successful verification
+      console.log('[VerifyEmail] Checking session existence...')
+      hasSessionAfterVerification.value = await Session.doesSessionExist()
+      console.log('[VerifyEmail] Session exists after verification:', hasSessionAfterVerification.value)
     } else {
+      console.error('[VerifyEmail] Verification failed. Status:', response.status)
       verificationStatus.value = 'error'
       error.value = 'Email verification failed: ' + response.status
     }
   } catch (err) {
-    console.error('Email verification error:', err)
+    console.error('[VerifyEmail] Email verification error during API call:', err)
     verificationStatus.value = 'error'
-    error.value = err.message || 'An unexpected error occurred'
+    error.value = err.message || 'An unexpected error occurred during verification.'
   }
 })
 
-const goToProfile = () => {
-  router.push('/profile')
+const handleSuccessRedirect = () => {
+  if (hasSessionAfterVerification.value) {
+    router.push('/profile')
+  } else {
+    router.push('/auth')
+  }
 }
 
 const goToLogin = () => {

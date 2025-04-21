@@ -4,13 +4,13 @@
       <div>
         <LucideIcon name="MailCheck" class="mx-auto h-12 w-auto text-primary" />
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Verify Your Email
+          Email Verification
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600">
-          A verification email has been sent to <strong class="font-medium">{{ userEmail }}</strong>.
+          Click the button below to send a verification email to <strong class="font-medium">{{ userEmail }}</strong>.
         </p>
         <p class="mt-2 text-center text-sm text-gray-600">
-          Please check your inbox (and spam folder) and click the link to activate your account.
+          Check your inbox (and spam folder) and click the link in the email to activate your account.
         </p>
       </div>
       <div class="mt-8 space-y-6">
@@ -21,7 +21,7 @@
         >
           <LucideIcon v-if="resending" name="Loader2" class="mr-2 h-4 w-4 animate-spin" />
           <span v-if="emailSent">Verification Email Sent!</span>
-          <span v-else>Resend Verification Email</span>
+          <span v-else>Send Verification Email</span>
         </Button>
         <div v-if="resendError" class="text-sm text-red-500 text-center">
           {{ resendError }}

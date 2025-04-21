@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Auth from '@/pages/auth.vue'
+import Auth from '~/pages/auth.vue'
 import axios from '@/utils/axios'
 
 const routes = [

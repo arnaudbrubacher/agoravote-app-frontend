@@ -175,7 +175,7 @@ const handleSignup = async () => {
       
       // Redirect to the verification page with email parameter
       router.push({
-        path: '/verify-email',
+        path: '/check-email',
         query: { email: signupEmail.value }
       })
     } else {

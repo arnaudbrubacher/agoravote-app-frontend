@@ -200,7 +200,8 @@ export const signup = async (name, email, password) => {
     const response = await EmailPassword.signUp({
       formFields: [
         { id: "email", value: email },
-        { id: "password", value: password }
+        { id: "password", value: password },
+        { id: "name", value: name }
       ]
     })
     
@@ -715,7 +716,7 @@ export const sendVerificationEmail = async () => {
               await axiosInstance.post(`/auth-verify/${userEmail}`, {}, { 
                 headers: { 'Content-Type': 'application/json' } // Only basic headers, no auth
               })
-              console.log('Successfully sent verification request to /auth-verify endpoint')
+          console.log('Successfully sent verification request to /auth-verify endpoint')
             } catch (error2) {
               console.error('Error with fallback verification endpoint:', error2.message)
               // Don't retry automatically - this prevents infinite loops

@@ -34,48 +34,33 @@ export function useUserProfile() {
     try {
       loading.value = true
       error.value = null
-      const userId = getLocalStorage('userId')
       
-      if (!userId) {
-        console.error('No user ID found in localStorage')
-        error.value = 'No active session found'
-        router.push('/auth')
-        return null
-      }
-      
-      // Try first endpoint format
-      try {
-        const response = await axios.get(`/users/${userId}`)
-        userData.value = response.data.user || response.data
-        return userData.value
-      } catch (err) {
-        console.log('First endpoint attempt failed, trying alternative endpoint...')
-        
-        // Try second endpoint format
-        try {
-          const response = await axios.get(`/user/${userId}`)
-          userData.value = response.data.user || response.data
-          return userData.value
-        } catch (err) {
-          console.log('Second endpoint attempt failed, trying /user/profile/:id endpoint...')
-          
-          // Try third endpoint format - this is the correct backend endpoint
-          const response = await axios.get(`/user/profile/${userId}`)
-          console.log('Response from /user/profile/:id endpoint:', response.data)
-          userData.value = response.data.user || response.data
-          return userData.value
-        }
-      }
+      // No need to get userId from localStorage for /users/me
+      // const userId = getLocalStorage('userId') 
+      // if (!userId) { ... }
+
+      // Directly call the /users/me endpoint
+      const response = await axios.get('/users/me')
+      console.log('Response from /users/me endpoint:', response.data)
+      // Assuming the response data IS the user object directly
+      userData.value = response.data 
+      return userData.value
+
     } catch (err) {
-      console.error('Failed to fetch current user profile:', err)
-      error.value = err.response?.data?.error || 'Failed to load user profile'
+      console.error('Failed to fetch current user profile (/users/me):', err)
+      error.value = err.response?.data?.error || 'Failed to load user profile from /users/me'
+      userData.value = null; // Ensure userData is null on error
       
-      if (err.response?.status === 401) {
-        // Handle unauthorized access
-        removeLocalStorage('token')
-        removeLocalStorage('userId')
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        // Handle unauthorized/forbidden access
+        console.log(`Received ${err.response.status}, clearing auth data and redirecting.`)
+        removeLocalStorage('token') // Assuming 'token' is used
+        removeLocalStorage('userId') // Remove stored userId if present
+        // Add other relevant localStorage removals if necessary
         router.push('/auth')
       }
+      // Return null or throw error depending on desired handling downstream
+      return null;
     } finally {
       loading.value = false
     }
@@ -87,49 +72,23 @@ export function useUserProfile() {
       loading.value = true
       error.value = null
       
-      // Try first endpoint format
-      try {
-        const response = await axios.get(`/users/${userId}`)
-        userData.value = response.data.user || response.data
-        
-        // Check if common groups data is available
-        if (response.data.commonGroups) {
-          commonGroups.value = response.data.commonGroups
-        }
-        
-        return userData.value
-      } catch (err) {
-        console.log('First endpoint attempt failed, trying alternative endpoint...')
-        
-        // Try second endpoint format
-        try {
-          const response = await axios.get(`/user/${userId}`)
-          userData.value = response.data.user || response.data
-          
-          // Check if common groups data is available
-          if (response.data.commonGroups) {
-            commonGroups.value = response.data.commonGroups
-          }
-          
-          return userData.value
-        } catch (err) {
-          console.log('Second endpoint attempt failed, trying /user/profile/:id endpoint...')
-          
-          // Try third endpoint format - this is the correct backend endpoint
-          const response = await axios.get(`/user/profile/${userId}`)
-          userData.value = response.data.user || response.data
-          
-          // Check if common groups data is available
-          if (response.data.commonGroups) {
-            commonGroups.value = response.data.commonGroups
-          }
-          
-          return userData.value
-        }
+      // Assuming /user/profile/:id is the correct public endpoint
+      // Remove the unnecessary fallbacks if they are incorrect
+      const response = await axios.get(`/user/profile/${userId}`)
+      userData.value = response.data.user || response.data // Adjust based on actual response structure
+      
+      // Check if common groups data is available
+      if (response.data.commonGroups) {
+        commonGroups.value = response.data.commonGroups
       }
+      
+      return userData.value
+
     } catch (err) {
-      console.error('Failed to fetch user profile:', err)
-      error.value = err.response?.data?.error || 'Failed to load user profile'
+       console.error(`Failed to fetch user profile for ID ${userId}:`, err)
+       error.value = err.response?.data?.error || `Failed to load profile for ${userId}`
+       // Don't clear current user's data here
+       return null; // Return null on failure
     } finally {
       loading.value = false
     }
@@ -137,51 +96,41 @@ export function useUserProfile() {
   
   // Function to create a user profile if it doesn't exist
   const createUserProfile = async () => {
-    const userId = getLocalStorage('userId')
-    if (!userId) {
-      throw new Error('No user ID available to create profile')
-    }
-    
-    // Get basic user info from localStorage if available
+    const userId = getLocalStorage('userId') // Still need ID from SuperTokens for creation
     const name = getLocalStorage('userName') || 'User'
     const email = getLocalStorage('userEmail') || ''
     
-    console.log('Creating user profile for ID:', userId)
+    if (!userId || !email) { // Require ID and email for creation
+      console.error('Cannot create profile: Missing userId or email in localStorage')
+      error.value = 'User ID or email not found for profile creation.'
+      return null; 
+    }
+    
+    console.log('Attempting to create/update user profile for ID:', userId)
     
     loading.value = true
     error.value = null
     
     try {
-      // Try creating user profile with different endpoint formats
-      // since we're not sure which one the backend uses
-      let response = null
-      const userData = {
-        id: userId,
+      // The backend route is POST /users
+      const userDataPayload = {
+        id: userId, // Send the SuperTokens ID
         name,
         email,
-        bio: '',
-        profile_picture: ''
+        // Add other fields if needed by the backend /users endpoint
       }
       
-      try {
-        response = await axios.post('/users', userData)
-      } catch (err) {
-        console.log('First endpoint attempt failed, trying alternate endpoint')
-        try {
-          response = await axios.post('/user', userData)
-        } catch (err2) {
-          console.log('Second endpoint attempt failed, trying final endpoint')
-          response = await axios.post('/user/profile', userData)
-        }
-      }
+      const response = await axios.post('/users', userDataPayload)
       
-      console.log('User profile created:', response.data)
-      userData.value = response.data
+      console.log('User profile created/updated via POST /users:', response.data)
+      // Assume response.data contains the created/updated user object
+      userData.value = response.data 
       return userData.value
     } catch (err) {
-      console.error('Failed to create user profile:', err)
-      error.value = err.response?.data?.error || 'Failed to create user profile'
-      throw err
+      console.error('Failed to create/update user profile via POST /users:', err)
+      error.value = err.response?.data?.error || 'Failed to create/update user profile'
+      // Don't set userData.value to null here, might overwrite existing data
+      throw err // Re-throw for caller handling
     } finally {
       loading.value = false
     }
