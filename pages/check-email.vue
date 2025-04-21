@@ -41,13 +41,9 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import LucideIcon from '@/components/LucideIcon.vue'
-import SuperTokens from 'supertokens-web-js'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 import Session from 'supertokens-web-js/recipe/session'
-import { ensureSuperTokensInit, isEmailVerified, sendVerificationEmail } from '~/src/utils/auth'
-
-// Ensure SuperTokens is initialized
-ensureSuperTokensInit();
+import { isEmailVerified, sendVerificationEmail } from '~/src/utils/auth'
 
 definePageMeta({ layout: false }) // Use a simple layout or no layout
 
