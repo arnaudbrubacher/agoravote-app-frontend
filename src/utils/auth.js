@@ -1,7 +1,7 @@
 import axios from './axios'
 import SuperTokens from 'supertokens-web-js'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
-import Session, { addAxiosInterceptors } from 'supertokens-web-js/recipe/session'
+import Session from 'supertokens-web-js/recipe/session'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 
 // Adding a backup authentication system using localStorage
@@ -71,50 +71,7 @@ const localUsers = {
 // const USE_LOCAL_AUTH = false
 const USE_LOCAL_AUTH = false // Commented out and forced to false - only SuperTokens is used now
 
-let supertokensInitialized = false;
-
-export function ensureSuperTokensInit() {
-  if (!supertokensInitialized && typeof window !== 'undefined') {
-    SuperTokens.init({
-      appInfo: {
-        appName: "AgoraVote",
-        apiDomain: "http://localhost:8080",
-        apiBasePath: "/auth",
-      },
-      recipeList: [
-        EmailPassword.init(),
-        Session.init({
-          onHandleEvent: (context) => {
-            console.log("[SuperTokens Session Event]:", context.action, context.sessionContext ? `User ID: ${context.sessionContext.userId}` : '(No Session Context)');
-            if (context.action === "UNAUTHORISED") {
-              console.warn("SuperTokens session UNAUTHORISED event caught. App should handle state based on Session.doesSessionExist().");
-            }
-            if (context.action === "SESSION_CREATED") {
-               console.log("SuperTokens SESSION_CREATED event.");
-            }
-            if (context.action === "SIGN_OUT") {
-               console.log("SuperTokens SIGN_OUT event.");
-            }
-            if (context.action === "SESSION_REFRESH") {
-                console.log("SuperTokens SESSION_REFRESH event.");
-            }
-            if (context.action === "API_INVALID_CLAIM") {
-                console.warn("SuperTokens API_INVALID_CLAIM event:", context.payload);
-            }
-          },
-        }),
-        EmailVerification.init()
-      ]
-    });
-    supertokensInitialized = true;
-    console.log('SuperTokens frontend initialized with EmailPassword, Session, and EmailVerification');
-  } else if (typeof window === 'undefined') {
-    console.warn('Attempted to initialize SuperTokens on server-side. Skipping.');
-  }
-}
-
 export const login = async (email, password) => {
-  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     console.error('Cannot perform login on server-side')
@@ -165,7 +122,6 @@ export const login = async (email, password) => {
 }
 
 export const signup = async (name, email, password) => {
-  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     console.error('Cannot perform signup on server-side')
@@ -289,7 +245,6 @@ export const signup = async (name, email, password) => {
 }
 
 export const getUserIdFromToken = async () => {
-  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -312,7 +267,6 @@ export const getUserIdFromToken = async () => {
 }
 
 export const fetchUserProfile = async () => {
-  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -357,8 +311,6 @@ export const fetchUserProfile = async () => {
 }
 
 export const deleteUserAccount = async () => {
-  ensureSuperTokensInit();
-
   if (typeof window === 'undefined') {
     return null;
   }
@@ -437,7 +389,6 @@ export const deleteUserAccount = async () => {
 
 // Function to change user password
 export const changeUserPassword = async (userId, currentPassword, newPassword) => {
-  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -472,7 +423,6 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
 
 // Function to change group password
 export const changeGroupPassword = async (groupId, currentPassword, newPassword) => {
-  ensureSuperTokensInit();
   if (!groupId) throw new Error('Group ID is required')
 
   try {
@@ -494,7 +444,6 @@ export const changeGroupPassword = async (groupId, currentPassword, newPassword)
 
 // Function to change group password (EMERGENCY VERSION)
 export const emergencyChangeGroupPassword = async (groupId, newPassword) => {
-  ensureSuperTokensInit();
   if (!groupId) throw new Error('Group ID is required')
 
   try {
@@ -514,7 +463,6 @@ export const emergencyChangeGroupPassword = async (groupId, newPassword) => {
 }
 
 export const signOut = async () => {
-  ensureSuperTokensInit();
   // Only run on client-side
   if (typeof window === 'undefined') {
     return
@@ -544,81 +492,8 @@ export const signOut = async () => {
   }
 }
 
-async function signUp(email, password, firstName, lastName) {
-  let userInfo = null;
-  
-  // Check if email already exists 
-  try {
-    // First check if we can already log in with this email
-    const response = await EmailPassword.doesEmailExist({
-      email: email
-    });
-    
-    if (response.doesExist) {
-      console.log('Email already exists, aborting signup');
-      // If the email already exists, throw an error to stop the signup
-      throw new Error("An account with this email already exists. Please log in instead.");
-    }
-  } catch (error) {
-    if (error.message === "An account with this email already exists. Please log in instead.") {
-      // Re-throw specific error about email existence
-      throw error;
-    }
-    
-    // If it's another error (like API error), log a warning and continue
-    console.warn('Failed to check if email exists:', error);
-  }
-
-  try {
-    const name = `${firstName} ${lastName}`;
-    console.log(`Signing up user with email: ${email}, name: ${name}`);
-    
-    // SuperTokens signup attempt
-    userInfo = await EmailPassword.signUp({
-      formFields: [
-        {
-          id: "email",
-          value: email,
-        },
-        {
-          id: "password",
-          value: password,
-        },
-        {
-          id: "name",
-          value: name,
-        },
-      ],
-    });
-    
-    console.log('Sign up response:', userInfo);
-    
-    // Store basic user info in localStorage for profile recovery if needed
-    setLocalStorage('userEmail', email);
-    setLocalStorage('userName', name);
-    
-    // If signup is successful, log in the user
-    if (userInfo.status === "OK") {
-      const loginResponse = await signIn(email, password);
-      console.log('Login response after signup:', loginResponse);
-      return loginResponse;
-    }
-    
-    // If we reach here, something went wrong with signup
-    console.error('Unexpected signup response:', userInfo);
-    throw new Error("Signup failed with unexpected response");
-    
-  } catch (error) {
-    console.error('Signup error:', error);
-    // Pass through the error
-    throw error;
-  }
-}
-
 // Add function to check if email is verified
 export const isEmailVerified = async () => {
-  ensureSuperTokensInit();
-  
   if (typeof window === 'undefined') {
     console.error('Cannot check email verification on server-side')
     return { status: 'ERROR', isVerified: false }
@@ -653,8 +528,6 @@ export const isEmailVerified = async () => {
 
 // Add a utility function to get authentication headers
 export const getAuthHeader = async () => {
-  ensureSuperTokensInit();
-  
   if (typeof window === 'undefined') {
     return {};
   }
@@ -674,8 +547,6 @@ export const getAuthHeader = async () => {
 };
 
 export const sendVerificationEmail = async () => {
-  ensureSuperTokensInit();
-  
   if (typeof window === 'undefined') {
     console.error('Cannot send verification email on server-side')
     return { status: 'ERROR' }

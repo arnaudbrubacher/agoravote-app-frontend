@@ -107,7 +107,6 @@ import { useUserPosts } from '@/composables/useUserPosts'
 import { useUserProfile } from '@/composables/useUserProfile'
 import { useAlert } from '@/composables/useAlert'
 import axios from 'axios'
-import { ensureSuperTokensInit } from '@/src/utils/auth'
 import Session from 'supertokens-web-js/recipe/session'
 
 const router = useRouter()
@@ -221,9 +220,6 @@ onMounted(async () => {
   }
   
   try {
-    // Ensure SuperTokens is initialized
-    ensureSuperTokensInit()
-    
     // Check if session exists
     const sessionExists = await Session.doesSessionExist()
     console.log('Profile page - Session check: ', sessionExists)
