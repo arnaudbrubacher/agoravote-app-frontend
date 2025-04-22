@@ -16,11 +16,7 @@
     <div v-else class="space-y-3">
       <div v-for="(member, index) in pendingMembers" :key="member.id || member.user_id || index">
         <MemberRow 
-          :member="{
-            ...member,
-            name: member.name || (member.user && member.user.name),
-            email: member.email || (member.user && member.user.email)
-          }"
+          :member="member"
           :current-user="currentUser"
           :is-pending="true"
           :is-current-user-admin="isCurrentUserAdmin"
@@ -102,61 +98,71 @@ const loading = computed(() => {
 
 // Fetch pending members from the API
 const fetchPendingMembers = async () => {
+  console.log('[PendingMembersList] fetchPendingMembers CALLED'); // Log function entry
+  console.log('[PendingMembersList] Received groupId prop:', props.groupId, typeof props.groupId);
+
   // If we're using props for data, just emit a refresh event
   if (props.pendingMembers && props.pendingMembers.length > 0) {
+    console.log('[PendingMembersList] Using props for data, emitting refresh.');
     emit('refresh')
     return
   }
   
   // Check if groupId is valid (not undefined, null, or empty string)
   if (!props.groupId || props.groupId === 'undefined') {
-    console.error('Cannot fetch pending members: Invalid group ID', props.groupId)
+    console.error('[PendingMembersList] CANNOT fetch pending members: Invalid group ID', props.groupId);
     return
   }
   
+  console.log('[PendingMembersList] Group ID seems valid, proceeding to fetch...');
   loadingLocal.value = true
   
   try {
     const response = await axios.get(`/groups/${props.groupId}/pending-members`)
-    console.log('Pending members response:', response.data)
+    console.log('[PendingMembersList] Raw API response for pending members:', JSON.stringify(response.data, null, 2)); // Log raw data
     
-    pendingMembersLocal.value = response.data
-    
-    // Process documents for each member
-    pendingMembersLocal.value.forEach(member => {
-      console.log('Processing pending member:', member)
-      console.log('Invitation accepted status:', member.invitation_accepted)
-      
-      // Ensure user info is available
-      if (!member.name && member.user) {
-        member.name = member.user.name
+    // Create a new array with normalized members
+    const normalizedMembers = response.data.map(member => {
+      const user = member.user || {}; // Handle cases where user object might be missing
+      const normalizedMember = {
+        ...member, // Spread original fields first
+        name: member.name || user.name || 'Unknown Name',
+        email: member.email || user.email || 'No Email',
+        profile_picture: member.avatar || member.profilePicture || member.profile_picture || user.avatar || user.profilePicture || user.profile_picture || null,
+        // Ensure other necessary fields are present
+        id: member.id || user.id,
+        user_id: member.user_id || user.id,
+        status: member.status || 'pending',
+        invitation_accepted: member.invitation_accepted === true,
+        documents_submitted: member.documents_submitted,
+        document_file_url: member.document_file_url,
+        document_file_name: member.document_file_name,
+        document_file_type: member.document_file_type,
+        isJoinRequest: false, // Default, will be set below if conditions met
+        hasDocuments: false, // Default, will be set below if conditions met
+        user: user // Keep the original user object if needed elsewhere
+      };
+
+      // Clear potentially conflicting fields from the new object
+      delete normalizedMember.avatar;
+      delete normalizedMember.profilePicture;
+
+      // Determine hasDocuments
+      normalizedMember.hasDocuments = !!normalizedMember.document_file_url;
+
+      // Determine isJoinRequest
+      if (normalizedMember.hasDocuments && normalizedMember.invitation_accepted === true) {
+        normalizedMember.isJoinRequest = true;
       }
-      
-      if (!member.email && member.user) {
-        member.email = member.user.email
-      }
-      
-      // Check if the member has direct document fields
-      if (member.document_file_url) {
-        console.log(`Member ${member.name || 'Unknown'} has direct document fields:`, {
-          url: member.document_file_url,
-          name: member.document_file_name,
-          type: member.document_file_type
-        })
-        member.hasDocuments = true
-      } else {
-        member.hasDocuments = false
-      }
-      
-      // Log document status for debugging
-      console.log(`Member ${member.name || 'Unknown'} hasDocuments:`, member.hasDocuments)
-      
-      // If documents are submitted and invitation_accepted is true, mark as a join request
-      if (member.hasDocuments && member.invitation_accepted === true) {
-        member.isJoinRequest = true
-        console.log('Identified as a join request with documents')
-      }
-    })
+
+      return normalizedMember;
+    });
+
+    pendingMembersLocal.value = normalizedMembers;
+
+    // Log the state *after* normalization
+    console.log('[PendingMembersList] Local pending members state AFTER normalization:', JSON.stringify(pendingMembersLocal.value, null, 2));
+
   } catch (error) {
     console.error('Failed to fetch pending members:', error)
   } finally {

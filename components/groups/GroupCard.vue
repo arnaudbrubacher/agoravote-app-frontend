@@ -1,7 +1,7 @@
 <!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/groups/GroupCard.vue -->
 <template>
   <div 
-    class="flex items-center p-4 border rounded-lg hover:bg-accent/5 transition-colors"
+    class="relative flex items-center p-4 border rounded-lg hover:bg-accent/5 transition-colors"
     :class="{ 'cursor-pointer': clickable }"
     @click="clickable ? $emit('click') : null"
   >
@@ -19,19 +19,22 @@
     </div>
     
     <!-- Group Info -->
-    <div class="flex-grow">
+    <div class="flex-grow min-w-0 pr-4">
       <h3 class="font-medium">{{ group.name }}</h3>
       <p class="text-sm text-muted-foreground truncate">{{ group.description || 'No description' }}</p>
     </div>
     
-    <!-- Private Badge -->
-    <div v-if="showPrivateBadge && group.is_private" class="flex-shrink-0 ml-2">
-      <Button size="sm" variant="outline" class="text-xs">
-        Private
-      </Button>
+    <!-- Top Right Actions Slot -->
+    <div class="absolute top-2 right-2 flex items-center space-x-2">
+      <slot name="top-right-actions"></slot>
     </div>
     
-    <!-- Action Buttons -->
+    <!-- Private Badge (Bottom Right) -->
+    <div v-if="showPrivateBadge && group.is_private" class="absolute bottom-2 right-2">
+      <Badge variant="outline">Private</Badge>
+    </div>
+    
+    <!-- Original Action Buttons (Now likely used for other actions) -->
     <div v-if="showActions" class="flex-shrink-0 ml-2 flex items-center space-x-2">
       <slot name="actions"></slot>
     </div>
@@ -39,6 +42,7 @@
 </template>
 
 <script setup>
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Users } from 'lucide-vue-next'
 import { computed } from 'vue'

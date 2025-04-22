@@ -31,7 +31,7 @@
                   <LucideIcon name="Trash" class="h-4 w-4" />
                 </Button>
               </div>
-              <Button variant="outline" size="sm" @click="addChoice">Add Choice</Button>
+              <Button type="button" variant="outline" size="sm" @click="addChoice">Add Choice</Button>
             </div>
           </div>
           <!-- Settings Section -->

@@ -473,14 +473,17 @@ const uploadDocument = async (file, docInfo, index) => {
 const handleSubmit = async () => {
   isSubmitting.value = true
   passwordError.value = ''
-  
+  // Clear document errors at the start of submission
+  if (documentsRequired.value) {
+    documentErrors.value = Array(requiredDocuments.value.length).fill('')
+  }
+
   try {
     // Validate form
     if (!isFormValid.value) {
       if (passwordRequired.value && !form.value.password) {
         passwordError.value = 'Password is required'
       }
-      
       if (documentsRequired.value) {
         for (let i = 0; i < requiredDocuments.value.length; i++) {
           if (!documentFiles.value[i]) {
@@ -488,174 +491,133 @@ const handleSubmit = async () => {
           }
         }
       }
-      
       throw new Error('Please provide all required information')
     }
-    
-    // Create the admission data object
-    let admissionData = {}
-    let joinStatus = adminApprovalRequired.value ? 'pending' : 'approved'
-    let alreadyMember = false
-    let joinResponse = null
-    
-    // Add password if required
-    if (passwordRequired.value) {
-      admissionData.password = form.value.password
-    }
-    
-    // First, try to join the group (if not already a member)
-    try {
-      // Try to join the group first
-      console.log('GroupAdmissionForm - Requesting to join group:', props.group.id)
-      
-      // Create the request data with password if required
-      const requestData = passwordRequired.value ? { password: form.value.password } : {};
-      
-      // Use the join endpoint
-      joinResponse = await axios.post(`/groups/${props.group.id}/join`, requestData);
-      
-      // Check the status from the response
-      joinStatus = joinResponse.data?.status || (adminApprovalRequired.value ? 'pending' : 'approved');
-      console.log(`GroupAdmissionForm - Successfully requested to join group with status: ${joinStatus}`);
-    } catch (joinError) {
-      // If the error is "already a member", continue with document upload
-      if (joinError.response?.status === 400 && 
-          joinError.response?.data?.message && 
-          joinError.response.data.message.includes('already a member')) {
-        console.log('GroupAdmissionForm - Already a member of this group, continuing with document upload');
-        alreadyMember = true;
-      } else if (joinError.response?.data?.error && 
-          (joinError.response.data.error.includes('already a member') || 
-           joinError.response.data.error.includes('already requested to join'))) {
-        console.log('GroupAdmissionForm - Already a member or requested to join this group, continuing with document upload');
-        alreadyMember = true;
-      } else {
-        // For any other error, rethrow it
-        console.error('Join error:', joinError.response?.data || joinError.message);
-        throw joinError;
-      }
-    }
-    
-    // Upload documents if required (as a separate step)
-    let documentsUploaded = false
+
+    let documentsUploadedSuccessfully = true // Assume success unless proven otherwise
+    let documentUploadResults = []
     let documentUploadErrors = []
-    
+
+    // --- Step 1: Upload Documents if Required ---
     if (documentsRequired.value) {
-      try {
-        console.log('GroupAdmissionForm - Starting document upload process');
-        
-        // Upload each document sequentially
-        for (let i = 0; i < documentFiles.value.length; i++) {
-          const file = documentFiles.value[i];
-          if (!file) continue;
-          
-          const docInfo = requiredDocuments.value[i] || { name: `Document ${i + 1}` };
-          
-          try {
-            console.log(`GroupAdmissionForm - Uploading document ${i}: ${docInfo.name}`);
-            const result = await uploadDocument(file, docInfo, i);
-            console.log(`GroupAdmissionForm - Document ${i} upload result:`, result);
-            
-            if (result) {
-              documentsUploaded = true;
-            }
-          } catch (singleDocError) {
-            console.error(`Error uploading document ${i}:`, singleDocError);
-            console.error('Response data:', singleDocError.response?.data);
-            console.error('Status code:', singleDocError.response?.status);
-            
-            documentErrors.value[i] = singleDocError.response?.data?.error || 'Failed to upload document';
-            documentUploadErrors.push({
-              index: i,
-              name: docInfo.name,
-              error: singleDocError.response?.data?.error || singleDocError.message
-            });
-          }
+      console.log('GroupAdmissionForm - Starting document upload process')
+      for (let i = 0; i < documentFiles.value.length; i++) {
+        const file = documentFiles.value[i]
+        // isFormValid should prevent this, but double-check
+        if (!file) {
+          documentErrors.value[i] = 'Document is required'
+          documentsUploadedSuccessfully = false
+          continue // Skip upload if file is missing
         }
         
-        console.log('GroupAdmissionForm - Documents uploaded:', documentsUploaded);
-      } catch (docError) {
-        console.error('Document upload error:', docError);
-        console.error('Response data:', docError.response?.data);
-        console.error('Status code:', docError.response?.status);
+        const docInfo = requiredDocuments.value[i] || { name: `Document ${i + 1}` }
         
-        documentUploadErrors.push({
-          general: true,
-          error: docError.message || 'Failed to upload documents'
-        });
+        try {
+          console.log(`GroupAdmissionForm - Uploading document ${i}: ${docInfo.name}`)
+          const result = await uploadDocument(file, docInfo, i)
+          console.log(`GroupAdmissionForm - Document ${i} upload result:`, result)
+          documentUploadResults.push(result)
+        } catch (err) {
+          console.error(`Error uploading document ${i}:`, err)
+          documentsUploadedSuccessfully = false
+          // Error message is set within uploadDocument
+          documentUploadErrors.push({ index: i, name: docInfo.name, error: err.response?.data?.error || err.message })
+        }
       }
+
+      if (!documentsUploadedSuccessfully) {
+        throw new Error('Failed to upload one or more required documents. Please check errors and try again.')
+      }
+      console.log('GroupAdmissionForm - All required documents uploaded successfully.')
     }
-    
-    // Log the admission data for debugging
-    console.log('GroupAdmissionForm - Submitting admission data:', JSON.stringify(admissionData))
-    console.log('GroupAdmissionForm - Password provided:', !!form.value.password)
-    console.log('GroupAdmissionForm - Documents uploaded:', documentsUploaded)
-    
-    // Dispatch a custom event to refresh the dashboard sidebar
-    window.dispatchEvent(new CustomEvent('group-data-updated'))
-    
-    // Determine the appropriate message
-    let successMessage = '';
-    
-    if (alreadyMember) {
-      if (documentsUploaded) {
-        successMessage = `Documents uploaded successfully for ${props.group.name}!`;
-      } else if (documentUploadErrors.length > 0) {
-        // If there were document upload errors, show an error message
-        const errorMsg = documentUploadErrors.map(err => 
-          err.general ? err.error : `${err.name}: ${err.error}`
-        ).join('; ');
-        throw new Error(`Failed to upload documents: ${errorMsg}`);
-      } else {
-        successMessage = `You are already a member of ${props.group.name}.`;
+
+    // --- Step 2: Finalize Membership (Accept/Join) ---
+    let finalApiResponse = null
+    let finalStatus = 'unknown'
+    // Determine if we should use the /accept endpoint
+    const needsAcceptEndpoint = passwordRequired.value || documentsRequired.value || adminApprovalRequired.value || props.group.isInvitation
+
+    if (needsAcceptEndpoint) {
+      // Use the /accept endpoint for invitations, or groups requiring password/docs/approval
+      console.log(`GroupAdmissionForm - Calling /accept endpoint for group ${props.group.id}`)
+      const acceptPayload = {}
+      if (passwordRequired.value) {
+        acceptPayload.password = form.value.password
       }
-    } else if (adminApprovalRequired.value || joinStatus === 'pending') {
-      successMessage = `Your request to join ${props.group.name} has been submitted. Waiting for admin review.`;
-      if (documentsUploaded) {
-        successMessage += ' Required documents have been uploaded.';
-      } else if (documentUploadErrors.length > 0) {
-        // If there were document upload errors, show an error message
-        const errorMsg = documentUploadErrors.map(err => 
-          err.general ? err.error : `${err.name}: ${err.error}`
-        ).join('; ');
-        throw new Error(`Joined group but failed to upload documents: ${errorMsg}`);
+      // Note: Backend's /accept endpoint should handle password verification.
+      // Document association likely happens implicitly in the backend based on the user/group ID
+      // after successful upload in Step 1, or the /accept handler might look them up.
+
+      try {
+        finalApiResponse = await axios.post(`/groups/${props.group.id}/accept`, acceptPayload)
+        finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved')
+        console.log(`GroupAdmissionForm - /accept call successful. Status: ${finalStatus}`)
+      } catch (acceptError) {
+         // Handle specific errors from /accept
+         if (acceptError.response?.status === 401 && acceptError.response?.data?.error?.includes('password')) {
+             passwordError.value = acceptError.response.data.error; // Show password error specifically
+             throw new Error(acceptError.response.data.error); // Stop submission
+         } else if (acceptError.response?.status === 403 && acceptError.response?.data?.error?.includes('already an active member')) {
+             // If already an active member, treat as success but inform user
+             alert(`You are already an active member of ${props.group.name}.`);
+             emit('close'); // Close the form
+             window.dispatchEvent(new CustomEvent('group-data-updated')) // Refresh sidebar
+             return; // Exit handleSubmit
+         } else {
+            // Rethrow other errors
+            throw acceptError;
+         }
       }
     } else {
-      successMessage = `Successfully joined ${props.group.name}`;
-      if (documentsUploaded) {
-        successMessage += ' and uploaded required documents';
-      } else if (documentUploadErrors.length > 0) {
-        // If there were document upload errors, show an error message
-        const errorMsg = documentUploadErrors.map(err => 
-          err.general ? err.error : `${err.name}: ${err.error}`
-        ).join('; ');
-        throw new Error(`Joined group but failed to upload documents: ${errorMsg}`);
+      // Use the /join endpoint ONLY for simple public groups with no requirements
+      console.log(`GroupAdmissionForm - Calling /join endpoint for public group ${props.group.id}`)
+      try {
+        finalApiResponse = await axios.post(`/groups/${props.group.id}/join`)
+        // Public join likely results in 'approved'
+        finalStatus = finalApiResponse.data?.status || 'approved'
+        console.log(`GroupAdmissionForm - /join call successful. Status: ${finalStatus}`)
+      } catch (joinError) {
+         // Handle specific errors from /join
+         if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
+             alert(`You are already an active member of ${props.group.name}.`);
+             emit('close'); // Close the form
+             window.dispatchEvent(new CustomEvent('group-data-updated')) // Refresh sidebar
+             return; // Exit handleSubmit
+         } else {
+            // Rethrow other errors
+            throw joinError;
+         }
       }
-      successMessage += '!';
     }
-    
-    // Show the success message
-    alert(successMessage);
-    
-    // Close the form FIRST to prevent any other actions
-    emit('close');
-    
-    // Emit the submit event with the admission data AFTER closing
-    // This prevents duplicate join attempts and messages
-    emit('submit', {
-      ...admissionData,
-      status: joinStatus,
-      alreadyMember: alreadyMember,
-      documentsUploaded: documentsUploaded,
-      documentUploadErrors: documentUploadErrors,
-      // Add a flag to tell parent components not to show additional messages
-      handledMessage: true
-    });
+
+    // --- Step 3: Handle Success ---
+    window.dispatchEvent(new CustomEvent('group-data-updated'))
+
+    let successMessage = ''
+    if (finalStatus === 'pending') {
+      successMessage = `Your request to join ${props.group.name} has been submitted. Waiting for admin review.`
+      if (documentsRequired.value) successMessage += ' Required documents have been uploaded.'
+    } else if (finalStatus === 'approved') {
+      successMessage = `Successfully joined ${props.group.name}`
+      if (documentsRequired.value) successMessage += ' and uploaded required documents'
+      successMessage += '!'
+    } else {
+      // Handle unexpected status? Default message
+      successMessage = `Membership process completed for ${props.group.name}. Status: ${finalStatus}`
+    }
+
+    alert(successMessage)
+    emit('close') // Close the form first
+    emit('submit', { status: finalStatus, handledMessage: true }) // Notify parent
+
   } catch (error) {
     console.error('Failed to submit admission form:', error)
-    // Show a more detailed error message
-    const errorMessage = error.response?.data?.error || error.message || 'Failed to submit form';
-    alert(errorMessage);
+    // Use error message from step 1 or 2 if available, otherwise use generic error
+    const errorMessage = error.message || error.response?.data?.error || 'Failed to submit form'
+    // Avoid alerting specific password error again if already set in UI
+    if (!passwordError.value) {
+       alert(errorMessage)
+    }
   } finally {
     isSubmitting.value = false
   }

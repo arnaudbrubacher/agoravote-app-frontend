@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '~/src/utils/axios'
-import { getUserIdFromToken, ensureSuperTokensInit } from '~/src/utils/auth'
+import { getUserIdFromToken } from '~/src/utils/auth'
 import { jwtDecode } from 'jwt-decode'
 import Session from 'supertokens-web-js/recipe/session'
 
@@ -209,7 +209,7 @@ export function useGroupData(groupId) {
         id: member.id || member.userId || member.user_id || userData.id,
         name: member.name || member.username || userData.name || userData.username || 'Unknown Member',
         email: member.email || userData.email || '',
-        avatar: member.avatar || member.profilePicture || userData.avatar || userData.profilePicture,
+        avatar: member.avatar || member.profilePicture || member.profile_picture || userData.avatar || userData.profilePicture || userData.profile_picture,
         isAdmin: member.isAdmin || member.is_admin || member.role === 'admin' || userData.role === 'admin',
         status: member.status || 'approved', // Preserve the status field, default to 'approved' if not present
         user_id: member.user_id || member.userId || userData.id, // Preserve user_id for API calls

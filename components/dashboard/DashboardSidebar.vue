@@ -2,7 +2,7 @@
   <Sheet v-model:open="isOpen" side="left">
     <SheetContent class="w-full sm:max-w-md overflow-y-auto" side="left">
       <SheetHeader class="pb-4">
-        <SheetTitle>Dashboard</SheetTitle>
+        <SheetTitle>Groups</SheetTitle>
       </SheetHeader>
       
       <!-- Groups Section -->
@@ -125,10 +125,10 @@
             v-for="group in activeGroups" 
             :key="group.id" 
             :group="group"
-            :showActions="true"
-            @click="$emit('view-group', group.id)"
+            :showActions="false"
+            @click="navigateToGroup(group.id)"
           >
-            <template #actions>
+            <template #top-right-actions>
               <Button 
                 v-if="hasDocuments(group) || groupRequiresDocuments(group)"
                 variant="outline" 
@@ -156,6 +156,7 @@
 
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { 
   Search, 
   Plus, 
@@ -196,7 +197,10 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:open', 'find-group', 'create-group', 'view-group', 'refresh-groups', 'join-group', 'review-documents', 'navigate-to-group'])
+const emit = defineEmits(['update:open', 'find-group', 'create-group', 'refresh-groups', 'join-group', 'review-documents', 'navigate-to-group'])
+
+// Router instance
+const router = useRouter()
 
 // Computed property for two-way binding of open state
 const isOpen = computed({
@@ -213,29 +217,43 @@ const isDevelopment = computed(() => {
 
 // Filter out pending memberships from the groups list
 const activeGroups = computed(() => {
+  console.log('Recalculating activeGroups...');
   // If no groups or not loaded yet, return empty array
-  if (!props.groups || props.groups.length === 0) return []
+  if (!props.groups || props.groups.length === 0) {
+    console.log('No props.groups available.');
+    return [];
+  }
   
+  console.log('Processing groups for activeGroups:', JSON.parse(JSON.stringify(props.groups)));
+
   // Filter out groups where the user is a pending member
   return props.groups.filter(group => {
+    const groupName = group.name || group.id;
+    console.log(`[ActiveGroups Filter] Processing group: ${groupName}`);
+    console.log(`[ActiveGroups Filter]   - group.membership:`, group.membership);
+    console.log(`[ActiveGroups Filter]   - group.membership?.status:`, group.membership?.status);
+    console.log(`[ActiveGroups Filter]   - group.membership_status:`, group.membership_status);
+    console.log(`[ActiveGroups Filter]   - group.status:`, group.status);
+
     // Check if the group has a membership property with status
     if (group.membership && group.membership.status === 'pending') {
-      console.log(`Filtering out group with pending membership.status from Your Groups: ${group.name}`)
-      return false
+      console.log(`[ActiveGroups Filter] Excluding ${groupName} (Reason: group.membership.status === 'pending')`);
+      return false; // Exclude if status is explicitly 'pending'
     }
     
     // Legacy checks for backward compatibility
     if (group.membership_status === 'pending') {
-      console.log(`Filtering out group with pending membership_status from Your Groups: ${group.name}`)
-      return false
+      console.log(`[ActiveGroups Filter] Excluding ${groupName} (Reason: group.membership_status === 'pending')`);
+      return false; // Exclude if legacy status is 'pending'
     }
     
     if (group.status === 'pending') {
-      console.log(`Filtering out group with pending status from Your Groups: ${group.name}`)
-      return false
+      console.log(`[ActiveGroups Filter] Excluding ${groupName} (Reason: group.status === 'pending')`);
+      return false; // Exclude if group status itself is 'pending' (less likely for memberships)
     }
     
     // Only include groups with approved status (or no status specified)
+    console.log(`[ActiveGroups Filter] Including ${groupName}`);
     return true
   })
 })
@@ -250,23 +268,6 @@ const pendingGroups = computed(() => {
     // Check if the group has a membership property with status
     if (group.membership && group.membership.status === 'pending') {
       console.log(`Including group with pending membership.status in Pending Groups: ${group.name}`);
-      console.log(`Group membership details:`, {
-        name: group.name,
-        status: group.membership.status,
-        invitation_accepted: group.membership.invitation_accepted,
-        isInvitation: group.isInvitation,
-        document_file_url: group.membership.document_file_url,
-        document_file_name: group.membership.document_file_name,
-        hasDocuments: hasDocuments(group)
-      });
-      
-      // Log whether this is waiting for admin approval or user acceptance
-      if (isWaitingForAdminApproval(group)) {
-        console.log(`Group ${group.name} is waiting for admin approval`);
-      } else {
-        console.log(`Group ${group.name} is waiting for user acceptance`);
-      }
-      
       return true;
     }
     
@@ -971,5 +972,16 @@ const handleDocumentUpdated = (document) => {
   
   // Refresh the groups list to reflect the updated document
   emit('refresh-groups');
+}
+
+// Navigate to group page
+const navigateToGroup = (groupId) => {
+  if (!groupId) {
+    console.error('Cannot navigate: groupId is missing');
+    return;
+  }
+  console.log(`Navigating to group page with ID: ${groupId}`);
+  isOpen.value = false; // Close the sidebar
+  router.push(`/group/${groupId}`);
 }
 </script> 

@@ -43,12 +43,12 @@
               <div class="flex items-center space-x-3">
                 <!-- User Avatar -->
                 <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span v-if="!user.avatar" class="font-medium text-primary">
+                  <span v-if="!getAvatarUrl(user)" class="font-medium text-primary">
                     {{ getUserInitial(user) }}
                   </span>
                   <img 
                     v-else 
-                    :src="user.avatar" 
+                    :src="getAvatarUrl(user)" 
                     class="w-10 h-10 rounded-full object-cover"
                     alt="User avatar"
                   />
@@ -178,6 +178,21 @@ const getUserInitial = (user) => {
   if (user.name) return user.name.charAt(0).toUpperCase()
   if (user.email) return user.email.charAt(0).toUpperCase()
   return 'U'
+}
+
+// Helper function to construct full avatar URL
+const getAvatarUrl = (user) => {
+  const avatarPath = user.avatar // This now holds the value from profile_picture if available
+  if (!avatarPath) return null
+  
+  // If it's already a full URL, return it
+  if (avatarPath.startsWith('http')) {
+    return avatarPath
+  }
+  
+  // Otherwise, prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${baseUrl}/${avatarPath}`
 }
 
 // Select user

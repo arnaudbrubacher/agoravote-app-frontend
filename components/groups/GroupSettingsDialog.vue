@@ -1033,6 +1033,8 @@ const removeDocument = (index) => {
 const resetForm = () => {
   formData.value = cloneDeep(originalFormData.value)
   passwordHasBeenSet.value = false
+  selectedFile.value = null // Reset selected file
+  previewImage.value = null // Reset preview image
   console.log('Form reset to original values')
 }
 
@@ -1048,16 +1050,21 @@ const handleCancel = () => {
   
   // Only reset the form if the user is an admin
   if (props.isCurrentUserAdmin) {
-    resetForm()
+    resetForm() // This now also resets the file/preview
     passwordHasBeenSet.value = false;
+  } else {
+    // If not admin, still reset the file selection if they changed it
+    selectedFile.value = null 
+    previewImage.value = null 
   }
   emit('close')
 }
 
 // Check if form has been modified
 const formModified = computed(() => {
-  // Compare current form data with original form data
-  return JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)
+  // Check if a new file has been selected OR if form data has changed
+  return selectedFile.value !== null || 
+         JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)
 })
 
 // Change password function

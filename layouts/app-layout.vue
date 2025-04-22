@@ -3,35 +3,16 @@
     <header class="border-b">
       <div class="container mx-auto flex h-16 items-center px-4">
         <div class="flex w-full items-center justify-between">
-          <!-- Last Used Group Card (replaces Dashboard button) -->
-          <div 
-            v-if="isAuthenticated" 
+          <!-- Static Groups Button -->
+          <Button 
+            variant="ghost" 
             class="flex items-center cursor-pointer"
             @click="openDashboardSidebar"
-            :class="{'bg-primary/10 rounded-md px-2 py-1': isOnGroupPage}"
+            aria-label="Open groups sidebar"
           >
-            <div class="flex-shrink-0 mr-2">
-              <!-- Fallback icon -->
-              <div 
-                v-show="!groupPictureUrl || showFallbackIcon" 
-                class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
-                ref="fallbackIcon"
-              >
-                <Users class="h-5 w-5 text-gray-600" />
-              </div>
-              
-              <!-- Group image -->
-              <img 
-                v-if="groupPictureUrl"
-                :src="groupPictureUrl" 
-                alt="Group Picture"
-                class="w-8 h-8 rounded-full object-cover"
-                @error="handleGroupImageError"
-                v-show="!showFallbackIcon"
-              />
-            </div>
-            <span class="text-sm font-medium truncate max-w-[120px]">{{ lastUsedGroup?.name || 'Groups' }}</span>
-          </div>
+            <img src="/agora-vote-icon.png" alt="Groups Icon" class="h-10 w-10 mr-2" />
+            <span class="text-sm font-medium">Groups</span>
+          </Button>
           
           
           <!-- App Title (center) -->
@@ -85,7 +66,6 @@
       :isLoading="isLoadingGroups"
       @find-group="showFindGroupDialog = true"
       @create-group="showCreateGroupDialog = true"
-      @view-group="navigateToGroup"
       @refresh-groups="fetchUserGroups"
       @join-group="joinGroup"
       @review-documents="handleReviewDocuments"
@@ -132,7 +112,7 @@
 <script setup>
 import { ref, computed, onMounted, provide, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, Users, Search } from 'lucide-vue-next'
+import { User, Search } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -161,13 +141,14 @@ const userData = ref(null)
 const loading = ref(false)
 const isUserSettingsOpen = ref(false)
 const isDashboardSidebarOpen = ref(false)
-const showFallbackIcon = ref(false)
 const showUserSettingsDialog = ref(false)
 const pendingGroups = ref([])
 
 // Groups data
 const userGroups = ref([])
 const isLoadingGroups = ref(false)
+const lastUsedGroupId = ref(null)
+
 // Safely access localStorage for SSR
 const getLocalStorage = (key, defaultValue = null) => {
   if (typeof window !== 'undefined') {
@@ -190,40 +171,9 @@ const removeLocalStorage = (key) => {
   }
 };
 
-const lastUsedGroupId = ref(getLocalStorage('lastUsedGroupId', null))
-
 // Computed properties to check current route
-const isOnGroupPage = computed(() => {
-  return route.path.startsWith('/group/')
-})
-
 const isOnProfilePage = computed(() => {
   return route.path === '/profile' || route.path === '/settings'
-})
-
-// Computed property for the last used group
-const lastUsedGroup = computed(() => {
-  if (!lastUsedGroupId.value || userGroups.value.length === 0) {
-    console.log('No last used group or empty groups array');
-    return userGroups.value[0] || null // Return first group or null if no groups
-  }
-  
-  // Find the group with the matching ID
-  const group = userGroups.value.find(g => g.id === lastUsedGroupId.value)
-  
-  // Log the group object to inspect its structure
-  if (group) {
-    console.log('Found last used group:', JSON.stringify(group));
-    console.log('Group picture property:', group.picture);
-    // Check if the picture property might be under a different name
-    const groupKeys = Object.keys(group);
-    console.log('Group object keys:', groupKeys);
-  } else {
-    console.log('Last used group not found, using first group');
-  }
-  
-  // Return the found group or the first group as fallback
-  return group || userGroups.value[0] || null
 })
 
 // Dialog states
@@ -316,7 +266,6 @@ const loadLayoutData = async () => {
         // Ensure data is still cleared even if not redirecting
         userData.value = null;
         userGroups.value = [];
-        lastUsedGroupId.value = null;
         removeLocalStorage('token');
         removeLocalStorage('userId');
         removeLocalStorage('lastUsedGroupId');
@@ -330,7 +279,6 @@ const clearAuthDataAndRedirect = () => {
   console.log('Clearing auth data and redirecting to /auth');
   userData.value = null;
   userGroups.value = [];
-  lastUsedGroupId.value = null;
   removeLocalStorage('token');
   removeLocalStorage('userId');
   removeLocalStorage('lastUsedGroupId');
@@ -417,53 +365,29 @@ const updateLastUsedGroup = () => {
     const lastGroupExists = storedLastUsedGroupId && userGroups.value.some(g => g.id === storedLastUsedGroupId);
 
     if (!lastGroupExists) {
-      lastUsedGroupId.value = userGroups.value[0].id
-      setLocalStorage('lastUsedGroupId', userGroups.value[0].id)
+      // Update the ref AND localStorage
+      lastUsedGroupId.value = userGroups.value[0].id 
+      setLocalStorage('lastUsedGroupId', lastUsedGroupId.value) // Use the ref's value
 
       const currentPath = route.path
       const groupMatch = currentPath.match(/\/group\/([^/]+)/);
-      if (groupMatch && groupMatch[1] === storedLastUsedGroupId) {
+      // Check if the stored ID exists before comparing
+      if (storedLastUsedGroupId && groupMatch && groupMatch[1] === storedLastUsedGroupId) {
         console.log('User is on a group page they no longer belong to, redirecting to profile')
         router.push('/profile')
       }
     } else {
-      lastUsedGroupId.value = storedLastUsedGroupId
+      // Update the ref if it's different from the stored value
+      if (lastUsedGroupId.value !== storedLastUsedGroupId) {
+         lastUsedGroupId.value = storedLastUsedGroupId 
+      }
     }
   } else {
-    lastUsedGroupId.value = null
+    // Update the ref AND localStorage
+    lastUsedGroupId.value = null 
     removeLocalStorage('lastUsedGroupId')
   }
 }
-
-// Computed property for the last used group picture URL
-const groupPictureUrl = computed(() => {
-  console.log('Last used group:', lastUsedGroup.value);
-  if (!lastUsedGroup.value) return null;
-  
-  // Check for both camelCase and snake_case versions of the picture property
-  const picture = lastUsedGroup.value.picture || lastUsedGroup.value.profile_picture || lastUsedGroup.value.image;
-  
-  if (!picture) {
-    console.log('No picture found for group using any property name');
-    return null;
-  }
-  
-  // Check if it's already a full URL
-  if (picture.startsWith('http://') || picture.startsWith('https://')) {
-    console.log('Using full URL for group picture:', picture);
-    return picture;
-  }
-  
-  // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  
-  // Ensure the path starts with a slash
-  const picturePath = picture.startsWith('/') ? picture : `/${picture}`;
-  const fullUrl = `${baseUrl}${picturePath}`;
-  
-  console.log('Using relative URL for group picture:', fullUrl);
-  return fullUrl;
-})
 
 // Computed property for profile picture URL
 const profilePictureUrl = computed(() => {
@@ -483,15 +407,6 @@ const profilePictureUrl = computed(() => {
 provide('appUserData', userData)
 provide('refreshAppUserData', fetchUserData) // Keep old provide for compatibility if needed
 provide('loadLayoutData', loadLayoutData); // Provide new loader
-
-// Watch for changes to lastUsedGroup to reset the fallback icon
-watch(
-  () => lastUsedGroup.value,
-  () => {
-    // Reset the fallback icon when the group changes
-    showFallbackIcon.value = false;
-  }
-)
 
 // Open user settings sheet
 const openUserSettings = () => {
@@ -860,75 +775,54 @@ const handleUserLeftGroup = (event) => {
   }
 }
 
-// Handle group image loading error
-const handleGroupImageError = (event) => {
-  console.error('Error loading group image:', event);
-  // Log the URL that failed to load
-  console.error('Failed image URL:', event.target.src);
+onMounted(() => {
+  lastUsedGroupId.value = getLocalStorage('lastUsedGroupId');
+  loadLayoutData(); // Load initial data
   
-  // Show the fallback icon
-  showFallbackIcon.value = true;
-}
-
-onMounted(async () => {
-  console.log('app-layout onMounted - calling loadLayoutData');
+  // Event listener for successful group joins from FindGroupDialog
+  window.addEventListener('group-joined-successfully', handleGroupJoinedEvent);
   
-  // Handle case where we are coming from a group deletion
-  const wasIntentionalDeletion = localStorage.getItem('intentionalGroupDeletion') === 'true';
-  const deletedGroupId = localStorage.getItem('deletedGroupId');
-  
-  if (wasIntentionalDeletion) {
-    console.log('App layout loaded after intentional group deletion:', deletedGroupId);
-    // We'll handle this specially to avoid unnecessary API calls to the deleted group
-    userGroups.value = []; // Start with empty groups
-    lastUsedGroupId.value = null; // Clear last used group
-    removeLocalStorage('lastUsedGroupId'); // Also remove from storage
-  }
-  
-  await loadLayoutData(); // Initial load attempt
-
-  // Define handlers with consistent references for proper cleanup
-  const handleCloseDashboardSidebar = () => {
-    showFindGroupDialog.value = false;
-  };
-  
-  const handleGroupDeletionComplete = () => {
-    console.log('Group deletion complete, refreshing groups');
-    fetchUserGroups();
-  };
-
-  // Add event listeners
-  window.addEventListener('user-data-updated', loadLayoutData);
-  window.addEventListener('group-data-updated', handleGroupDataUpdated);
-  window.addEventListener('group-deletion-complete', handleGroupDeletionComplete);
-  window.addEventListener('close-dashboard-sidebar', handleCloseDashboardSidebar);
-  window.addEventListener('user-left-group', handleUserLeftGroup);
-  
-  // Store handlers for cleanup
-  appLayoutHandlers.value = {
-    handleCloseDashboardSidebar,
-    handleGroupDeletionComplete
-  };
+  // Event listener for group deletion
+  window.addEventListener('group-data-updated', handleGroupDataUpdatedEvent);
 });
 
 onBeforeUnmount(() => {
-  console.log('app-layout onBeforeUnmount');
-  
-  // Remove event listeners
-  window.removeEventListener('user-data-updated', loadLayoutData);
-  window.removeEventListener('group-data-updated', handleGroupDataUpdated);
-  
-  // Use stored handler references for proper cleanup
-  if (appLayoutHandlers.value.handleGroupDeletionComplete) {
-    window.removeEventListener('group-deletion-complete', 
-      appLayoutHandlers.value.handleGroupDeletionComplete);
-  }
-  
-  if (appLayoutHandlers.value.handleCloseDashboardSidebar) {
-    window.removeEventListener('close-dashboard-sidebar', 
-      appLayoutHandlers.value.handleCloseDashboardSidebar);
-  }
-  
-  window.removeEventListener('user-left-group', handleUserLeftGroup);
+  window.removeEventListener('group-joined-successfully', handleGroupJoinedEvent);
+  window.removeEventListener('group-data-updated', handleGroupDataUpdatedEvent);
 });
+
+// Handle the group-joined-successfully event
+const handleGroupJoinedEvent = (event) => {
+  console.log('app-layout: Received group-joined-successfully event', event.detail);
+  fetchUserGroups(); // Refresh the user's group list
+  if (event.detail?.groupId) {
+    navigateToGroup(event.detail.groupId); // Navigate to the newly joined group
+  }
+};
+
+// Handle the group-data-updated event (specifically for deletions)
+const handleGroupDataUpdatedEvent = (event) => {
+  console.log('app-layout: Received group-data-updated event', event.detail);
+  if (event.detail?.isDeleted === true) {
+    const deletedGroupId = localStorage.getItem('deletedGroupId'); // Get the ID stored before deletion
+    console.log('app-layout: Group deletion confirmed, deletedGroupId:', deletedGroupId);
+    
+    // If the deleted group was the last visited group, clear the last visited state
+    if (lastUsedGroupId.value === deletedGroupId) {
+      console.log('app-layout: Deleted group was the last visited group, clearing lastUsedGroupId.');
+      lastUsedGroupId.value = null;
+      removeLocalStorage('lastUsedGroupId');
+    }
+    
+    // Clear the deletion flags AFTER handling
+    localStorage.removeItem('intentionalGroupDeletion');
+    localStorage.removeItem('deletedGroupId');
+    
+    // No need to fetchUserGroups here, as the sidebar event handler should trigger it
+    // and we might be navigating away anyway.
+  } else {
+    // If it's not a deletion, just refresh the groups
+    fetchUserGroups();
+  }
+};
 </script>

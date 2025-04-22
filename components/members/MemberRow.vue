@@ -222,18 +222,27 @@ const appUserData = inject('appUserData', null)
 
 // Computed property for member avatar URL
 const memberAvatarUrl = computed(() => {
+  console.log(`[MemberRow ${getMemberName(props.member)}] Computing avatar URL. Is current member: ${isCurrentMember(props.member)}`);
+  console.log(`[MemberRow ${getMemberName(props.member)}] appUserData available: ${!!appUserData?.value}`);
+  if (appUserData?.value) {
+    console.log(`[MemberRow ${getMemberName(props.member)}] appUserData.profile_picture: ${appUserData.value.profile_picture}`);
+  }
+  console.log(`[MemberRow ${getMemberName(props.member)}] member prop data:`, { avatar: props.member.avatar, profile_picture: props.member.profile_picture });
   // Check if this is the current user and if we have updated profile data from app layout
   if (isCurrentMember(props.member) && appUserData?.value?.profile_picture) {
     const profilePic = appUserData.value.profile_picture
     
     // If the profile picture is a full URL, return it as is
     if (profilePic.startsWith('http')) {
+      console.log(`[MemberRow ${getMemberName(props.member)}] Using appUserData (absolute): ${profilePic}`);
       return profilePic
     }
     
     // Otherwise, prepend the API base URL
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-    return `${baseUrl}/${profilePic}`
+    const finalUrl = `${baseUrl}/${profilePic}`;
+    console.log(`[MemberRow ${getMemberName(props.member)}] Using appUserData (relative): ${finalUrl}`);
+    return finalUrl;
   }
   
   // Otherwise use the member's avatar if available
@@ -243,12 +252,15 @@ const memberAvatarUrl = computed(() => {
   
   // If the avatar is a full URL, return it as is
   if (avatarUrl.startsWith('http')) {
+    console.log(`[MemberRow ${getMemberName(props.member)}] Using member prop (absolute): ${avatarUrl}`);
     return avatarUrl
   }
   
   // Otherwise, prepend the API base URL
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-  return `${baseUrl}/${avatarUrl}`
+  const finalUrl = `${baseUrl}/${avatarUrl}`;
+  console.log(`[MemberRow ${getMemberName(props.member)}] Using member prop (relative): ${finalUrl}`);
+  return finalUrl;
 })
 
 const getMemberName = (member) => {

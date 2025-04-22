@@ -402,7 +402,50 @@ const fetchPendingMembers = async () => {
   try {
     // Call API to get pending members
     const response = await axios.get(`/groups/${props.group.id}/pending-members`)
-    pendingMembers.value = response.data
+    console.log('[MembersTab] Raw API response for pending members:', JSON.stringify(response.data, null, 2)); // Log raw data
+    
+    // --- NORMALIZATION START ---
+    const normalizedMembers = response.data.map(member => {
+      const user = member.user || {}; // Handle cases where user object might be missing
+      const normalizedMember = {
+        ...member, // Spread original fields first
+        name: member.name || user.name || 'Unknown Name',
+        email: member.email || user.email || 'No Email',
+        // IMPORTANT: Set profile_picture from various possible sources
+        profile_picture: member.avatar || member.profilePicture || member.profile_picture || user.avatar || user.profilePicture || user.profile_picture || null,
+        // Ensure other necessary fields are present for PendingMembersList/MemberRow
+        id: member.id || user.id,
+        user_id: member.user_id || user.id,
+        status: member.status || 'pending',
+        invitation_accepted: member.invitation_accepted === true,
+        documents_submitted: member.documents_submitted,
+        document_file_url: member.document_file_url,
+        document_file_name: member.document_file_name,
+        document_file_type: member.document_file_type,
+        isJoinRequest: false, // Default
+        hasDocuments: false, // Default
+        user: user // Keep the original user object
+      };
+
+      // Clear potentially conflicting fields from the new object
+      delete normalizedMember.avatar;
+      delete normalizedMember.profilePicture;
+
+      // Determine hasDocuments
+      normalizedMember.hasDocuments = !!normalizedMember.document_file_url;
+
+      // Determine isJoinRequest
+      if (normalizedMember.hasDocuments && normalizedMember.invitation_accepted === true) {
+        normalizedMember.isJoinRequest = true;
+      }
+
+      return normalizedMember;
+    });
+    // --- NORMALIZATION END ---
+    
+    pendingMembers.value = normalizedMembers // Assign normalized data
+    console.log('[MembersTab] Pending members state AFTER normalization:', JSON.stringify(pendingMembers.value, null, 2));
+    
   } catch (error) {
     console.error('Failed to fetch pending members:', error)
     // Mock data for development
