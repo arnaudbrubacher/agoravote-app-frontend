@@ -45,10 +45,6 @@ import { Button } from '@/components/ui/button'
 import LucideIcon from '@/components/LucideIcon.vue'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 import Session from 'supertokens-web-js/recipe/session'
-import { ensureSuperTokensInit } from '~/src/utils/auth'
-
-// Ensure SuperTokens is initialized
-ensureSuperTokensInit();
 
 definePageMeta({ layout: false })
 
