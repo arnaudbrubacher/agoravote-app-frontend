@@ -18,6 +18,7 @@
       :group="group"
       @close="$emit('close-new-vote')"
       @submit="$emit('vote-created', $event)"
+      :is-creating-vote="props.isCreatingVote"
     />
 
     <!-- New Post Dialog -->
@@ -93,6 +94,7 @@ const props = defineProps({
   showAddMemberDialog: Boolean,
   showUserSearchDialog: Boolean,
   showVoteDetails: Boolean,
+  isCreatingVote: Boolean,
   selectedPost: Object,
   selectedVote: Object,
   group: Object,

@@ -61,8 +61,9 @@
           <Button type="button" variant="outline" @click="$emit('close')">
             Cancel
           </Button>
-          <Button type="submit">
-            Create Vote
+          <Button type="submit" :disabled="isCreatingVote"> 
+            <span v-if="isCreatingVote">Creating Vote...</span>
+            <span v-else>Create Vote</span>
           </Button>
         </div>
       </form>
@@ -72,7 +73,7 @@
 
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -88,7 +89,13 @@ import {
 } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 
-const props = defineProps({ group: Object })
+const props = defineProps({
+  group: Object,
+  isCreatingVote: {
+    type: Boolean,
+    default: false
+  }
+})
 const emit = defineEmits(['close', 'submit'])
 
 const formData = ref({
@@ -102,6 +109,23 @@ const formData = ref({
   startTime: '',
   endTime: ''
 })
+
+onMounted(() => {
+  const now = new Date();
+  // Adjust for local timezone offset
+  const timezoneOffset = now.getTimezoneOffset() * 60000; // Offset in milliseconds
+  const localNow = new Date(now.getTime() - timezoneOffset);
+  
+  // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+  const startTimeISO = localNow.toISOString().slice(0, 16);
+  
+  // Calculate end time (24 hours later)
+  const endTime = new Date(localNow.getTime() + 24 * 60 * 60 * 1000);
+  const endTimeISO = endTime.toISOString().slice(0, 16);
+
+  formData.value.startTime = startTimeISO;
+  formData.value.endTime = endTimeISO;
+});
 
 function addChoice() {
   formData.value.choices.push({ text: '' })

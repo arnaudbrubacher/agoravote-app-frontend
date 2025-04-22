@@ -29,9 +29,11 @@
           variant="outline" 
           size="sm"
           @click="logout"
+          :disabled="isLoggingOut"
         >
           <LogOut class="mr-2 h-4 w-4" />
-          Log Out
+          <span v-if="isLoggingOut">Logging out...</span>
+          <span v-else>Log Out</span>
         </Button>
       </div>
       
@@ -244,6 +246,9 @@ const showPasswordChange = ref(false)
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
+
+// Add loading state for logout
+const isLoggingOut = ref(false)
 
 // Use the user profile composable
 const { updateProfilePicture } = useUserProfile()
@@ -567,6 +572,7 @@ const logout = async () => {
   )
   
   if (confirmed) {
+    isLoggingOut.value = true // Set loading state
     try {
       await signOut(); // Use the signOut utility from auth.js
       // Force navigation to auth page after successful sign out
@@ -574,6 +580,8 @@ const logout = async () => {
     } catch(error) {
         console.error('Logout failed:', error);
         alert('Logout failed. Please try again.');
+    } finally {
+      isLoggingOut.value = false // Reset loading state
     }
   }
 }

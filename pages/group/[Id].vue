@@ -76,6 +76,7 @@
       :show-settings-dialog="showSettingsDialog"
       :show-new-post-dialog="showNewPostDialog"
       :show-new-vote-dialog="showNewVoteDialog"
+      :is-creating-vote="isCreatingVote"
       :show-add-member-dialog="showAddMemberDialog"
       :show-user-search-dialog="showUserSearchDialog"
       :show-vote-details="showVoteDetailsDialog"
@@ -173,6 +174,12 @@ const showUserSearchDialog = ref(false)
 const showVoteDetailsDialog = ref(false)
 const selectedPost = ref(null)
 
+// Vote state
+const isCreatingVote = ref(false) // Add loading state for vote creation
+const isEncrypting = ref(false)
+const isSubmittingVote = ref(false)
+const encryptedBallotData = ref(null) // Stores { encrypted_ballot: string, tracker_hash: string }
+
 // Use group data and functionality
 const { 
   group, 
@@ -219,9 +226,6 @@ const {
 } = useGroupVotes(groupId)
 
 // --- NEW State for Multi-Step Voting --- 
-const encryptedBallotData = ref(null); // Stores { tracker_hash: string, ... } after successful encryption
-const isEncrypting = ref(false); // Loading state for encryption API call
-const isSubmittingVote = ref(false); // Loading state for cast/spoil API call
 const spoiledSelectionDetails = ref(null); // Stores plaintext of spoiled ballot { choiceId, writeIn }
 // --- END NEW State --- 
 
@@ -381,9 +385,9 @@ const handleGroupDeleted = async () => {
 
 const handleVoteCreated = async (voteData) => {
   console.log("[pages/group/[id].vue] handleVoteCreated called with data:", voteData);
+  isCreatingVote.value = true // Set loading true
   try {
     await createNewVote(voteData); // Call the vote creation function
-    showNewVoteDialog.value = false;
     await fetchVotes(); // Refresh list after successful creation
     toast({
       title: 'Vote Created',
@@ -396,6 +400,9 @@ const handleVoteCreated = async (voteData) => {
       title: 'Error Creating Vote',
       description: err.message || 'Could not create the vote.',
     })
+  } finally {
+    isCreatingVote.value = false // Set loading false
+    showNewVoteDialog.value = false // Close dialog AFTER loading state is reset
   }
 };
 

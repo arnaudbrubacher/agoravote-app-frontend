@@ -28,7 +28,10 @@
               <div v-if="loginError" class="text-sm text-red-500 mb-2">
                 {{ loginError }}
               </div>
-              <Button type="submit" class="w-full">Login</Button>
+              <Button type="submit" class="w-full" :disabled="isLoadingLogin">
+                <span v-if="isLoadingLogin">Logging in...</span>
+                <span v-else>Login</span>
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -66,7 +69,10 @@
               <div v-if="signupError" class="text-sm text-red-500 mb-2">
                 {{ signupError }}
               </div>
-              <Button type="submit" class="w-full">Create Account</Button>
+              <Button type="submit" class="w-full" :disabled="isLoadingSignup">
+                <span v-if="isLoadingSignup">Creating Account...</span>
+                <span v-else>Create Account</span>
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -101,6 +107,8 @@ const signupPasswordConfirm = ref('')
 const passwordError = ref(false)
 const signupError = ref('')
 const loginError = ref('')
+const isLoadingLogin = ref(false)
+const isLoadingSignup = ref(false)
 
 // Add these helper functions
 const getLocalStorage = (key, defaultValue = null) => {
@@ -140,6 +148,7 @@ const handlePostAuthNavigation = async (isNewUser = false) => {
 
 const handleLogin = async () => {
   loginError.value = ''
+  isLoadingLogin.value = true
   try {
     await login(loginEmail.value, loginPassword.value)
     
@@ -160,6 +169,8 @@ const handleLogin = async () => {
   } catch (error) {
     console.error('Login failed:', error)
     loginError.value = error.message || 'Login failed. Please try again.'
+  } finally {
+    isLoadingLogin.value = false
   }
 }
 
@@ -170,6 +181,7 @@ const handleSignup = async () => {
     return
   }
   passwordError.value = false
+  isLoadingSignup.value = true
   try {
     const signupResult = await signup(signupName.value, signupEmail.value, signupPassword.value)
 
@@ -197,6 +209,8 @@ const handleSignup = async () => {
     } else {
       signupError.value = error.message || 'Signup failed. Please try again.'
     }
+  } finally {
+    isLoadingSignup.value = false
   }
 }
 </script>
