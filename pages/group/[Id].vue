@@ -82,7 +82,7 @@
       :show-vote-details="showVoteDetailsDialog"
       :selected-post="selectedPost"
       :selected-vote="selectedVote"
-      :is-loading-vote-details="isLoadingDetails || isTallying"
+      :is-loading-details="isLoadingDetails"
       :group="group"
       :current-user="currentUser"
       :is-current-user-admin="isCurrentUserAdmin"
@@ -91,6 +91,7 @@
       :is-encrypting="isEncrypting"
       :is-submitting="isSubmittingVote"
       :spoiled-selection-details="spoiledSelectionDetails"
+      :is-deleting-vote="isDeletingVote"
       @close-settings="showSettingsDialog = false"
       @close-new-post="showNewPostDialog = false"
       @close-new-vote="showNewVoteDialog = false"
@@ -115,6 +116,37 @@
       @tally-decrypt="handleTallyDecrypt"
     />
   </div>
+
+  <!-- Alert Dialog for General Success/Error Messages -->
+  <AlertDialog :open="isAlertOpen" @update:open="isAlertOpen = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ alertTitle }}</AlertDialogTitle>
+        <AlertDialogDescription>
+          {{ alertMessage }}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogAction @click="isAlertOpen = false">OK</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+  <!-- Confirmation Dialog -->
+  <AlertDialog :open="isConfirmOpen" @update:open="isConfirmOpen = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ confirmTitle }}</AlertDialogTitle>
+        <AlertDialogDescription>
+          {{ confirmMessage }}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="isConfirmOpen = false">Cancel</AlertDialogCancel>
+        <AlertDialogAction @click="executeConfirmAction">Confirm</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
 
 <script setup>
@@ -127,6 +159,16 @@ import GroupTabs from '@/components/group/core/GroupTabs.vue'
 import GroupDialogs from '@/components/group/core/GroupDialogs.vue'
 import axios from '~/src/utils/axios'
 import { useToast } from '@/components/ui/toast/use-toast'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 // Define page layout
 definePageMeta({
@@ -173,6 +215,17 @@ const showAddMemberDialog = ref(false)
 const showUserSearchDialog = ref(false)
 const showVoteDetailsDialog = ref(false)
 const selectedPost = ref(null)
+
+// State for General AlertDialog
+const isAlertOpen = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+// State for Confirmation AlertDialog
+const isConfirmOpen = ref(false)
+const confirmTitle = ref('')
+const confirmMessage = ref('')
+const confirmAction = ref(null) // Function to execute on confirmation
 
 // Vote state
 const isCreatingVote = ref(false) // Add loading state for vote creation
@@ -230,6 +283,32 @@ const spoiledSelectionDetails = ref(null); // Stores plaintext of spoiled ballot
 // --- END NEW State --- 
 
 const isTallying = ref(false); // Add loading state for tally
+
+// Loading state for vote deletion
+const isDeletingVote = ref(false)
+
+// Helper to show AlertDialog
+function showAlert(title, message) {
+  alertTitle.value = title
+  alertMessage.value = message
+  isAlertOpen.value = true
+}
+
+// Helper to show Confirmation Dialog
+function showConfirm(title, message, action) {
+  confirmTitle.value = title
+  confirmMessage.value = message
+  confirmAction.value = action // Store the action to call on confirm
+  isConfirmOpen.value = true
+}
+
+// Helper to execute the stored confirm action
+function executeConfirmAction() {
+  if (typeof confirmAction.value === 'function') {
+    confirmAction.value() // Execute the stored function
+  }
+  isConfirmOpen.value = false // Close the dialog
+}
 
 // WATCHER FOR DEBUGGING
 watch(selectedVote, (newValue, oldValue) => {
@@ -374,35 +453,37 @@ const handleGroupUpdated = async (updatedGroupData) => {
 }
 
 const handleGroupDeleted = async () => {
-  try {
-    await confirmDeleteGroup()
-    router.push('/')
-  } catch (err) {
-    console.error('Failed to delete group:', err)
-    alert('Failed to delete group: ' + (err.response?.data?.error || err.message))
-  }
-}
+  showConfirm(
+    'Confirm Deletion',
+    'Are you sure you want to delete this group? This action cannot be undone.',
+    async () => { // The action to perform on confirm
+      try {
+        await confirmDeleteGroup(); // Call the original composable function
+        router.push('/');
+        showAlert('Success', 'Group deleted successfully.'); // Use showAlert for success
+      } catch (err) {
+        console.error('Failed to delete group:', err);
+        // Use showAlert for error
+        showAlert('Error Deleting Group', err.response?.data?.error || err.message || 'Could not delete the group.');
+      }
+    }
+  );
+};
 
 const handleVoteCreated = async (voteData) => {
-  console.log("[pages/group/[id].vue] handleVoteCreated called with data:", voteData);
-  isCreatingVote.value = true // Set loading true
+  console.log("Handling vote creation with data:", voteData);
+  isCreatingVote.value = true;
+  error.value = null;
   try {
-    await createNewVote(voteData); // Call the vote creation function
-    await fetchVotes(); // Refresh list after successful creation
-    toast({
-      title: 'Vote Created',
-      description: 'The new vote has been successfully created.',
-    })
+    await createNewVote(voteData); 
+    showAlert('Success', 'Vote created successfully');
+    showNewVoteDialog.value = false;
   } catch (err) {
-    console.error("[pages/group/[id].vue] Failed to create vote:", err);
-    toast({
-      variant: 'destructive',
-      title: 'Error Creating Vote',
-      description: err.message || 'Could not create the vote.',
-    })
+    console.error("Error creating vote:", err);
+    error.value = `Failed to create vote: ${err.response?.data?.error || err.message}`;
+    showAlert('Error', error.value);
   } finally {
-    isCreatingVote.value = false // Set loading false
-    showNewVoteDialog.value = false // Close dialog AFTER loading state is reset
+    isCreatingVote.value = false;
   }
 };
 
@@ -438,21 +519,30 @@ const handlePostEdited = (editedPost) => {
 }
 
 const handlePostDeleted = async (postId) => {
-  try {
-    await deletePostApi(postId); // Call the renamed post deletion function
-    // Assuming UI update happens within deletePostApi or requires fetchPosts()
-    await fetchPosts(); 
-     toast({
-      title: 'Post Deleted',
-      description: 'The post has been successfully deleted.',
-    })
-  } catch (error) { 
-     toast({
-      variant: 'destructive',
-      title: 'Error Deleting Post',
-      description: error.message || 'Could not delete the post.',
-    })
-  }
+  showConfirm(
+    'Confirm Delete Post',
+    'Are you sure you want to delete this post? This action cannot be undone.',
+    async () => { // Action on confirm
+      try {
+        await deletePostApi(postId); // Call the composable function
+        await fetchPosts(); // Refresh list
+        // Use showAlert instead of toast for consistency
+        showAlert('Post Deleted', 'The post has been successfully deleted.');
+        // toast({ 
+        //   title: 'Post Deleted',
+        //   description: 'The post has been successfully deleted.',
+        // })
+      } catch (error) { 
+        // Use showAlert instead of toast for consistency
+        showAlert('Error Deleting Post', error.message || 'Could not delete the post.');
+        // toast({
+        //   variant: 'destructive',
+        //   title: 'Error Deleting Post',
+        //   description: error.message || 'Could not delete the post.',
+        // })
+      }
+    }
+  );
 };
 
 // --- NEW Multi-Step Vote Handlers ---
@@ -510,7 +600,13 @@ const handleEncryptVote = async (payload) => {
 // Step 2a: Handle the 'cast-vote' event
 const handleCastVote = async (encryptedData) => {
   // Cast uses the original payload structure (just encrypted data)
-  await submitBallotAction('cast', encryptedData);
+  // Add try-catch to handle potential errors from submitBallotAction
+  try {
+    await submitBallotAction('cast', encryptedData);
+    // Success alert is handled within submitBallotAction now
+  } catch (err) {
+     showAlert('Error Casting Vote', err.message || 'An error occurred while casting the vote.');
+  }
 };
 
 // Step 2b: Handle the 'spoil-vote' event
@@ -521,7 +617,13 @@ const handleSpoilVote = async (payload) => {
       alert("Cannot spoil ballot: internal error preparing data.");
       return;
   }
-  await submitBallotAction('spoil', payload.encryptedData, payload.plaintextSelection);
+  // Add try-catch to handle potential errors from submitBallotAction
+  try {
+    await submitBallotAction('spoil', payload.encryptedData, payload.plaintextSelection);
+     // Success alert is handled within submitBallotAction now
+  } catch (err) {
+     showAlert('Error Spoiling Vote', err.message || 'An error occurred while spoiling the ballot.');
+  }
 };
 
 // Common function for casting or spoiling
@@ -545,7 +647,18 @@ const submitBallotAction = async (action, encryptedData, plaintextSelection = nu
     console.log(`Ballot ${action} successful:`, submitResponse.data);
 
     // --- Success --- 
-    alert(`Ballot successfully ${action}ed! ${action === 'spoil' ? 'It will not be counted.' : 'Your tracker hash is: ' + encryptedData.tracker_hash}`);
+    // Construct a user-friendly message
+    let successMessage = `Ballot successfully ${action}ed!`;
+    if (action === 'cast') {
+      successMessage += ` Your tracker hash is: ${encryptedData.tracker_hash}`;
+    } else if (action === 'spoil') {
+      successMessage += ' It will not be counted.';
+    }
+
+    // showAlert( // REMOVED this alert
+    //   `Ballot ${action.charAt(0).toUpperCase() + action.slice(1)}ed`,
+    //   successMessage // Use the constructed message
+    // );
     
     // Clear the temporary encrypted data state
     encryptedBallotData.value = null;
@@ -564,7 +677,8 @@ const submitBallotAction = async (action, encryptedData, plaintextSelection = nu
 
   } catch (err) {
     console.error(`[pages/group/[id].vue] Ballot ${action} failed:`, err);
-    alert(`Ballot ${action} failed: ${err.response?.data?.error || err.message}`);
+    // Rethrow error to be caught by handleCastVote/handleSpoilVote
+    throw new Error(`Ballot ${action} failed: ${err.response?.data?.error || err.message}`);
     // Keep dialog open and encrypted data available for retry?
     // encryptedBallotData.value = null; // Optional: Clear data even on failure?
   } finally {
@@ -580,28 +694,37 @@ const handleClearSpoiledDetails = () => {
 
 // --- END NEW Multi-Step Vote Handlers ---
 
-const handleVoteDeleted = async (voteId) => {
-  // Call the backend API to delete the vote
-  try { 
-    console.log(`[pages/group/[id].vue] Sending delete request for vote ID: ${voteId}`);
-    const response = await axios.delete(`/votes/${voteId}`)
-    console.log(`[pages/group/[id].vue] Vote deleted successfully on backend:`, response.data);
-    
-    // Remove from frontend list only after successful backend deletion
-    votes.value = votes.value.filter(v => v.id !== voteId) 
-    selectedVote.value = null 
-    showVoteDetailsDialog.value = false 
+// Updated handleVoteDeleted to use confirmation dialog
+const handleDeleteVote = async (voteId) => {
+  showConfirm(
+    'Confirm Delete Vote',
+    'Are you sure you want to delete this vote? This action cannot be undone.',
+    async () => { // Action to perform on confirmation
+      try {
+        isDeletingVote.value = true; // Start loading
+        console.log(`[pages/group/[id].vue] Sending delete request for vote ID: ${voteId}`);
+        await deleteVote(voteId); // Call the composable function (no alerts inside anymore)
+        console.log(`[pages/group/[id].vue] Vote deleted successfully via composable for vote ID: ${voteId}`);
+        
+        // UI updates that were previously in the composable might need to happen here or rely on fetchVotes() called within deleteVote()
+        // votes.value = votes.value.filter(v => v.id !== voteId) 
+        // selectedVote.value = null 
+        // showVoteDetailsDialog.value = false 
 
-    alert("Vote deleted successfully."); // Optional success message
+        showAlert('Success', 'Vote deleted successfully.'); // Show success alert here
 
-  } catch (err) { 
-    console.error(`[pages/group/[id].vue] Failed to delete vote ID ${voteId}:`, err);
-    alert(`Failed to delete vote: ${err.response?.data?.error || err.message}`);
-    // Optionally, you might not want to close the dialog if deletion fails
-    // selectedVote.value = null 
-    // showVoteDetailsDialog.value = false 
-  }
-}
+        // Ensure the list is refreshed if not already handled by deleteVote composable
+        // await fetchVotes(); // Might be redundant if deleteVote calls it
+
+      } catch (err) {
+        console.error(`[pages/group/[id].vue] Failed to delete vote ID ${voteId}:`, err);
+        showAlert('Error Deleting Vote', `Failed to delete vote: ${err.response?.data?.error || err.message}`);
+      } finally {
+        isDeletingVote.value = false; // Stop loading regardless of outcome
+      }
+    }
+  );
+};
 
 const handleUserAdded = async () => {
   showUserSearchDialog.value = false
@@ -616,21 +739,52 @@ const handleAddMemberWrapper = async (email) => {
 
 // Wrapper for promoting member
 const handleMemberPromoted = async (memberId) => {
-  await promoteMember(memberId)
-  await fetchGroup()
-}
+  const member = group.value?.members?.find(m => m.id === memberId);
+  const memberName = member?.name || member?.user?.name || 'this member';
+  try {
+    await promoteMember(memberId);
+    await fetchGroup(); // Refresh group data
+    showAlert('Member Promoted', `${memberName} is now an admin.`);
+  } catch (err) {
+    console.error('Failed to promote member:', err);
+    showAlert('Error Promoting Member', err.response?.data?.error || err.message || 'Could not promote member.');
+  }
+};
 
 // Wrapper for demoting member
 const handleMemberDemoted = async (memberId) => {
-  await demoteMember(memberId)
-  await fetchGroup()
-}
+  const member = group.value?.members?.find(m => m.id === memberId);
+  const memberName = member?.name || member?.user?.name || 'this member';
+  try {
+    await demoteMember(memberId);
+    await fetchGroup(); // Refresh group data
+    showAlert('Member Demoted', `${memberName} is no longer an admin.`);
+  } catch (err) {
+    console.error('Failed to demote member:', err);
+    showAlert('Error Demoting Member', err.response?.data?.error || err.message || 'Could not demote member.');
+  }
+};
 
 // Wrapper for removing member
 const handleMemberRemoveEvent = async (memberId) => {
-  await handleMemberRemove(memberId)
-  await fetchGroup()
-}
+  // Need to get member name for the confirmation message
+  const member = group.value?.members?.find(m => m.id === memberId);
+  const memberName = member?.name || member?.user?.name || 'this member';
+  showConfirm(
+    'Confirm Remove Member',
+    `Are you sure you want to remove ${memberName} from this group?`,
+    async () => { // Action on confirm
+      try {
+        await handleMemberRemove(memberId); // Call the composable
+        await fetchGroup(); // Refresh group data
+        showAlert('Member Removed', `${memberName} has been removed from the group.`);
+      } catch (err) {
+        console.error('Failed to remove member:', err);
+        showAlert('Error Removing Member', err.response?.data?.error || err.message || 'Could not remove the member.');
+      }
+    }
+  );
+};
 
 // Handle CSV Import
 const handleCsvImport = async (file) => {
@@ -670,14 +824,18 @@ const handleOpenVote = async (voteId) => {
     console.error("[pages/group/[id].vue] handleOpenVote received undefined voteId!");
     return;
   }
-  await openVoteDetails(voteId); // Use destructured function
-  if (selectedVote.value) { // Check destructured ref
-      console.log("[pages/group/[id].vue] Vote data before showing dialog:", JSON.parse(JSON.stringify(selectedVote.value))); 
-      console.log(`[pages/group/[id].vue] Vote status: ${selectedVote.value?.status}, Choices length: ${selectedVote.value?.choices?.length}`);
-      console.log("[pages/group/[id].vue] Vote details loaded, setting showVoteDetailsDialog to true.");
-      showVoteDetailsDialog.value = true;
-  } else {
-      console.error("[pages/group/[id].vue] Failed to load vote details, dialog will not open.");
+  
+  // Set the dialog to show immediately, allowing it to catch the loading state
+  showVoteDetailsDialog.value = true;
+  
+  try {
+    await openVoteDetails(voteId); // Use destructured function
+  } catch (err) {
+     // Error alert was removed from fetchVoteDetails, so handle it here
+     console.error(`[pages/group/[id].vue] Error opening vote details for ${voteId}:`, err);
+     showAlert('Error Loading Vote', `Failed to load vote details: ${err.response?.data?.error || err.message}`);
+     showVoteDetailsDialog.value = false; // Close the dialog on error
+     selectedVote.value = null; // Clear selected vote on error
   }
 };
 
@@ -694,11 +852,21 @@ const closeVoteDetailsHandler = () => {
 
 // Handle leaving the group
 const handleLeaveGroup = async () => {
-  if (confirm('Are you sure you want to leave this group?')) {
-    await leaveGroup()
-    router.push('/')
-  }
-}
+  showConfirm(
+    'Confirm Leave Group',
+    'Are you sure you want to leave this group?',
+    async () => { // Action to perform on confirmation
+      try {
+        await leaveGroup(); // Call the original composable function
+        router.push('/');
+        showAlert('Success', 'You have left the group.'); // Optional success message
+      } catch (err) {
+        console.error('Failed to leave group:', err);
+        showAlert('Error Leaving Group', err.message || 'Could not leave the group.');
+      }
+    }
+  );
+};
 
 // Group picture URL
 const groupPictureUrl = computed(() => {
@@ -725,72 +893,73 @@ const groupPictureUrl = computed(() => {
 const { toast } = useToast()
 
 const handleEndVote = async (voteId) => {
-  console.log(`[pages/group/[id].vue] Received end-vote event for vote ID: ${voteId}`);
-  try {
-    const result = await endVoteEarly(voteId); // Call the API function
-    toast({
-      title: 'Vote Ended',
-      description: `Vote "${selectedVote.value?.title || voteId}" has been closed successfully.`,
-    })
+  const voteTitle = selectedVote.value?.title || `Vote ID ${voteId}`; // Get title for message
+  showConfirm(
+    'Confirm End Vote Early',
+    `Are you sure you want to end this vote early: "${voteTitle}"? This will close the vote immediately.`,
+    async () => { // Action to perform on confirmation
+      console.log(`[pages/group/[id].vue] Confirmed ending vote early for vote ID: ${voteId}`);
+      try {
+        const result = await endVoteEarly(voteId); // Call the API function
+        // toast({ // Replaced toast
+        //   title: 'Vote Ended',
+        //   description: `Vote "${selectedVote.value?.title || voteId}" has been closed successfully.`,
+        // })
+        showAlert('Vote Ended', `Vote "${voteTitle}" has been closed successfully.`);
 
-    // Update UI
-    closeVoteDetailsHandler(); // Close dialog
-    await fetchVotes(); // Refresh the votes list
+        // Update UI
+        closeVoteDetailsHandler(); // Close dialog
+        await fetchVotes(); // Refresh the votes list
 
-  } catch (error) {
-    console.error('Failed to end vote:', error);
-    toast({
-      variant: 'destructive',
-      title: 'Error Ending Vote',
-      description: error.message || 'Could not end the vote.',
-    })
-  }
+      } catch (error) {
+        console.error('Failed to end vote:', error);
+        // toast({ // Replaced toast
+        //   variant: 'destructive',
+        //   title: 'Error Ending Vote',
+        //   description: error.message || 'Could not end the vote.',
+        // })
+        showAlert('Error Ending Vote', error.message || 'Could not end the vote.');
+      }
+    }
+  );
 };
 
-const handleDeleteVote = async (voteId) => {
-  try {
-    await deleteVote(voteId); // Call the vote deletion function
-    // UI update (closing dialog, refetching) is likely handled within deleteVote
-    toast({
-      title: 'Vote Deleted',
-      description: 'The vote has been successfully deleted.',
-    })
-  } catch (error) {
-    toast({
-      variant: 'destructive',
-      title: 'Error Deleting Vote',
-      description: error.message || 'Could not delete the vote.',
-    })
-  }
-}
-
 const handleTallyDecrypt = async (voteId) => {
-  console.log(`[pages/group/[id].vue] Received tally-decrypt event for vote ID: ${voteId}`);
-  isTallying.value = true;
-  try {
-    const result = await tallyAndDecrypt(voteId); // Call the API function
-    toast({
-      title: 'Tally Completed',
-      description: `Vote "${selectedVote.value?.title || voteId}" results decrypted successfully.`,
-    })
+  const voteTitle = selectedVote.value?.title || `Vote ID ${voteId}`; // Get title for message
+  showConfirm(
+    'Confirm Tally & Decrypt',
+    `Are you sure you want to tally and decrypt the results for "${voteTitle}"? This uses the ElectionGuard process and may take a moment.`,
+    async () => { // Action to perform on confirmation
+      console.log(`[pages/group/[id].vue] Confirmed tally-decrypt event for vote ID: ${voteId}`);
+      isTallying.value = true;
+      try {
+        const result = await tallyAndDecrypt(voteId); // Call the API function
+        // toast({ // Replaced toast
+        //   title: 'Tally Completed',
+        //   description: `Vote "${selectedVote.value?.title || voteId}" results decrypted successfully.`,
+        // })
+        showAlert('Tally Completed', `Vote "${voteTitle}" results decrypted successfully.`);
 
-    // Update UI - Refetch votes to get updated status and results string
-    await fetchVotes(); 
-    // Optionally, re-fetch details for the *currently open* dialog to update its view
-    if (selectedVote.value && selectedVote.value.id === voteId) {
-      await openVoteDetails(voteId);
+        // Update UI - Refetch votes to get updated status and results string
+        await fetchVotes(); 
+        // Optionally, re-fetch details for the *currently open* dialog to update its view
+        if (selectedVote.value && selectedVote.value.id === voteId) {
+          await openVoteDetails(voteId);
+        }
+        // Keep dialog open to show decrypted status/results placeholder
+
+      } catch (error) {
+        console.error('Failed to tally/decrypt vote:', error);
+        // toast({ // Replaced toast
+        //   variant: 'destructive',
+        //   title: 'Error Tallying Vote',
+        //   description: error.message || 'Could not tally and decrypt the vote results.',
+        // })
+        showAlert('Error Tallying Vote', error.message || 'Could not tally and decrypt the vote results.');
+      } finally {
+        isTallying.value = false;
+      }
     }
-    // Keep dialog open to show decrypted status/results placeholder
-
-  } catch (error) {
-    console.error('Failed to tally/decrypt vote:', error);
-    toast({
-      variant: 'destructive',
-      title: 'Error Tallying Vote',
-      description: error.message || 'Could not tally and decrypt the vote results.',
-    })
-  } finally {
-    isTallying.value = false;
-  }
+  );
 };
 </script>

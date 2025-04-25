@@ -1015,9 +1015,7 @@ const handleDelete = () => {
     return;
   }
 
-  if (confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
-    emit('delete')
-  }
+  emit('delete')
 }
 
 // Document management

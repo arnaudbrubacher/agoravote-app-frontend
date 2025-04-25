@@ -4,75 +4,85 @@
       <DialogHeader>
         <DialogTitle>{{ vote.title }}</DialogTitle>
         <DialogDescription>
-          {{ vote.status }} vote · {{ formatDate(vote.start_time) }} - {{ formatDate(vote.end_time) }}
+          {{ vote.status || 'Loading...' }} vote · {{ formatDate(vote.start_time) }} - {{ formatDate(vote.end_time) }}
         </DialogDescription>
       </DialogHeader>
       
-      <div class="py-4">
-        <!-- Vote Details -->
-        <div class="space-y-4">
-          <div class="prose max-w-none">
-            <h4 class="font-medium">Question</h4>
-            <p>{{ vote.question }}</p>
-          </div>
-          
-          <div v-if="vote.allowWriteIn" class="text-sm text-muted-foreground">
-            Write-ins are allowed for this vote.
-          </div>
+      <div class="py-4 min-h-[200px]">
+        <!-- Loading State -->
+        <div v-if="isLoadingDetails" class="flex justify-center items-center h-full">
+          <LoadingSpinner />
+          <span class="ml-2">Loading vote details...</span>
+        </div>
 
-          <!-- Ballot Section (Handles Voting/Encryption/Casting/Spoiling/Status) -->
-           <BallotForm
-              v-if="vote.status === 'open'"
-              :vote="vote"
-              :can-vote="vote.can_vote"
-              :user-tracker-hash="userTrackerHash"
-              :encrypted-ballot-data="encryptedBallotData"
-              :is-encrypting="isEncrypting"
-              :is-submitting="isSubmitting"
-              :spoiled-selection-details="spoiledSelectionDetails"
-              @encrypt-vote="handleEncryptVote"
-              @cast-vote="handleCastVote"
-              @spoil-vote="handleSpoilVote"
-              @clear-spoiled-details="handleClearSpoiledDetails"
-            />
-
-          <!-- Results Section for Closed or Decrypted Votes -->
-          <div v-else-if="vote.status === 'closed' || vote.status === 'decrypted'" class="mt-6 pt-4 border-t">
-            <h4 class="font-medium mb-4">Results</h4>
+        <!-- Content when not loading -->
+        <div v-else>
+          <!-- Vote Details -->
+          <div class="space-y-4">
+            <div class="prose max-w-none">
+              <h4 class="font-medium">Question</h4>
+              <p>{{ vote.question }}</p>
+            </div>
             
-            <div v-if="vote.status === 'closed'" class="text-sm text-muted-foreground">
-              Vote is closed. Results need to be tallied and decrypted.
+            <div v-if="vote.allowWriteIn" class="text-sm text-muted-foreground">
+              Write-ins are allowed for this vote.
             </div>
 
-            <!-- Decrypted Results Display -->
-            <div v-else-if="vote.status === 'decrypted'" class="space-y-4">
-              <div v-if="parsedTallyResults">
-                <ElectionResults :results="parsedTallyResults" :vote="vote" />
+            <!-- Ballot Section (Handles Voting/Encryption/Casting/Spoiling/Status) -->
+             <BallotForm
+                v-if="vote.status === 'open'"
+                :vote="vote"
+                :can-vote="vote.can_vote"
+                :user-tracker-hash="userTrackerHash"
+                :encrypted-ballot-data="encryptedBallotData"
+                :is-encrypting="isEncrypting"
+                :is-submitting="isSubmitting"
+                :spoiled-selection-details="spoiledSelectionDetails"
+                @encrypt-vote="handleEncryptVote"
+                @cast-vote="handleCastVote"
+                @spoil-vote="handleSpoilVote"
+                @clear-spoiled-details="handleClearSpoiledDetails"
+              />
+
+            <!-- Results Section for Closed or Decrypted Votes -->
+            <div v-else-if="vote.status === 'closed' || vote.status === 'decrypted'" class="mt-6 pt-4 border-t">
+              <h4 class="font-medium mb-4">Results</h4>
+              
+              <div v-if="vote.status === 'closed'" class="text-sm text-muted-foreground">
+                Vote is closed. Results need to be tallied and decrypted.
               </div>
-              <div v-else>
-                 <p class="text-sm text-red-600 font-medium">Results decrypted, but could not be parsed.</p>
-                 <p class="text-xs text-muted-foreground">Check the console or backend logs for details.</p>
-                 <pre v-if="vote.plaintext_tally_results" class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">{{ vote.plaintext_tally_results }}</pre>
+
+              <!-- Decrypted Results Display -->
+              <div v-else-if="vote.status === 'decrypted'" class="space-y-4">
+                <div v-if="parsedTallyResults">
+                  <ElectionResults :results="parsedTallyResults" :vote="vote" />
+                </div>
+                <div v-else>
+                   <p class="text-sm text-red-600 font-medium">Results decrypted, but could not be parsed.</p>
+                   <p class="text-xs text-muted-foreground">Check the console or backend logs for details.</p>
+                   <pre v-if="vote.plaintext_tally_results" class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">{{ vote.plaintext_tally_results }}</pre>
+                </div>
               </div>
             </div>
+          </div>
+
+          <!-- Bottom Action Buttons (only show when not loading details) -->
+          <div class="border-t pt-4 flex justify-start space-x-2 mt-4">
+            <Button v-if="canDelete" variant="destructive" size="sm" @click="confirmDelete" :disabled="isDeletingVote">
+              <Loader2 v-if="isDeletingVote" class="mr-2 h-4 w-4 animate-spin" />
+              <LucideIcon v-else name="Trash" size="4" class="h-4 w-4 mr-1" />
+              {{ isDeletingVote ? 'Deleting...' : 'Delete' }}
+            </Button>
+            <Button v-if="canEndEarly" variant="secondary" size="sm" @click="confirmEndEarly">
+              <LucideIcon name="TimerOff" size="4" class="h-4 w-4 mr-1" />
+              End Vote Early
+            </Button>
+            <Button v-if="canTally" variant="default" size="sm" @click="confirmTally">
+              <LucideIcon name="ListChecks" size="4" class="h-4 w-4 mr-1" />
+              Tally & Decrypt
+            </Button>
           </div>
         </div>
-      </div>
-      
-      <!-- Bottom Action Buttons -->
-      <div class="border-t pt-4 flex justify-start space-x-2">
-        <Button v-if="canDelete" variant="destructive" size="sm" @click="confirmDelete">
-          <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
-          Delete
-        </Button>
-        <Button v-if="canEndEarly" variant="secondary" size="sm" @click="confirmEndEarly">
-          <LucideIcon name="TimerOff" size="4" class="h-4 w-4 mr-1" />
-          End Vote Early
-        </Button>
-        <Button v-if="canTally" variant="default" size="sm" @click="confirmTally">
-          <LucideIcon name="ListChecks" size="4" class="h-4 w-4 mr-1" />
-          Tally & Decrypt
-        </Button>
       </div>
     </DialogContent>
   </Dialog>
@@ -82,7 +92,9 @@
 import LucideIcon from '@/components/LucideIcon.vue'
 import BallotForm from '@/components/votes/BallotForm.vue'
 import ElectionResults from '@/components/votes/ElectionResults.vue'
+import LoadingSpinner from '@/components/utils/LoadingSpinner.vue'
 import { ref, computed } from 'vue'
+import { Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -120,6 +132,14 @@ const props = defineProps({
   spoiledSelectionDetails: {
     type: Object,
     default: null
+  },
+  isLoadingDetails: { 
+    type: Boolean,
+    default: false
+  },
+  isDeletingVote: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -199,23 +219,26 @@ const getVotePercentage = (choice) => {
 }
 
 const confirmEndEarly = () => {
-  if (confirm(`Are you sure you want to end this vote early: "${props.vote.title}"? This will close the vote immediately.`)) {
+  // Remove the confirmation here - it's handled by the parent component
+  // if (confirm(`Are you sure you want to end this vote early: ...`)) { 
     console.log(`[VoteDetailsDialog] Emitting end-vote event for vote ID: ${props.vote.id}`);
     emit('end-vote', props.vote.id);
-  }
+  // }
 }
 
 const confirmTally = () => {
-  if (confirm(`Are you sure you want to tally and decrypt the results for "${props.vote.title}"? This uses the ElectionGuard process.`)) {
+  // Remove the confirmation here - it's handled by the parent component
+  // if (confirm(`Are you sure you want to tally and decrypt the results for ...`)) { 
     console.log(`[VoteDetailsDialog] Emitting tally-decrypt event for vote ID: ${props.vote.id}`);
     emit('tally-decrypt', props.vote.id);
-  }
+  // }
 };
 
 const confirmDelete = () => {
-  if (confirm(`Are you sure you want to delete this vote: "${props.vote.title}"?`)) {
+  // Remove the confirmation here - it's handled by the parent component
+  // if (confirm(`Are you sure you want to delete this vote: "${props.vote.title}"?`)) { 
     emit('delete', props.vote.id)
-  }
+  // }
 }
 
 // Computed property to handle results (which might be string or object from backend)

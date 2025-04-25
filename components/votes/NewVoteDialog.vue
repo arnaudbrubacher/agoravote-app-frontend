@@ -69,6 +69,21 @@
       </form>
     </DialogContent>
   </Dialog>
+
+  <!-- Alert Dialog for Validation Messages -->
+  <AlertDialog :open="isAlertOpen" @update:open="isAlertOpen = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ alertTitle }}</AlertDialogTitle>
+        <AlertDialogDescription>
+          {{ alertMessage }}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogAction @click="isAlertOpen = false">OK</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
 
 <script setup>
@@ -88,6 +103,15 @@ import {
   DialogDescription
 } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const props = defineProps({
   group: Object,
@@ -109,6 +133,17 @@ const formData = ref({
   startTime: '',
   endTime: ''
 })
+
+// State for AlertDialog
+const isAlertOpen = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+function showAlert(title, message) {
+  alertTitle.value = title
+  alertMessage.value = message
+  isAlertOpen.value = true
+}
 
 onMounted(() => {
   const now = new Date();
@@ -140,11 +175,11 @@ function removeChoice(index) {
 function handleSubmit() {
   // Basic validation
   if (!formData.value.title || !formData.value.question || !formData.value.startTime || !formData.value.endTime) {
-    alert('Please fill in Title, Question, Start Time, and End Time.')
+    showAlert('Missing Information', 'Please fill in Title, Question, Start Time, and End Time.')
     return
   }
   if (formData.value.choices.length < 2 || formData.value.choices.some(c => !c.text)) {
-    alert('Please provide at least two choices with text.')
+    showAlert('Invalid Choices', 'Please provide at least two choices with text.')
     return
   }
   

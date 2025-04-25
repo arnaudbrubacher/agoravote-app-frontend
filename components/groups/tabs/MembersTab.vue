@@ -314,9 +314,6 @@ const promoteMember = async (member) => {
       throw new Error(responseData.error || 'Failed to promote member');
     }
     
-    // Show success message
-    alert(`${member.name} is now an admin`);
-    
     // Refresh group data to update members list
     emit('refresh-group');
     
@@ -360,9 +357,6 @@ const demoteMember = async (member) => {
     if (!response.ok) {
       throw new Error(responseData.error || 'Failed to demote member');
     }
-    
-    // Show success message
-    alert(`${member.name} is no longer an admin`);
     
     // Refresh group data to update members list
     emit('refresh-group');
@@ -588,7 +582,7 @@ const handleReviewDocuments = async (member) => {
       
       // Determine if this is a pending member
       const isPending = pendingMembers.value.some(m => {
-        const mId = m.user_id || m.userId || (m.user && m.user.id) || m.id
+        const mId = m.user_id || m.UserId || (m.user && m.user.id) || m.id
         return mId === memberId
       })
       
@@ -684,7 +678,7 @@ const fetchDocumentsForActiveMembers = async () => {
       }
       
       // Get the member ID
-      const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+      const memberId = member.user_id || member.UserId || (member.user && member.user.id) || member.id;
       
       // Skip if no valid member ID
       if (!memberId) {

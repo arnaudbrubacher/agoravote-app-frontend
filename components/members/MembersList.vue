@@ -329,9 +329,9 @@ const filteredMembers = computed(() => {
 
 // Handle member remove
 const handleMemberRemove = (member) => {
-  // Confirm before removing
-  if (confirm(`Are you sure you want to remove ${member.name || 'this member'} from the group?`)) {
-    emit('remove', member)
-  }
+  // Confirmation should be handled by the row or the parent page
+  // if (confirm(`Are you sure you want to remove ${member.name || 'this member'} from the group?`)) {
+    emit('member-removed', member.id)
+  // }
 }
 </script> 

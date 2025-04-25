@@ -49,7 +49,7 @@
 
     <!-- Vote Details Dialog -->
     <VoteDetailsDialog
-      v-if="showVoteDetails && selectedVote"
+      v-if="selectedVote"
       :vote="selectedVote"
       :current-user-id="currentUser?.id"
       :user-tracker-hash="userTrackerHash"
@@ -57,6 +57,8 @@
       :is-encrypting="isEncrypting"
       :is-submitting="isSubmitting"
       :spoiled-selection-details="spoiledSelectionDetails"
+      :is-deleting-vote="props.isDeletingVote"
+      :is-loading-details="props.isLoadingDetails"
       @close="$emit('close-vote-details')"
       @delete="$emit('vote-deleted', $event)"
       @encrypt-vote="$emit('encrypt-vote', $event)"
@@ -95,6 +97,8 @@ const props = defineProps({
   showUserSearchDialog: Boolean,
   showVoteDetails: Boolean,
   isCreatingVote: Boolean,
+  isLoadingDetails: Boolean,
+  isDeletingVote: Boolean,
   selectedPost: Object,
   selectedVote: Object,
   group: Object,

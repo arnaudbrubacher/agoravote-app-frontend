@@ -23,7 +23,7 @@ export function useGroupVotes(groupId) {
       // return votes.value
     } catch (error) {
       console.error('Failed to fetch votes:', error)
-      alert('Failed to fetch votes')
+      // alert('Failed to fetch votes')
       throw error
     } finally {
       isLoadingVotes.value = false
@@ -40,8 +40,10 @@ export function useGroupVotes(groupId) {
       return response.data; 
     } catch (error) {
       console.error(`[useGroupVotes.js] fetchVoteDetails FAILED for vote ${voteId}:`, error);
-      alert(`Failed to load vote details: ${error.response?.data?.error || error.message}`);
-      return null; 
+      // alert(`Failed to load vote details: ${error.response?.data?.error || error.message}`);
+      // Still return null or throw error so the caller knows it failed
+      throw error; // Rethrowing allows the caller to handle the error UI
+      // return null; 
     } finally {
       isLoadingDetails.value = false;
     }
@@ -66,13 +68,10 @@ export function useGroupVotes(groupId) {
       // Add new vote to the list or refresh the list
       await fetchVotes()
       
-      alert('Vote created successfully')
-      
       return response.data
     } catch (err) {
       console.error('Failed to create vote:', err)
       console.error('Error details:', err.response?.data)
-      alert('Failed to create vote: ' + (err.response?.data?.error || err.message))
       throw err
     }
   }
@@ -80,13 +79,21 @@ export function useGroupVotes(groupId) {
   // Open vote details dialog by fetching full data
   const openVoteDetails = async (voteId) => {
     console.log(`[useGroupVotes.js] openVoteDetails starting for vote ID: ${voteId}`);
+    // Set a temporary value to indicate which vote is being loaded and trigger dialog opening
+    selectedVote.value = { id: voteId }; 
+    // isLoadingDetails is set inside fetchVoteDetails
+    
     const detailedVoteData = await fetchVoteDetails(voteId);
+    
     if (detailedVoteData) {
-      selectedVote.value = detailedVoteData;
+      // Update selectedVote with the full data once fetched
+      selectedVote.value = detailedVoteData; 
       console.log('[useGroupVotes.js] Selected vote set with detailed data:', selectedVote.value);
     } else {
-      selectedVote.value = null;
+      // Fetch failed, clear selectedVote to close the dialog or indicate error
+      selectedVote.value = null; 
       console.error('[useGroupVotes.js] Could not set selectedVote because details failed to load.');
+      // Keep the alert from fetchVoteDetails
     }
   }
 
@@ -100,8 +107,6 @@ export function useGroupVotes(groupId) {
       // Call API to submit the vote
       const response = await axios.post(`/votes/${selectedVote.value.id}/cast`, voteData)
       
-      alert('Vote submitted successfully')
-      
       // Close dialog
       selectedVote.value = null
       
@@ -111,7 +116,6 @@ export function useGroupVotes(groupId) {
       return response.data
     } catch (err) {
       console.error('Failed to submit vote:', err)
-      alert('Failed to submit vote: ' + (err.response?.data?.error || err.message))
       throw err
     }
   }
@@ -119,9 +123,10 @@ export function useGroupVotes(groupId) {
   // Delete a vote
   const deleteVote = async (voteId) => {
     try {
-      if (!confirm('Are you sure you want to delete this vote?')) {
-        return
-      }
+      // Confirmation is now handled in the UI component
+      // if (!confirm('Are you sure you want to delete this vote?')) {
+      //   return
+      // }
       
       // Call API to delete the vote
       await axios.delete(`/votes/${voteId}`)
@@ -131,13 +136,11 @@ export function useGroupVotes(groupId) {
         selectedVote.value = null
       }
       
-      alert('Vote deleted successfully')
-      
       // Refresh votes list
       await fetchVotes()
+      // Return something or nothing, just don't alert
     } catch (err) {
       console.error('Failed to delete vote:', err)
-      alert('Failed to delete vote: ' + (err.response?.data?.error || err.message))
       throw err
     }
   }

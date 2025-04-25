@@ -296,10 +296,9 @@ const toggleAdminStatus = () => {
 // Add a handler for the remove action to log the member data
 const handleMemberRemove = (member) => {
   // Confirm before removing
-  if (!confirm(`Are you sure you want to remove ${member.name} from this group?`)) {
-    return
-  }
-  
+  // if (!confirm(`Are you sure you want to remove ${member.name} from this group?`)) {
+  //  return
+  // }
   console.log('MemberRow - Remove button clicked for member:', member.name, {
     id: member.id,
     userId: member.userId,
@@ -321,5 +320,13 @@ const handleReviewDocuments = (member) => {
   console.log('MemberRow - handleReviewDocuments called for member:', member.name)
   console.log('MemberRow - member documents_submitted:', member.documents_submitted)
   emit('review-documents', member)
+}
+
+const confirmRemoveMember = () => {
+  // Confirmation handled by parent
+  // if (!confirm(`Are you sure you want to remove ${props.member.name} from this group?`)) {
+  //  return
+  // }
+  emit('remove-member', props.member.id)
 }
 </script>

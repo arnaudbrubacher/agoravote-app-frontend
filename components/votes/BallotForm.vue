@@ -3,8 +3,8 @@
     <!-- State 1: Already Voted -->
     <div v-if="hasUserVoted" class="space-y-3 text-center p-4 bg-green-50 border border-green-200 rounded-md">
       <LucideIcon name="CheckCircle" class="mx-auto h-10 w-10 text-green-500" />
-      <p class="font-medium text-green-800">You have already cast your ballot in this election.</p>
-      <p class="text-sm text-muted-foreground">Your ballot tracking hash is:</p>
+      <p class="font-medium text-green-800">You have cast your ballot in this election.</p>
+      <p class="text-sm text-muted-foreground">Your tracker hash is:</p>
       <code class="block text-sm font-mono bg-gray-100 p-2 rounded break-all">{{ userTrackerHash }}</code>
       <p class="text-xs text-muted-foreground pt-2">
         You can use this hash later to verify your vote was included in the final tally (verification feature coming soon).
