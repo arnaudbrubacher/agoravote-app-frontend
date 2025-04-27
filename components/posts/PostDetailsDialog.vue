@@ -452,7 +452,7 @@ async function handleUpdate() {
 const confirmDelete = () => {
   // Confirmation is handled by the parent
   // if (confirm('Are you sure you want to delete this post?')) {
-    emit('delete', props.post.id)
+    emit('delete', props.post) // Emit the full post object
   // }
 }
 

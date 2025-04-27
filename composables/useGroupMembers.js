@@ -230,12 +230,47 @@ export function useGroupMembers(groupId, group, fetchGroup) {
            member.user_id === currentUser.value.id
   }
 
+  // Invite member by email
+  const inviteMemberByEmail = async (email) => {
+    console.log("[useGroupMembers] inviteMemberByEmail called with email:", email);
+    if (!groupId) {
+      console.error('Group ID is missing');
+      alert('Cannot invite member: Group ID is missing.');
+      return; // Or throw error
+    }
+    if (!email) {
+      console.error('Email is missing');
+      alert('Cannot invite member: Email is missing.');
+      return; // Or throw error
+    }
+
+    try {
+      console.log(`[useGroupMembers] Attempting axios.post to /groups/${groupId}/invite`);
+      // Call API to invite member by email
+      const response = await axios.post(`/groups/${groupId}/invite`, { email });
+      console.log("[useGroupMembers] axios.post successful:", response.data);
+
+      // Show success message (backend currently returns generic success)
+      alert(`Invitation sent successfully to ${email}`);
+
+      // No need to refresh group data immediately, as the user isn't active yet.
+      // Maybe refresh pending invites list if one exists?
+
+      return response.data; // Return data which might be just { message: "..." }
+    } catch (err) {
+      console.error('[useGroupMembers] Failed to invite member by email:', err);
+      alert('Failed to send invitation: ' + (err.response?.data?.error || err.message));
+      throw err; // Re-throw error to be caught by the dialog if needed
+    }
+  }
+
   return {
     currentUser,
     isLoadingMembers,
     memberSearchQuery,
     fetchCurrentUser,
     addMember,
+    inviteMemberByEmail,
     handleCsvImport,
     handleUserAdded,
     promoteMember,

@@ -35,14 +35,16 @@
         :group="group" 
         :current-user="currentUser" 
         :is-current-user-admin="isCurrentUserAdmin"
+        :fetchGroup="fetchGroup"
         @show-add-member="$emit('add-member')"
         @show-user-search="$emit('search-user')"
         @csv-import="$emit('csv-import', $event)"
         @member-promoted="$emit('member-promoted', $event)"
         @member-demoted="$emit('member-demoted', $event)"
-        @member-removed="handleMemberRemove"
         @refresh-group="$emit('refresh-group')"
         @admin-status-update="$emit('admin-status-update', $event)"
+        @invite-member="$emit('invite-member', $event)"
+        @invite-member-by-email="$emit('invite-member-by-email', $event)"
       />
     </TabsContent>
   </Tabs>
@@ -85,6 +87,10 @@ const props = defineProps({
   isLoadingVotes: {
     type: Boolean,
     default: false
+  },
+  fetchGroup: {
+    type: Function,
+    required: true
   }
 })
 
@@ -106,21 +112,11 @@ const emit = defineEmits([
   'csv-import',
   'member-promoted',
   'member-demoted',
-  'member-removed',
   'open-vote',
   'open-post',
   'refresh-group',
-  'admin-status-update'
+  'admin-status-update',
+  'invite-member',
+  'invite-member-by-email'
 ])
-
-// Add a handler for member removal to debug the event flow
-const handleMemberRemove = (member) => {
-  console.log('GroupTabs - Member removal event received for:', member.name, {
-    id: member.id,
-    userId: member.userId,
-    user_id: member.user_id,
-    user: member.user && member.user.id
-  });
-  emit('member-removed', member);
-}
 </script>

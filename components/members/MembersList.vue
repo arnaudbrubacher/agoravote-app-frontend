@@ -109,8 +109,13 @@ import {
   DialogTitle,
   DialogDescription
 } from '@/components/ui/dialog'
+import { useGroupMembers } from '@/composables/useGroupMembers'
 
 const props = defineProps({
+  groupId: {
+    type: String,
+    required: true
+  },
   members: {
     type: Array,
     default: () => []
@@ -126,12 +131,20 @@ const props = defineProps({
   isCurrentUserAdmin: {
     type: Boolean,
     default: false
+  },
+  group: {
+    type: Object,
+    default: null
+  },
+  fetchGroup: {
+    type: Function,
+    default: () => {}
   }
 })
 
 const emit = defineEmits([
-  'add-member', 
-  'search-user', 
+  'add-member',
+  'search-user',
   'import-csv',
   'promote',
   'demote',
@@ -140,6 +153,12 @@ const emit = defineEmits([
   'admin-status-update',
   'review-documents'
 ])
+
+const { handleMemberRemove: removeMemberApi } = useGroupMembers(
+  props.groupId, 
+  computed(() => props.group),
+  props.fetchGroup
+)
 
 const searchQuery = ref('')
 const selectedMember = ref(null)
@@ -327,11 +346,15 @@ const filteredMembers = computed(() => {
   })
 })
 
-// Handle member remove
-const handleMemberRemove = (member) => {
-  // Confirmation should be handled by the row or the parent page
-  // if (confirm(`Are you sure you want to remove ${member.name || 'this member'} from the group?`)) {
-    emit('member-removed', member.id)
-  // }
+// Handle member remove - Now calls the composable
+const handleMemberRemove = async (member) => {
+  // Call the composable function to handle API call, confirmation, and refresh
+  await removeMemberApi(member)
+  
+  // Optional: Emit 'remove' if parent component still needs to react immediately
+  // emit('remove', member) 
+  
+  // Optional: Emit 'refresh-members' if composable doesn't handle refresh or parent needs it
+  // emit('refresh-members')
 }
 </script> 

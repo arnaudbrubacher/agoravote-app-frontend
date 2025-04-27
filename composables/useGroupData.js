@@ -156,35 +156,34 @@ export function useGroupData(groupId) {
     
     try {
       console.log('Attempting to leave group with ID:', groupId)
-      
-      // Get the token directly
-      const token = localStorage.getItem('token')
-      if (!token) {
-        throw new Error('Authentication token not found. Please log in again.')
-      }
-      
-      // Decode the token to get the user ID
-      const decoded = jwtDecode(token)
-      const userId = decoded.user_id
-      
+
+      // Get the user ID directly from the Supertokens session
+      const userId = await Session.getUserId();
+
       if (!userId) {
-        throw new Error('User ID not found in token. Please log in again.')
+        // This might happen if the session expired or user is not logged in
+        throw new Error('User session not found or expired. Please log in again.')
       }
+
+      console.log('Leaving group with user ID from Supertokens session:', userId)
       
-      console.log('Leaving group with user ID from token:', userId)
-      
-      // Use the user ID from the token
+      // Supertokens handles adding the auth header automatically via Axios interceptors.
+      // The backend requires the userId in the path for this specific endpoint.
       await axios.delete(`/groups/${groupId}/members/${userId}`)
       
       console.log('Successfully left group')
       
       // Dispatch an event to update the dashboard sidebar
+      console.log('Dispatching user-left-group event...');
       window.dispatchEvent(new CustomEvent('user-left-group', { 
         detail: { groupId }
       }))
+      console.log('Event dispatched.');
       
       // Navigate to the profile page instead of the dashboard
+      console.log('Attempting navigation to /profile...');
       router.push('/profile')
+      console.log('Navigation to /profile initiated.'); // This might not log if redirect happens immediately
     } catch (error) {
       console.error('Failed to leave group:', error)
       throw error

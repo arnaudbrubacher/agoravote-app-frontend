@@ -57,16 +57,17 @@
       :current-user="currentUser"
       :is-current-user-admin="isCurrentUserAdmin"
       :is-loading-votes="isLoadingVotes"
+      :fetchGroup="fetchGroup"
       @create-post="showNewPostDialog = true"
       @open-post="selectedPost = $event"
       @create-vote="showNewVoteDialog = true"
       @open-vote="handleOpenVote($event.id)"
       @add-member="showAddMemberDialog = true"
       @search-user="showUserSearchDialog = true"
+      @invite-member-by-email="handleInviteMember"
       @csv-import="handleCsvImport"
       @member-promoted="handleMemberPromoted"
       @member-demoted="handleMemberDemoted"
-      @member-removed="handleMemberRemoveEvent"
       @refresh-group="refreshGroupData"
       @admin-status-update="handleAdminStatusUpdate"
     />
@@ -248,6 +249,7 @@ const {
   currentUser,
   fetchCurrentUser,
   addMember, 
+  inviteMemberByEmail,
   handleUserAdded: processUserAdded,
   handleCsvImport: importCsvMembers,
   promoteMember,
@@ -765,27 +767,6 @@ const handleMemberDemoted = async (memberId) => {
   }
 };
 
-// Wrapper for removing member
-const handleMemberRemoveEvent = async (memberId) => {
-  // Need to get member name for the confirmation message
-  const member = group.value?.members?.find(m => m.id === memberId);
-  const memberName = member?.name || member?.user?.name || 'this member';
-  showConfirm(
-    'Confirm Remove Member',
-    `Are you sure you want to remove ${memberName} from this group?`,
-    async () => { // Action on confirm
-      try {
-        await handleMemberRemove(memberId); // Call the composable
-        await fetchGroup(); // Refresh group data
-        showAlert('Member Removed', `${memberName} has been removed from the group.`);
-      } catch (err) {
-        console.error('Failed to remove member:', err);
-        showAlert('Error Removing Member', err.response?.data?.error || err.message || 'Could not remove the member.');
-      }
-    }
-  );
-};
-
 // Handle CSV Import
 const handleCsvImport = async (file) => {
   await importCsvMembers(file)
@@ -961,5 +942,23 @@ const handleTallyDecrypt = async (voteId) => {
       }
     }
   );
+};
+
+// Handler for the email invite event from MembersTab
+const handleInviteMember = async (email) => {
+  console.log(`[pages/group/[Id].vue] handleInviteMember called with email:`, email);
+  if (!email) {
+    showAlert('Error', 'No email address provided for invitation.');
+    return;
+  }
+  try {
+    // Call the composable function to handle the API call
+    console.log(`[pages/group/[Id].vue] Calling inviteMemberByEmail composable...`);
+    await inviteMemberByEmail(email);
+    console.log(`[pages/group/[Id].vue] inviteMemberByEmail composable finished.`);
+    // ... rest of try block ...
+  } catch (error) {
+    // ... catch block ...
+  }
 };
 </script>

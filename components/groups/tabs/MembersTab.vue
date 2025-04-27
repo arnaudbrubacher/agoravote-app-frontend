@@ -25,7 +25,7 @@
                   <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-2" />
                   Upload File
                 </DropdownMenuItem>
-                <DropdownMenuItem @click="$emit('show-add-member')">
+                <DropdownMenuItem @click="showInviteDialog = true" :disabled="!isCurrentUserAdmin">
                   <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
                   Email Invite
                 </DropdownMenuItem>
@@ -68,6 +68,9 @@
       <div>
         <!-- Use the shared MembersList component which handles lists of members -->
         <MembersList
+          :group-id="group.id"
+          :group="group"
+          :fetch-group="fetchGroup"
           :members="activeMembers"
           :loading="isLoadingMembers"
           :current-user="currentUser"
@@ -101,6 +104,13 @@
         @accept="acceptPendingMember"
         @decline="declinePendingMember"
       />
+
+      <!-- Invite Member Dialog -->
+      <InviteMemberDialog
+        v-if="showInviteDialog"
+        @close="showInviteDialog = false"
+        @submit="handleInviteSubmit"
+      />
     </CardContent>
   </Card>
 </template>
@@ -111,6 +121,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import MembersList from '~/components/members/MembersList.vue'
 import PendingMembersList from '~/components/members/PendingMembersList.vue'
 import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'
+import InviteMemberDialog from '~/components/members/InviteMemberDialog.vue'
 import axios from '~/src/utils/axios'
 import { 
   DropdownMenu, 
@@ -133,6 +144,10 @@ const props = defineProps({
   isCurrentUserAdmin: {
     type: Boolean,
     default: false
+  },
+  fetchGroup: {
+    type: Function,
+    required: true
   }
 })
 
@@ -258,7 +273,9 @@ const emit = defineEmits([
   'member-removed',
   'refresh-group',
   'admin-status-update',
-  'user-invited'
+  'user-invited',
+  'invite-member-by-email',
+  'invite-member'
 ])
 
 const csvFileInput = ref(null)
@@ -267,6 +284,7 @@ const isLoadingPendingMembers = ref(false)
 const pendingMembers = ref([])
 const showReviewDialog = ref(false)
 const selectedPendingMember = ref(null)
+const showInviteDialog = ref(false)
 
 const triggerCsvFileInput = () => {
   csvFileInput.value.click()
@@ -733,5 +751,13 @@ const handleRefreshPendingMembers = (event) => {
     console.log('MembersTab - Refreshing pending members for group:', props.group.id)
     fetchPendingMembers()
   }
+}
+
+// Handler for the invite dialog submission
+const handleInviteSubmit = (email) => {
+  console.log("[MembersTab] handleInviteSubmit called with email:", email);
+  console.log("[MembersTab] Emitting invite-member-by-email event.");
+  emit('invite-member-by-email', email);
+  showInviteDialog.value = false;
 }
 </script>
