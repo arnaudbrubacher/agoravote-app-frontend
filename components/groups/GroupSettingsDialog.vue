@@ -1015,7 +1015,7 @@ const handleDelete = () => {
     return;
   }
 
-  emit('delete')
+    emit('delete')
 }
 
 // Document management

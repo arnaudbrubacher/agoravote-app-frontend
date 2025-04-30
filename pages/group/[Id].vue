@@ -62,7 +62,6 @@
       @open-post="selectedPost = $event"
       @create-vote="showNewVoteDialog = true"
       @open-vote="handleOpenVote($event.id)"
-      @add-member="showAddMemberDialog = true"
       @search-user="showUserSearchDialog = true"
       @invite-member-by-email="handleInviteMember"
       @csv-import="handleCsvImport"
@@ -78,7 +77,6 @@
       :show-new-post-dialog="showNewPostDialog"
       :show-new-vote-dialog="showNewVoteDialog"
       :is-creating-vote="isCreatingVote"
-      :show-add-member-dialog="showAddMemberDialog"
       :show-user-search-dialog="showUserSearchDialog"
       :show-vote-details="showVoteDetailsDialog"
       :selected-post="selectedPost"
@@ -96,7 +94,6 @@
       @close-settings="showSettingsDialog = false"
       @close-new-post="showNewPostDialog = false"
       @close-new-vote="showNewVoteDialog = false"
-      @close-add-member="showAddMemberDialog = false"
       @close-user-search="showUserSearchDialog = false"
       @close-post-details="selectedPost = null"
       @close-vote-details="closeVoteDetailsHandler"
@@ -104,7 +101,6 @@
       @group-deleted="handleGroupDeleted"
       @vote-created="handleVoteCreated"
       @post-created="handlePostCreated"
-      @member-added="handleMemberAdded"
       @post-edited="handlePostEdited"
       @post-deleted="handlePostDeleted"
       @vote-deleted="handleDeleteVote"
@@ -212,7 +208,6 @@ const error = ref(null)
 const showSettingsDialog = ref(false)
 const showNewPostDialog = ref(false)
 const showNewVoteDialog = ref(false)
-const showAddMemberDialog = ref(false)
 const showUserSearchDialog = ref(false)
 const showVoteDetailsDialog = ref(false)
 const selectedPost = ref(null)
@@ -506,11 +501,6 @@ const handlePostCreated = async (postData) => {
     })
   }
 };
-
-const handleMemberAdded = async () => {
-  showAddMemberDialog.value = false
-  await fetchGroup()
-}
 
 const handlePostEdited = (editedPost) => {
   const index = posts.value.findIndex(p => p.id === editedPost.id)

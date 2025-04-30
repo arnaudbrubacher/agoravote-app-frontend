@@ -29,13 +29,13 @@
       @submit="$emit('post-created', $event)"
     />
 
-    <!-- Add Member Dialog -->
-    <AddMemberDialog
+    <!-- Add Member Dialog - REMOVED as it's causing resolution errors and likely replaced by InviteMemberDialog -->
+    <!-- <AddMemberDialog
       v-if="showAddMemberDialog && group"
       :group="group"
       @close="$emit('close-add-member')"
       @submit="$emit('member-added', $event)"
-    />
+    /> -->
 
     <!-- Post Details Dialog -->
     <PostDetailsDialog
@@ -93,7 +93,6 @@ const props = defineProps({
   showSettingsDialog: Boolean,
   showNewVoteDialog: Boolean,
   showNewPostDialog: Boolean,
-  showAddMemberDialog: Boolean,
   showUserSearchDialog: Boolean,
   showVoteDetails: Boolean,
   isCreatingVote: Boolean,
@@ -127,7 +126,6 @@ defineEmits([
   'close-settings',
   'close-new-vote',
   'close-new-post',
-  'close-add-member',
   'close-user-search',
   'close-post-details',
   'close-vote-details',
@@ -135,7 +133,6 @@ defineEmits([
   'group-deleted',
   'vote-created',
   'post-created',
-  'member-added',
   'vote-submitted',
   'vote-deleted',
   'post-edited',

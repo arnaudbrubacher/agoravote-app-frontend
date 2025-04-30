@@ -62,34 +62,49 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     }
   }
 
-  // Import members via CSV
-  const handleCsvImport = async (event) => {
-    const file = event.target.files[0]
+  // Import members via CSV or XLSX
+  const handleCsvImport = async (file) => {
     if (!file) return
-    
+
     try {
       const formData = new FormData()
-      formData.append('csv', file)
-      
-      const response = await axios.post(`/groups/${groupId}/members/import`, formData, {
+      formData.append('file', file)
+
+      // Use the correct endpoint for CSV/XLSX upload
+      const response = await axios.post(`/groups/${groupId}/members/upload-csv`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       })
-      
-      // Refresh members list
+
+      // Refresh members list (and pending/invited lists)
       await fetchGroup()
-      
-      console.log('Members imported successfully:', response.data)
-      alert('Members imported successfully')
-      
+
+      // Dispatch event to refresh invited/pending lists in MembersTab
+      window.dispatchEvent(new CustomEvent('refresh-pending-members', {
+        detail: { groupId }
+      }))
+
+      console.log('File processed successfully:', response.data)
+      // Provide more detailed feedback based on the response
+      const results = response.data.results || []
+      const successCount = results.filter(r => r.success).length
+      const failCount = results.length - successCount
+      let message = `File processed. ${successCount} invitations sent successfully.`
+      if (failCount > 0) {
+        message += ` ${failCount} invitations failed. Check console for details.`
+        // Optionally log detailed errors
+        results.filter(r => !r.success).forEach(r => console.warn(`Failed invitation for ${r.email}: ${r.message}`))
+      }
+      alert(message)
+
       return response.data
     } catch (err) {
-      console.error('Failed to import members:', err)
-      alert('Failed to import members: ' + (err.response?.data?.error || err.message))
-      
-      // Reset the file input
-      event.target.value = ''
+      console.error('Failed to process file:', err)
+      alert('Failed to process file: ' + (err.response?.data?.error || err.message))
+
+      // Resetting the file input might be harder here as we don't have the original event
+      // Consider handling this in the component that calls this function if needed.
       throw err
     }
   }

@@ -65,7 +65,7 @@
               <Button 
                 variant="outline" 
                 size="sm"
-                @click.stop="addUser(user)"
+                @click="addUser(user)"
               >
                 <LucideIcon name="Plus" size="4" class="h-4 w-4 mr-1" />
                 Add
@@ -88,11 +88,27 @@
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <!-- Alert Dialog for Success/Error Messages -->
+  <AlertDialog :open="isAlertOpen" @update:open="isAlertOpen = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ alertTitle }}</AlertDialogTitle>
+        <AlertDialogDescription>
+          {{ alertMessage }}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <!-- Close the main dialog as well when clicking OK -->
+        <AlertDialogAction @click="isAlertOpen = false; $emit('close')">OK</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
 
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import axios from '~/src/utils/axios'
 import {
   Dialog,
@@ -103,6 +119,15 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // Props
 const props = defineProps({
@@ -120,6 +145,11 @@ const searchQuery = ref('')
 const searchResults = ref([])
 const isLoading = ref(false)
 const timeout = ref(null)
+
+// State for AlertDialog
+const isAlertOpen = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
 
 // Debounce search to avoid too many API calls
 const debouncedSearch = () => {
@@ -167,6 +197,19 @@ const searchUsers = async () => {
   }
 }
 
+// Helper to show AlertDialog
+function showAlert(title, message) {
+  alertTitle.value = title
+  alertMessage.value = message
+  isAlertOpen.value = true
+  console.log(`[UserSearchDialog] showAlert called. isAlertOpen set to: ${isAlertOpen.value}`);
+}
+
+// Watch for changes in isAlertOpen
+watch(isAlertOpen, (newValue) => {
+  console.log(`[UserSearchDialog] isAlertOpen watcher triggered. New value: ${newValue}`);
+});
+
 // Clear search
 const clearSearch = () => {
   searchQuery.value = ''
@@ -197,20 +240,28 @@ const getAvatarUrl = (user) => {
 
 // Select user
 const selectUser = (user) => {
-  console.log('Selected user:', user)
+  console.log(`[UserSearchDialog] selectUser called for: ${user.email}`);
   // You can add additional functionality here if needed
 }
 
 // Add user to group
 const addUser = async (user) => {
+  console.log(`[UserSearchDialog] addUser entered for user: ${user.email}`);
   try {
     isLoading.value = true
     
     // Send invitation request to create a pending membership
+    console.log(`[UserSearchDialog] Sending invitation POST to /groups/${props.groupId}/invite`);
     const response = await axios.post(`/groups/${props.groupId}/invite`, {
       email: user.email
     })
+    console.log(`[UserSearchDialog] Invitation POST successful. Response status: ${response.status}`);
     
+    // Show success alert
+    console.log(`[UserSearchDialog] Calling showAlert for success...`);
+    showAlert('Invitation Sent', `An invitation has been sent to ${user.email}.`);
+    console.log(`[UserSearchDialog] State after calling showAlert: isAlertOpen = ${isAlertOpen.value}`);
+
     // Emit success event with user data
     emit('user-added', {
       ...user,
@@ -221,13 +272,18 @@ const addUser = async (user) => {
     // Remove added user from results
     searchResults.value = searchResults.value.filter(u => u.id !== user.id)
     
-    // Close the dialog after successful invitation
-    setTimeout(() => {
-      emit('close')
-    }, 500) // Small delay to allow the parent component to process the user-added event
+    // Don't close immediately, let user see the success alert
+    // Close is handled by the alert dialog action or manually
+    // setTimeout(() => {
+    //   emit('close')
+    // }, 500)
   } catch (err) {
     console.error('Failed to invite user to group:', err)
-    alert('Failed to send invitation: ' + (err.response?.data?.error || err.message))
+    // alert('Failed to send invitation: ' + (err.response?.data?.error || err.message)) // Remove old alert
+    // Show error alert
+    console.log(`[UserSearchDialog] Calling showAlert for error...`);
+    showAlert('Invitation Failed', `Failed to send invitation: ${err.response?.data?.error || err.message}`);
+    console.log(`[UserSearchDialog] State after calling showAlert in error: isAlertOpen = ${isAlertOpen.value}`);
   } finally {
     isLoading.value = false
   }
