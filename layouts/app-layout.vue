@@ -70,6 +70,7 @@
       @join-group="joinGroup"
       @review-documents="handleReviewDocuments"
       @navigate-to-group="navigateToGroup"
+      @process-group-admission="handleProcessGroupAdmission"
     />
     
     <!-- Find Group Dialog -->
@@ -86,7 +87,8 @@
       :group="selectedGroup"
       :error="admissionError"
       :review-mode="isReviewMode"
-      @close="showAdmissionForm = false"
+      :invitationToken="admissionInvitationToken"
+      @close="closeAdmissionForm"
       @submit="handleAdmissionSubmit"
     />
     
@@ -106,6 +108,14 @@
     
     <!-- Global Alert Dialog -->
     <GlobalAlertDialog />
+
+    <!-- App Alert Dialog for Global Errors -->
+    <AppAlertDialog
+      :open="!!globalError" 
+      :message="globalError || 'An unexpected error occurred.'"
+      title="Error"
+      @close="globalError = null"
+    />
   </div>
 </template>
 
@@ -133,6 +143,7 @@ import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 import NewGroupDialog from '@/components/groups/NewGroupDialog.vue'
 import UserSettingsDialog from '@/components/users/UserSettingsDialog.vue'
 import GlobalAlertDialog from '@/components/common/GlobalAlertDialog.vue'
+import AppAlertDialog from '@/components/common/AppAlertDialog.vue'
 import Session from 'supertokens-web-js/recipe/session'
 
 const router = useRouter()
@@ -774,6 +785,37 @@ const handleUserLeftGroup = (event) => {
     fetchUserGroups()
   }
 }
+
+// State for Group Admission Form
+const groupForAdmission = ref(null)
+const admissionInvitationToken = ref(null) // To store the token for email invites
+
+// Reactive state for global error
+const globalError = ref(null)
+
+// Handler for email invitations requiring admission steps
+const handleProcessGroupAdmission = (payload) => {
+  console.log("app-layout: Received process-group-admission event:", payload);
+  if (payload && payload.group && payload.invitationToken) {
+    selectedGroup.value = payload.group; // Use selectedGroup instead of groupForAdmission
+    admissionInvitationToken.value = payload.invitationToken; // Store the token
+    admissionError.value = ''; // Clear any previous error
+    isReviewMode.value = false; // Ensure review mode is off
+    showAdmissionForm.value = true; // Open the form
+  } else {
+    console.error("Invalid payload received for process-group-admission");
+    globalError.value = "Could not process the group invitation properly.";
+  }
+};
+
+// Close the admission form
+const closeAdmissionForm = () => {
+  showAdmissionForm.value = false;
+  selectedGroup.value = null; // Clear selectedGroup
+  admissionInvitationToken.value = null;
+  admissionError.value = ''; // Clear error
+  isReviewMode.value = false; // Reset review mode
+};
 
 onMounted(() => {
   lastUsedGroupId.value = getLocalStorage('lastUsedGroupId');

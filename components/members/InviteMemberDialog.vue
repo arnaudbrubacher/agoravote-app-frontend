@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, defineProps, defineEmits, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,37 +46,67 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from '@/components/ui/dialog'
 
-// Props might not be needed if group context is handled by the parent
-// defineProps({
-//   group: {
-//     type: Object,
-//     required: true
-//   }
-// })
+// Define props including the new errorMessage
+const props = defineProps({
+  // group: { // Keep commented out if not used
+  //   type: Object,
+  //   required: true
+  // },
+  errorMessage: { // <-- Add prop to receive error messages
+    type: String,
+    default: null
+  },
+  open: { // <-- Assume parent controls open state
+     type: Boolean,
+     required: true
+  }
+})
 
 const emit = defineEmits(['close', 'submit'])
 
 const email = ref('')
 const isSubmitting = ref(false)
+const internalErrorMessage = ref(props.errorMessage) // <-- Internal state for error
+
+// Watch for external changes to errorMessage prop
+watch(() => props.errorMessage, (newValue) => {
+  internalErrorMessage.value = newValue
+})
+
+// Watch for dialog opening to clear previous errors and email
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    email.value = '' // Clear email field
+    internalErrorMessage.value = null // Clear any previous error message
+    isSubmitting.value = false // Reset submitting state
+  }
+})
 
 async function handleSubmit() {
+  internalErrorMessage.value = null // Clear previous error on new submission attempt
   console.log("[InviteMemberDialog] handleSubmit called. Email:", email.value);
   if (!email.value || isSubmitting.value) return
   isSubmitting.value = true
   try {
-    // Emit the email value for the parent/composable to handle
     console.log("[InviteMemberDialog] Emitting submit event with email:", email.value);
+    // Emit and let the parent handle the API call and potential errors
     await emit('submit', email.value)
-    // Optionally close dialog on success from parent
+    // Parent component will control closing or showing errors based on API result
   } catch (error) {
-    // Error should be handled in the parent/composable where the API call is made
-    console.error("Submission error in dialog, should be caught by parent:", error)
-    // Optionally show a generic error here, but specific errors are better handled upstream
+    // This catch block might not be necessary if all error handling is in parent
+    console.error("Local submission error in dialog (should ideally be caught by parent):", error)
+    internalErrorMessage.value = 'An unexpected error occurred.' // Fallback error
   } finally {
     isSubmitting.value = false
   }
+}
+
+// Function to handle closing the dialog
+function handleClose() {
+  emit('close');
 }
 </script> 

@@ -29,6 +29,62 @@
         </div>
       </div>
       
+      <!-- Email Invitations Section -->
+      <SheetHeader class="pb-4">
+        <SheetTitle>Email Invitations</SheetTitle>
+        <p class="text-sm text-muted-foreground">Invitations sent to your email address</p>
+      </SheetHeader>
+      
+      <div class="p-4 pt-0 space-y-4">
+        <!-- Loading State -->
+        <div v-if="isLoadingEmailInvites" class="text-center py-8">
+          <Loader2 class="h-6 w-6 animate-spin inline-block" />
+          <span class="ml-2 text-sm text-muted-foreground">Loading email invitations...</span>
+        </div>
+        
+        <!-- Empty State -->
+        <div v-else-if="pendingEmailInvites.length === 0" class="text-center py-6 text-sm text-muted-foreground">
+          No pending email invitations
+        </div>
+        
+        <!-- Email Invitations List -->
+        <div v-else class="space-y-3">
+          <GroupCard 
+            v-for="invite in pendingEmailInvites" 
+            :key="invite.token" 
+            :group="{
+              id: invite.group_id, 
+              name: invite.group_name,
+              picture_url: invite.group_picture_url
+            }" 
+            :showActions="true"
+            :showPrivateBadge="false"
+          >
+            <template #badges>
+              <span class="text-xs bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-full">
+                Email Invite
+              </span>
+            </template>
+            <template #actions>
+              <Button 
+                variant="outline" 
+                size="sm"
+                @click.stop="declineEmailInvite(invite)"
+              >
+                Decline
+              </Button>
+              <Button 
+                variant="default" 
+                size="sm"
+                @click.stop="acceptEmailInvite(invite)"
+              >
+                Accept
+              </Button>
+            </template>
+          </GroupCard>
+        </div>
+      </div>
+      
       <!-- Pending Groups Section (formerly Group Invitations) -->
       <SheetHeader class="pb-4">
         <SheetTitle>Pending Groups</SheetTitle>
@@ -197,7 +253,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:open', 'find-group', 'create-group', 'refresh-groups', 'join-group', 'review-documents', 'navigate-to-group'])
+const emit = defineEmits(['update:open', 'find-group', 'create-group', 'refresh-groups', 'join-group', 'review-documents', 'navigate-to-group', 'process-group-admission'])
 
 // Router instance
 const router = useRouter()
@@ -207,6 +263,10 @@ const isOpen = computed({
   get: () => props.open,
   set: (value) => emit('update:open', value)
 })
+
+// New state for email invitations
+const pendingEmailInvites = ref([])
+const isLoadingEmailInvites = ref(false)
 
 // Computed property to check if we're in development mode
 const isDevelopment = computed(() => {
@@ -263,8 +323,17 @@ const pendingGroups = computed(() => {
   // If no groups or not loaded yet, return empty array
   if (!props.groups || props.groups.length === 0) return []
   
+  // Filter out groups that are already represented in pendingEmailInvites
+  const pendingInviteGroupIds = pendingEmailInvites.value.map(invite => invite.group_id);
+  
   // Filter for groups where the user is a pending member
   return props.groups.filter(group => {
+    // Exclude if it's an email invite we're already showing
+    if (pendingInviteGroupIds.includes(group.id)) {
+      console.log(`Excluding group ${group.name} from Pending Groups (already in Email Invites)`);
+      return false;
+    }
+    
     // Check if the group has a membership property with status
     if (group.membership && group.membership.status === 'pending') {
       console.log(`Including group with pending membership.status in Pending Groups: ${group.name}`);
@@ -285,6 +354,21 @@ const pendingGroups = computed(() => {
     return false;
   });
 })
+
+// Function to fetch pending email invitations
+const fetchPendingEmailInvites = async () => {
+  isLoadingEmailInvites.value = true;
+  try {
+    const response = await axios.get('/user/group-invitations');
+    pendingEmailInvites.value = response.data || [];
+    console.log('Fetched pending email invites:', pendingEmailInvites.value);
+  } catch (error) {
+    console.error('Failed to fetch pending email invitations:', error);
+    pendingEmailInvites.value = []; // Clear on error
+  } finally {
+    isLoadingEmailInvites.value = false;
+  }
+}
 
 // Function to check for documents via API for all pending groups
 const checkDocumentsForPendingGroups = async () => {
@@ -409,6 +493,9 @@ onMounted(() => {
   window.addEventListener('close-dashboard-sidebar', handleCloseDashboardSidebar)
   window.addEventListener('group-data-updated', handleGroupDataUpdated)
   
+  // Fetch pending email invitations
+  fetchPendingEmailInvites();
+  
   // Log the groups that are being displayed
   console.log('DashboardSidebar - All groups:', props.groups)
   console.log('DashboardSidebar - Active groups:', activeGroups.value)
@@ -438,6 +525,9 @@ onBeforeUnmount(() => {
 watch(() => props.groups, (newGroups) => {
   console.log('DashboardSidebar - Groups updated:', newGroups)
   console.log('DashboardSidebar - Active groups after update:', activeGroups.value)
+  
+  // Also refresh email invites when groups change (in case one was accepted/declined)
+  fetchPendingEmailInvites();
   
   // Check for documents for all pending groups after groups are updated
   setTimeout(() => {
@@ -983,5 +1073,76 @@ const navigateToGroup = (groupId) => {
   console.log(`Navigating to group page with ID: ${groupId}`);
   isOpen.value = false; // Close the sidebar
   router.push(`/group/${groupId}`);
+}
+
+// Initiate the acceptance process for an email invitation
+const acceptEmailInvite = async (invite) => {
+  console.log('Initiating acceptance for email invite:', invite.group_name, 'Token:', invite.token);
+  try {
+    // Fetch full group details first to check requirements
+    // Pass invitation token to allow access even if user isn't a member yet
+    const response = await axios.get(`/groups/${invite.group_id}?invitation_token=${invite.token}`);
+    const group = response.data;
+    console.log('Fetched group details for invitation:', group);
+
+    // Check requirements
+    const requiresPassword = group.requiresPassword === true || group.requires_password === true;
+    let documentsRequired = false;
+    if (group.requiresDocuments === true || group.requires_documents === true) {
+      const reqDocs = group.requiredDocuments || group.required_documents;
+      if (typeof reqDocs === 'string') {
+        try { documentsRequired = JSON.parse(reqDocs).length > 0; } catch(e) {}
+      } else if (Array.isArray(reqDocs)) {
+        documentsRequired = reqDocs.length > 0;
+      }
+    }
+    console.log(`Requirements check: Password=${requiresPassword}, Documents=${documentsRequired}`);
+
+    // If requirements exist, open the admission form
+    if (requiresPassword || documentsRequired) {
+      console.log('Requirements detected, opening GroupAdmissionForm.');
+      // Emit event to parent to handle opening the form
+      emit('process-group-admission', { group, invitationToken: invite.token });
+      isOpen.value = false; // Close sidebar
+    } else {
+      // No special requirements, accept directly via the dedicated endpoint
+      console.log('No password/document requirements, calling /member/accept-invitation directly.');
+      const acceptResponse = await axios.post('/member/accept-invitation', { token: invite.token });
+      console.log('Direct email invitation acceptance response:', acceptResponse.data);
+      alert(`Invitation for ${invite.group_name} accepted successfully!`);
+      // Refresh lists
+      fetchPendingEmailInvites();
+      emit('refresh-groups');
+      // Optionally navigate if response indicates immediate approval
+      if (acceptResponse.data.groupId) {
+         emit('navigate-to-group', acceptResponse.data.groupId);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to process email invitation acceptance:', error);
+    alert('Failed to process email invitation: ' + (error.response?.data?.error || error.message || 'Unknown error'));
+    // Refresh lists even on error in case the invite/group state changed
+    fetchPendingEmailInvites();
+    emit('refresh-groups');
+  }
+}
+
+// Decline an email invitation
+const declineEmailInvite = async (invite) => {
+  if (!confirm(`Are you sure you want to decline the invitation to join ${invite.group_name}?`)) {
+    return;
+  }
+  console.log('Declining email invite for group:', invite.group_name, 'Token:', invite.token);
+  try {
+    await axios.post('/member/decline-invitation', { token: invite.token });
+    alert(`Invitation for ${invite.group_name} declined.`);
+    // Refresh the list
+    fetchPendingEmailInvites();
+  } catch (error) {
+    console.error('Failed to decline email invitation:', error);
+    alert('Failed to decline email invitation: ' + (error.response?.data?.error || 'Unknown error'));
+    // Refresh list even on error
+    fetchPendingEmailInvites();
+  }
 }
 </script> 

@@ -251,7 +251,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       console.log("[useGroupMembers] axios.post successful:", response.data);
 
       // Show success message (backend currently returns generic success)
-      alert(`Invitation sent successfully to ${email}`);
+      alert(`Invitation request sent for ${email}. They will receive an email if the address is valid and not already a member.`);
 
       // No need to refresh group data immediately, as the user isn't active yet.
       // Maybe refresh pending invites list if one exists?

@@ -64,6 +64,36 @@
         <div v-if="pendingMembers.length > 0" class="my-6 border-t border-gray-200"></div>
       </div>
       
+      <!-- Invited Members Section -->
+      <div class="mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium">Invited Members ({{ invitedMembers.length || 0 }})</h3>
+          <Button
+            v-if="isCurrentUserAdmin"
+            variant="outline"
+            size="sm"
+            @click="fetchInvitedMembers"
+            :disabled="isLoadingInvitedMembers"
+            title="Refresh invited members list"
+          >
+            <LucideIcon name="RefreshCw" size="4" :class="{'animate-spin': isLoadingInvitedMembers, 'mr-1': !isLoadingInvitedMembers}" />
+            <span v-if="!isLoadingInvitedMembers">Refresh</span>
+          </Button>
+        </div>
+
+        <InvitedMembersList
+          :group-id="group.id"
+          :invited-members="invitedMembers"
+          :loading="isLoadingInvitedMembers"
+          :is-current-user-admin="isCurrentUserAdmin"
+          @resend-invite="resendInvite"
+          @cancel-invite="cancelInvite"
+        />
+
+        <!-- Separator -->
+        <div class="my-6 border-t border-gray-200"></div>
+      </div>
+      
       <!-- Active Members Section -->
       <div>
         <!-- Use the shared MembersList component which handles lists of members -->
@@ -122,6 +152,7 @@ import MembersList from '~/components/members/MembersList.vue'
 import PendingMembersList from '~/components/members/PendingMembersList.vue'
 import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'
 import InviteMemberDialog from '~/components/members/InviteMemberDialog.vue'
+import InvitedMembersList from '~/components/members/InvitedMembersList.vue'
 import axios from '~/src/utils/axios'
 import { 
   DropdownMenu, 
@@ -240,6 +271,7 @@ onMounted(async () => {
   
   // Fetch pending members when component mounts
   fetchPendingMembers()
+  fetchInvitedMembers()
   
   // Add event listener for refresh-pending-members event
   window.addEventListener('refresh-pending-members', handleRefreshPendingMembers)
@@ -285,6 +317,10 @@ const pendingMembers = ref([])
 const showReviewDialog = ref(false)
 const selectedPendingMember = ref(null)
 const showInviteDialog = ref(false)
+
+// State for invited members
+const invitedMembers = ref([])
+const isLoadingInvitedMembers = ref(false)
 
 const triggerCsvFileInput = () => {
   csvFileInput.value.click()
@@ -467,6 +503,75 @@ const fetchPendingMembers = async () => {
   }
 }
 
+// Fetch invited members from the API
+const fetchInvitedMembers = async () => {
+  if (!props.group || !props.group.id) {
+    console.error('Cannot fetch invited members: Invalid group ID')
+    return
+  }
+  isLoadingInvitedMembers.value = true
+  try {
+    // Assumes backend endpoint GET /groups/{groupId}/invitations exists
+    const response = await axios.get(`/groups/${props.group.id}/invitations`)
+    console.log('[MembersTab] Raw API response for invited members:', response.data);
+    // Filter for invitations that are not used and not expired (if backend doesn't handle this)
+    invitedMembers.value = (response.data || []).filter(invite =>
+      !invite.used // && (!invite.expires_at || new Date(invite.expires_at) > new Date()) // Optional: Filter expired on frontend
+    ).map(invite => ({
+       ...invite,
+       email: invite.email || 'No Email Provided',
+    }));
+    console.log('[MembersTab] Invited members state AFTER fetch:', JSON.stringify(invitedMembers.value, null, 2));
+  } catch (error) {
+    console.error('Failed to fetch invited members:', error)
+    invitedMembers.value = []
+    // Optionally show an alert or notification
+    // alert('Failed to load invited members: ' + (error.response?.data?.error || error.message));
+  } finally {
+    isLoadingInvitedMembers.value = false
+  }
+}
+
+// Resend invitation
+const resendInvite = async (invitation) => {
+    if (!props.isCurrentUserAdmin) {
+        alert('Only admins can resend invitations.');
+        return;
+    }
+    console.log('Resending invite:', invitation);
+    try {
+        // Assumes backend endpoint POST /groups/{groupId}/invitations/{invitationId}/resend exists
+        await axios.post(`/groups/${props.group.id}/invitations/${invitation.id}/resend`);
+        alert(`Invitation resent to ${invitation.email}`);
+        // No need to refetch, invite stays in the list, maybe update timestamp if backend provides it
+    } catch (error) {
+        console.error('Failed to resend invite:', error);
+        alert('Failed to resend invite: ' + (error.response?.data?.error || error.message));
+    }
+}
+
+// Cancel invitation
+const cancelInvite = async (invitation) => {
+    if (!props.isCurrentUserAdmin) {
+        alert('Only admins can cancel invitations.');
+        return;
+    }
+    if (!confirm(`Are you sure you want to cancel the invitation for ${invitation.email}? This action cannot be undone.`)) {
+        return;
+    }
+    console.log('Canceling invite:', invitation);
+    try {
+        // Assumes backend endpoint DELETE /groups/{groupId}/invitations/{invitationId} exists
+        await axios.delete(`/groups/${props.group.id}/invitations/${invitation.id}`);
+        alert(`Invitation for ${invitation.email} cancelled.`);
+        // Refetch invited members to update the list
+        fetchInvitedMembers();
+    } catch (error) {
+        console.error('Failed to cancel invite:', error);
+        alert('Failed to cancel invite: ' + (error.response?.data?.error || error.message));
+    }
+}
+
 // Show the review documents dialog
 const showReviewDocumentsDialog = (member) => {
   selectedPendingMember.value = member
@@ -547,6 +652,7 @@ const handlePendingMembersRefresh = (data) => {
   
   // Refresh pending members
   fetchPendingMembers();
+  fetchInvitedMembers();
   
   // Also refresh the entire group data to update active members
   emit('refresh-group');
@@ -563,6 +669,7 @@ const handleUserInvited = (userData) => {
   
   // Refresh pending members list
   fetchPendingMembers();
+  fetchInvitedMembers();
   
   // Emit event to parent component
   emit('user-invited', userData);
@@ -750,6 +857,7 @@ const handleRefreshPendingMembers = (event) => {
   if (event.detail && event.detail.groupId === props.group.id) {
     console.log('MembersTab - Refreshing pending members for group:', props.group.id)
     fetchPendingMembers()
+    fetchInvitedMembers()
   }
 }
 
@@ -758,6 +866,7 @@ const handleInviteSubmit = (email) => {
   console.log("[MembersTab] handleInviteSubmit called with email:", email);
   console.log("[MembersTab] Emitting invite-member-by-email event.");
   emit('invite-member-by-email', email);
+  fetchInvitedMembers();
   showInviteDialog.value = false;
 }
 </script>

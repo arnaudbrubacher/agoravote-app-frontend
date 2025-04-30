@@ -92,9 +92,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { login, signup, isEmailVerified, sendVerificationEmail } from '~/src/utils/auth' // Import SuperTokens functions
+import { getUserInfo } from 'supertokens-web-js/recipe/emailpassword'; // <--- IMPORT getUserInfo
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -125,7 +126,8 @@ const invitationToken = ref(null)
 const invitationEmail = ref('') // To store the email from the (potentially invalid) token info
 const statusMessage = ref('')
 const statusMessageType = ref('info') // 'info', 'success', 'error'
-
+const isCheckingAuth = ref(false)
+const errorMessage = ref('')
 
 // Function to accept the invitation via backend API
 const acceptInvitation = async (token) => {
@@ -195,13 +197,9 @@ const handleLogin = async () => {
        return // Stop further execution
     }
 
-    // Email is verified, proceed to accept invitation
-    if (invitationToken.value) {
-      await acceptInvitation(invitationToken.value)
-    } else {
-      statusMessage.value = 'Error: Invitation token missing.'
-      statusMessageType.value = 'error'
-    }
+    // Email is verified. JUST redirect. Do NOT automatically accept.
+    console.log("Login successful and email verified. Redirecting to profile...");
+    await router.push('/profile'); // Redirect to profile, let user accept from sidebar
 
   } catch (error) {
     console.error('Login failed on accept page:', error)
@@ -260,68 +258,125 @@ const handleSignup = async () => {
 
 // --- Fetch Invitation Email (Optional but good UX) ---
 // Function to fetch basic (potentially unverified) info about the token
-// WARNING: This endpoint MUST NOT return sensitive data and should only
-//          be used for UX improvement (like showing the target email).
-//          It should handle invalid/expired tokens gracefully.
-//          Requires a new backend endpoint e.g., GET /member/invitation-info?token=...
-// const fetchInvitationInfo = async (token) => {
-//   try {
-//     // const response = await axios.get(`/member/invitation-info?token=${token}`);
-//     // invitationEmail.value = response.data.email;
-//     // loginEmail.value = response.data.email; // Pre-fill login email
-//     // signupEmail.value = response.data.email; // Pre-fill signup email
-//     console.warn("fetchInvitationInfo needs a backend endpoint. Skipping for now.");
-//      // Simulate fetching email from token if endpoint doesn't exist yet
-//      // In a real scenario, you'd decode the JWT *if* it contained the email,
-//      // but our current token is just a UUID. Backend lookup is necessary.
-//      invitationEmail.value = "the invited email address"; // Placeholder
-//
-//   } catch (error) {
-//     console.error('Failed to fetch invitation info:', error);
-//     statusMessage.value = 'Could not retrieve invitation details. The link might be invalid or expired.';
-//     statusMessageType.value = 'error';
-//     invitationEmail.value = 'unknown'; // Indicate failure
-//   }
-// };
-
-onMounted(async () => {
-  invitationToken.value = route.query.token
-
-  if (!invitationToken.value) {
-    statusMessage.value = 'Error: No invitation token provided in the URL.'
-    statusMessageType.value = 'error'
-    return;
+const fetchInvitationInfo = async (token) => {
+  statusMessage.value = 'Loading invitation details...'; // Show loading state
+  statusMessageType.value = 'info';
+  try {
+    console.log(`Fetching invitation info for token: ${token}`);
+    const response = await axios.get(`/member/invitation-info?token=${token}`); // Call the new backend endpoint
+    console.log('Invitation info response:', response.data);
+    invitationEmail.value = response.data.email;
+    loginEmail.value = response.data.email; // Pre-fill login email
+    signupEmail.value = response.data.email; // Pre-fill signup email
+    statusMessage.value = ''; // Clear loading message on success
+  } catch (error) {
+    console.error('Failed to fetch invitation info:', error.response ? error.response.data : error);
+    statusMessage.value = error.response?.data?.error || 'Could not retrieve invitation details. The link might be invalid or expired.';
+    statusMessageType.value = 'error';
+    invitationEmail.value = ''; // Clear email on failure
   }
-  console.log(`Invitation token found: ${invitationToken.value}`)
+};
 
-  // --- Check if user is already logged in ---
-  // If logged in, attempt to accept immediately.
-  const isLoggedIn = await Session.doesSessionExist();
-  if (isLoggedIn) {
-      console.log("User is already logged in. Attempting to accept invitation directly.");
-      // Check email verification status *before* attempting to accept
-      const verificationResponse = await isEmailVerified();
-      if (!verificationResponse.isVerified) {
-          const userEmail = await Session.getUserId(); // Or fetch email via another SuperTokens method if needed
-          statusMessage.value = "You are logged in, but your email is not verified. Please verify your email first.";
-          statusMessageType.value = 'error';
-          // Redirect to verification page, passing redirect info
-          router.push({
-              path: '/verify-email',
-              // Pass necessary info like email if easily available, or let verify-email handle it
-              query: { redirect: route.fullPath }
-          });
-          return; // Stop further processing
+async function handlePostAuthRedirect() {
+  console.log("handlePostAuthRedirect triggered");
+  // This function assumes a session exists and invitationEmail.value is populated
+  try {
+    isCheckingAuth.value = true;
+
+    // Get logged-in user info
+    const userInfo = await getUserInfo();
+    if (!userInfo) {
+      // Should not happen if sessionExists check passed, but handle defensively
+      console.error("Error: Session exists but could not get user info.");
+      errorMessage.value = "Could not verify your session. Please try logging in again.";
+      isCheckingAuth.value = false;
+      return;
+    }
+    console.log("Logged in user info:", userInfo);
+    console.log("Invitation intended for:", invitationEmail.value);
+
+    // Compare logged-in user email with invitation email
+    if (userInfo.email !== invitationEmail.value) {
+      console.warn("Logged-in user does not match invitation email.");
+      statusMessage.value = `This invitation is for ${invitationEmail.value}. You are logged in as ${userInfo.email}. Please log out and sign in with the correct account.`;
+      statusMessageType.value = 'error';
+      isCheckingAuth.value = false;
+      return; // Stop execution
+    }
+
+    // Emails match, proceed with verification check
+    console.log("Logged-in user matches invitation email. Checking verification status...");
+    const verificationResponse = await isEmailVerified(); // Use our util/wrapper
+    console.log("Is Email Verified:", verificationResponse);
+
+    if (!verificationResponse || !verificationResponse.isVerified) { // Check response structure
+      console.log("Email not verified, redirecting to verify email flow.");
+      isCheckingAuth.value = false;
+      // Redirect to verification (SuperTokens handles this)
+      redirectToAuth({ redirectBack: false }); // Or navigate manually if needed
+      return;
+    }
+
+    // If session exists and email is verified, redirect to profile
+    console.log("Session exists and email verified. Redirecting to /profile");
+    isCheckingAuth.value = false;
+    await router.push('/profile'); 
+
+    /* REMOVED: Automatic Acceptance Logic
+    console.log("Attempting to accept invitation automatically...");
+    await acceptInvitation();
+    */
+
+  } catch (err) {
+    console.error("Error during post-auth redirect or invitation acceptance:", err);
+    errorMessage.value = "An error occurred. Please try logging in again.";
+    isCheckingAuth.value = false;
+    // Optional: Redirect to login or show error message prominently
+  }
+}
+
+// Lifecycle hook - Modified order
+onMounted(async () => {
+  console.log("accept-invitation mounted");
+  invitationToken.value = route.query.token || null; // Get token from query params
+
+  if (invitationToken.value) {
+    console.log("Token found in URL:", invitationToken.value);
+    
+    // Fetch invitation info FIRST
+    await fetchInvitationInfo(invitationToken.value);
+
+    // Only proceed if fetching info was successful (invitationEmail is set)
+    if (invitationEmail.value) {
+      // Now check session state
+      try {
+        isCheckingAuth.value = true;
+        const sessionExists = await Session.doesSessionExist(); // Direct SDK call
+        console.log("Initial session check on mount:", sessionExists);
+        if (sessionExists) {
+           console.log("Session exists on mount, triggering post-auth check (with email comparison).");
+           await handlePostAuthRedirect(); // Trigger check/redirect logic
+        } else {
+          console.log("No session on mount, user needs to login/signup.");
+        }
+      } catch (err) {
+          console.error("Error checking session on mount:", err);
+          errorMessage.value = "Could not verify session status. Please try logging in.";
+      } finally {
+          isCheckingAuth.value = false;
       }
-      // User is logged in AND email is verified, proceed.
-      await acceptInvitation(invitationToken.value);
+    } else {
+       // Error message was already set by fetchInvitationInfo failure
+       console.log("Fetching invitation info failed, cannot proceed with session check.");
+    }
+
   } else {
-      // User is not logged in, show the forms.
-      // Optionally fetch invitation email to display
-      // await fetchInvitationInfo(invitationToken.value); // Uncomment when backend endpoint exists
-       invitationEmail.value = "the invited email"; // Placeholder until backend endpoint exists
-       loginEmail.value = invitationEmail.value; // Pre-fill if possible
-       signupEmail.value = invitationEmail.value; // Pre-fill if possible
+    errorMessage.value = 'Invalid invitation link: No token found.';
+    console.log("No token found in URL.");
+    statusMessage.value = 'Invalid or missing invitation token in the URL.';
+    statusMessageType.value = 'error';
+    // Optionally redirect to an error page or home
+    // router.push('/error?message=invalid_token');
   }
 });
 

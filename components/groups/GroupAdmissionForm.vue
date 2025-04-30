@@ -160,6 +160,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  invitationToken: {
+    type: String,
+    default: null
+  },
   error: {
     type: String,
     default: ''
@@ -498,6 +502,17 @@ const handleSubmit = async () => {
     let documentUploadResults = []
     let documentUploadErrors = []
 
+    // Prepare payload for the final accept/join call
+    const finalPayload = {};
+    if (passwordRequired.value) {
+        finalPayload.password = form.value.password;
+    }
+    // Include the invitation token if it was passed
+    if (props.invitationToken) {
+        finalPayload.invitation_token = props.invitationToken;
+        console.log("Including invitation_token in final payload:", props.invitationToken);
+    }
+
     // --- Step 1: Upload Documents if Required ---
     if (documentsRequired.value) {
       console.log('GroupAdmissionForm - Starting document upload process')
@@ -540,23 +555,17 @@ const handleSubmit = async () => {
     if (needsAcceptEndpoint) {
       // Use the /accept endpoint for invitations, or groups requiring password/docs/approval
       console.log(`GroupAdmissionForm - Calling /accept endpoint for group ${props.group.id}`)
-      const acceptPayload = {}
-      if (passwordRequired.value) {
-        acceptPayload.password = form.value.password
-      }
-      // Note: Backend's /accept endpoint should handle password verification.
-      // Document association likely happens implicitly in the backend based on the user/group ID
-      // after successful upload in Step 1, or the /accept handler might look them up.
-
       try {
-        finalApiResponse = await axios.post(`/groups/${props.group.id}/accept`, acceptPayload)
+        finalApiResponse = await axios.post(`/groups/${props.group.id}/accept`, finalPayload)
         finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved')
         console.log(`GroupAdmissionForm - /accept call successful. Status: ${finalStatus}`)
       } catch (acceptError) {
          // Handle specific errors from /accept
-         if (acceptError.response?.status === 401 && acceptError.response?.data?.error?.includes('password')) {
+         if (acceptError.response?.status === 400 && acceptError.response?.data?.error?.includes('password')) {
+             console.error("Incorrect password submitted.", acceptError.response.data.error);
              passwordError.value = acceptError.response.data.error; // Show password error specifically
-             throw new Error(acceptError.response.data.error); // Stop submission
+             isSubmitting.value = false; // Ensure submitting is false
+             return; // Stop execution without throwing to prevent interceptor retry
          } else if (acceptError.response?.status === 403 && acceptError.response?.data?.error?.includes('already an active member')) {
              // If already an active member, treat as success but inform user
              alert(`You are already an active member of ${props.group.name}.`);

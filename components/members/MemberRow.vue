@@ -31,8 +31,11 @@
           <span v-if="isCurrentMember(member)" class="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
             You
           </span>
-          <span v-if="isPending" class="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
+          <span v-else-if="isPending" class="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
             Pending
+          </span>
+          <span v-else-if="isInvited" class="ml-2 text-xs bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-full">
+            Invited
           </span>
           <span v-if="isPending && !invitationAccepted && !member.isJoinRequest" class="ml-2 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
             Awaiting Acceptance
@@ -105,8 +108,23 @@
         </div>
       </div>
       
+      <!-- Actions for invited members -->
+      <div v-else-if="isInvited" class="flex items-center space-x-2">
+        <div v-if="isCurrentUserAdmin" class="flex space-x-2">
+           <Button variant="outline" size="sm" @click.stop="$emit('resend-invite', member)" title="Resend Invitation">
+              <LucideIcon name="Send" size="4" class="h-4 w-4" />
+           </Button>
+           <Button variant="destructive" size="sm" @click.stop="$emit('cancel-invite', member)" title="Cancel Invitation">
+              <LucideIcon name="X" size="4" class="h-4 w-4" />
+           </Button>
+        </div>
+        <div v-else>
+           <Badge variant="secondary">Pending Invite</Badge>
+        </div>
+      </div>
+      
       <!-- Actions for active members -->
-      <div v-if="!isPending" class="flex items-center space-x-2">
+      <div v-if="!isPending && !isInvited" class="flex items-center space-x-2">
         <!-- Document Review Button - Always visible if member has documents -->
         <Button 
           v-if="hasDocuments"
@@ -170,6 +188,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu/index.js'
+import { Badge } from '@/components/ui/badge'
 
 const props = defineProps({
   member: {
@@ -185,6 +204,10 @@ const props = defineProps({
     default: false
   },
   isPending: {
+    type: Boolean,
+    default: false
+  },
+  isInvited: {
     type: Boolean,
     default: false
   },
@@ -214,7 +237,9 @@ const emit = defineEmits([
   'remove', 
   'review-documents', 
   'accept', 
-  'decline'
+  'decline',
+  'resend-invite',
+  'cancel-invite'
 ])
 
 // Try to get app user data from parent components
