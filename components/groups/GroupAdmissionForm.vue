@@ -549,64 +549,46 @@ const handleSubmit = async () => {
     // --- Step 2: Finalize Membership (Accept/Join) ---
     let finalApiResponse = null
     let finalStatus = 'unknown' // Keep track of status for non-token flows
-    let isEmailInviteAcceptance = false // Flag for email invite flow
 
-    // *** Check if this is an email invitation acceptance ***
-    if (props.invitationToken) {
-      isEmailInviteAcceptance = true // Set the flag
-      console.log(`GroupAdmissionForm - Accepting EMAIL INVITATION via token for group ${props.group.id}`);
+    // *** EXISTING LOGIC: Handle non-token joins/acceptances ***
+    console.log(`GroupAdmissionForm - Handling non-token join/acceptance for group ${props.group.id}`);
+    const needsAcceptEndpoint = passwordRequired.value || documentsRequired.value || adminApprovalRequired.value;
+
+    if (needsAcceptEndpoint) {
+      console.log(`GroupAdmissionForm - Calling /groups/:id/accept endpoint for group ${props.group.id}`);
       try {
-        // Call the dedicated endpoint for token acceptance
-        finalApiResponse = await axios.post('/member/accept-invitation', { token: props.invitationToken });
-        console.log('GroupAdmissionForm - /member/accept-invitation call successful.', finalApiResponse.data);
-        // ** REMOVED: finalStatus determination based on groupId **
-        // The actual status will be reflected after data refresh.
-      } catch (tokenAcceptError) {
-        console.error('Error accepting email invitation via token:', tokenAcceptError);
-        // Handle specific errors like invalid/expired token, already used, user mismatch etc.
-        throw tokenAcceptError; // Rethrow to be caught by the main handler
+        finalApiResponse = await axios.post(`/groups/${props.group.id}/accept`, finalPayload);
+        finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved');
+        console.log(`GroupAdmissionForm - /groups/:id/accept call successful. Status: ${finalStatus}`);
+      } catch (acceptError) {
+         if (acceptError.response?.status === 400 && acceptError.response?.data?.error?.includes('password')) {
+          console.error("Incorrect password submitted.", acceptError.response.data.error);
+          passwordError.value = acceptError.response.data.error;
+          isSubmitting.value = false;
+          return;
+        } else if (acceptError.response?.status === 403 && acceptError.response?.data?.error?.includes('already an active member')) {
+          alert(`You are already an active member of ${props.group.name}.`);
+          emit('close');
+          window.dispatchEvent(new CustomEvent('group-data-updated'))
+          return;
+        } else {
+          throw acceptError;
+        }
       }
     } else {
-      // *** EXISTING LOGIC: Handle non-token joins/acceptances ***
-      console.log(`GroupAdmissionForm - Handling non-token join/acceptance for group ${props.group.id}`);
-      const needsAcceptEndpoint = passwordRequired.value || documentsRequired.value || adminApprovalRequired.value;
-
-      if (needsAcceptEndpoint) {
-        console.log(`GroupAdmissionForm - Calling /groups/:id/accept endpoint for group ${props.group.id}`);
-        try {
-          finalApiResponse = await axios.post(`/groups/${props.group.id}/accept`, finalPayload);
-          finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved');
-          console.log(`GroupAdmissionForm - /groups/:id/accept call successful. Status: ${finalStatus}`);
-        } catch (acceptError) {
-           if (acceptError.response?.status === 400 && acceptError.response?.data?.error?.includes('password')) {
-            console.error("Incorrect password submitted.", acceptError.response.data.error);
-            passwordError.value = acceptError.response.data.error;
-            isSubmitting.value = false;
-            return;
-          } else if (acceptError.response?.status === 403 && acceptError.response?.data?.error?.includes('already an active member')) {
-            alert(`You are already an active member of ${props.group.name}.`);
-            emit('close');
-            window.dispatchEvent(new CustomEvent('group-data-updated'))
-            return;
-          } else {
-            throw acceptError;
-          }
-        }
-      } else {
-        console.log(`GroupAdmissionForm - Calling /groups/:id/join endpoint for public group ${props.group.id}`);
-        try {
-          finalApiResponse = await axios.post(`/groups/${props.group.id}/join`);
-          finalStatus = finalApiResponse.data?.status || 'approved';
-          console.log(`GroupAdmissionForm - /groups/:id/join call successful. Status: ${finalStatus}`);
-        } catch (joinError) {
-          if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
-            alert(`You are already an active member of ${props.group.name}.`);
-            emit('close');
-            window.dispatchEvent(new CustomEvent('group-data-updated'))
-            return;
-          } else {
-            throw joinError;
-          }
+      console.log(`GroupAdmissionForm - Calling /groups/:id/join endpoint for public group ${props.group.id}`);
+      try {
+        finalApiResponse = await axios.post(`/groups/${props.group.id}/join`);
+        finalStatus = finalApiResponse.data?.status || 'approved';
+        console.log(`GroupAdmissionForm - /groups/:id/join call successful. Status: ${finalStatus}`);
+      } catch (joinError) {
+        if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
+          alert(`You are already an active member of ${props.group.name}.`);
+          emit('close');
+          window.dispatchEvent(new CustomEvent('group-data-updated'))
+          return;
+        } else {
+          throw joinError;
         }
       }
     }
@@ -615,12 +597,8 @@ const handleSubmit = async () => {
     window.dispatchEvent(new CustomEvent('group-data-updated'))
 
     let successMessage = ''
-    // Use a generic message for email invite acceptance, as status is determined by backend rules
-    if (isEmailInviteAcceptance) {
-      successMessage = `Invitation for ${props.group.name} accepted. Your membership status will update shortly.`
-    } 
-    // Use specific messages for non-token flows where status is known
-    else if (finalStatus === 'pending') {
+    // Determine the success message based *only* on the finalStatus from the API response
+    if (finalStatus === 'pending') {
       successMessage = `Your request to join ${props.group.name} has been submitted. Waiting for admin review.`
       if (documentsRequired.value) successMessage += ' Required documents have been uploaded.'
     } else if (finalStatus === 'approved') {
@@ -628,13 +606,13 @@ const handleSubmit = async () => {
       if (documentsRequired.value) successMessage += ' and uploaded required documents'
       successMessage += '!'
     } else {
-      successMessage = `Membership process completed for ${props.group.name}. Status: ${finalStatus}`
+      // Fallback for unknown or unexpected status
+      successMessage = `Membership process completed for ${props.group.name}. Status: ${finalStatus}. Your status will update shortly.`
+      console.warn(`Unexpected final status received: ${finalStatus}`)
     }
 
     alert(successMessage)
     emit('close') // Close the form first
-    // ** REMOVED: Automatic navigation for email invite acceptance **
-    // Navigation should only happen if explicitly approved in non-token flows, handled elsewhere or manually.
     emit('submit', { status: finalStatus, handledMessage: true }) // Notify parent about the outcome
 
   } catch (error) {
