@@ -7,10 +7,7 @@
       <span class="ml-2 text-sm">Loading pending members...</span>
     </div>
     
-    <!-- No pending members state -->
-    <div v-else-if="!pendingMembers || pendingMembers.length === 0" class="text-sm text-muted-foreground mb-2">
-      <span>No pending members</span>
-    </div>
+ 
     
     <!-- Pending members list -->
     <div v-else class="space-y-3">

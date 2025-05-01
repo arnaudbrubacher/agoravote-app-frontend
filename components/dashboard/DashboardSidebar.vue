@@ -172,24 +172,6 @@
             :showActions="false"
             @click="navigateToGroup(group.id)"
           >
-            <template #top-right-actions>
-              <TooltipProvider v-if="hasDocuments(group) || groupRequiresDocuments(group)">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      @click.stop="manageDocuments(group)"
-                    >
-                      <Paperclip class="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{{ hasDocuments(group) ? 'View Documents' : 'Upload Documents' }}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </template>
           </GroupCard>
         </div>
       </div>
@@ -975,12 +957,6 @@ const manageDocuments = async (group) => {
   // Check if the group requires documents
   const requiresDocuments = groupRequiresDocuments(group);
   console.log('Group requires documents:', requiresDocuments);
-  
-  // If the group doesn't require documents and doesn't have documents, don't proceed
-  if (!requiresDocuments && !hasDocsResult) {
-    console.log(`Group ${group.name} doesn't require documents and doesn't have any, not opening document manager`);
-    return;
-  }
   
   // Document fields in membership
   if (group.membership) {

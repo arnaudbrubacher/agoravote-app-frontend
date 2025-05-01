@@ -6,13 +6,9 @@
       <span class="ml-2 text-sm text-muted-foreground">Loading invitations...</span>
     </div>
 
-    <!-- No pending members state -->
-    <div v-else-if="!invitedMembers || invitedMembers.length === 0" class="text-sm text-center text-muted-foreground py-4 px-2 border rounded-md border-dashed">
-      <span>No pending invitations</span>
-    </div>
 
     <!-- Pending members list -->
-    <div v-else class="border rounded-md overflow-hidden">
+    <div v-else class="space-y-3">
        <MemberRow
         v-for="(invitation, index) in invitedMembers"
         :key="invitation.id || index"

@@ -80,16 +80,24 @@
         
         <!-- Regular buttons for larger screens -->
         <div class="hidden md:flex md:space-x-2">
-          <Button 
-            v-if="hasDocuments"
-            variant="outline" 
-            size="sm" 
-            @click="handleReviewDocuments(member)"
-            class="bg-amber-50"
-          >
-            <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-1" />
-            Docs
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  v-if="hasDocuments"
+                  variant="outline" 
+                  size="icon" 
+                  @click="handleReviewDocuments(member)"
+                  class="h-9 w-9"
+                >
+                  <LucideIcon name="Paperclip" size="4" class="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Review Documents</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button 
             variant="default" 
             size="sm" 
@@ -125,52 +133,97 @@
       
       <!-- Actions for active members -->
       <div v-if="!isPending && !isInvited" class="flex items-center space-x-2">
-        <!-- Document Review Button - Always visible if member has documents -->
-        <Button 
-          v-if="hasDocuments"
-          variant="outline" 
-          size="sm" 
-          @click="handleReviewDocuments(member)"
-          class="bg-amber-50"
-        >
-          <LucideIcon name="FileText" size="4" class="h-4 w-4 mr-1" />
-          Docs
-        </Button>
+        <!-- Document Review Button - Always visible -->
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                @click="handleReviewDocuments(member)"
+                class="h-9 w-9"
+              >
+                <LucideIcon name="Paperclip" size="4" class="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+               <p>Manage Documents</p> 
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         
         <!-- Admin Toggle - Only visible for admins and not for current user if they're an admin -->
         <div v-if="isCurrentUserAdmin && !isCurrentMember(member)" class="flex items-center space-x-2">
           <div class="flex items-center space-x-1">
-            <Button 
-              :variant="member.isAdmin ? 'default' : 'outline'"
-              size="sm"
-              @click="toggleAdminStatus"
-              class="min-w-[90px] justify-center"
-            >
-              {{ member.isAdmin ? 'Admin' : 'Member' }}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    :pressed="member.isAdmin"
+                    @click.stop="toggleAdminStatus" 
+                    size="icon"
+                    variant="outline"
+                    :class="[
+                      'h-9 w-9',
+                      member.isAdmin ? 'bg-amber-200 hover:bg-amber-300' : '' 
+                    ]"
+                  >
+                    <LucideIcon name="Crown" size="4" class="h-4 w-4" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                   <p>{{ member.isAdmin ? 'Demote to Member' : 'Promote to Admin' }}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
         
-        <!-- Just show the role badge if not an admin or for current user -->
+        <!-- Role Display Toggle (Disabled) -->
         <div v-else>
-          <span v-if="member.isAdmin" class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">
-            Admin
-          </span>
-          <span v-else class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-            Member
-          </span>
+           <TooltipProvider>
+             <Tooltip>
+               <TooltipTrigger asChild>
+                  <Toggle
+                    :pressed="member.isAdmin"
+                    size="icon"
+                    disabled
+                    variant="outline"
+                    :class="[
+                      'opacity-100 h-9 w-9',
+                      member.isAdmin ? 'bg-amber-200' : '' 
+                    ]"
+                  >
+                     <LucideIcon name="Crown" size="4" class="h-4 w-4" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                   <p>Role: {{ member.isAdmin ? 'Admin' : 'Member' }}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
         </div>
         
-        <!-- Delete button - Only visible for admins and not for current user -->
-        <Button 
-          v-if="isCurrentUserAdmin && !isCurrentMember(member)"
-          variant="destructive" 
-          size="sm"
-          @click="handleMemberRemove(member)"
-        >
-          <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
-          Remove
-        </Button>
+        <!-- Delete button - Visible for admin, disabled for self -->
+         <TooltipProvider>
+           <Tooltip>
+             <TooltipTrigger asChild>
+                <Button 
+                  v-if="isCurrentUserAdmin"
+                  variant="destructive" 
+                  size="icon" 
+                  @click="handleMemberRemove(member)"
+                  class="h-9 w-9"
+                  :disabled="isCurrentMember(member)"
+                >
+                  <LucideIcon name="Trash" size="4" class="h-4 w-4" />
+                </Button>
+             </TooltipTrigger>
+             <TooltipContent>
+                <p>Remove Member</p>
+             </TooltipContent>
+           </Tooltip>
+         </TooltipProvider>
       </div>
     </div>
   </div>
@@ -182,6 +235,13 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
+// Import Tooltip components
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuTrigger,

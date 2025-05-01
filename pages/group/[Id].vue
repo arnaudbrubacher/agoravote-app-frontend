@@ -9,25 +9,28 @@
   <!-- Main content when loaded -->
   <div v-if="!loading && !error && group" class="container mx-auto max-w-2xl p-6 space-y-6">
     <!-- Group header with consistent styling -->
-    <div class="w-full max-w-2xl mx-auto flex justify-between items-center mb-8">
-      <!-- Group info (left-aligned) -->
-      <div class="flex items-center">
-        <div class="flex-shrink-0 mr-2">
-          <div v-if="!group.picture" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-            <Users class="h-5 w-5 text-gray-600" />
+    <div class="w-full mx-auto flex flex-col sm:flex-row justify-between items-center mb-8 bg-muted p-4 rounded-lg">
+      <!-- Group info (centered) -->
+      <div class="flex flex-col items-center sm:flex-row sm:items-center text-center sm:text-left mb-4 sm:mb-0">
+        <div class="flex-shrink-0 mb-2 sm:mb-0 sm:mr-4">
+          <div v-if="!group.picture" class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+            <Users class="h-8 w-8 text-gray-600" />
           </div>
           <img 
             v-else
             :src="groupPictureUrl" 
             alt="Group Picture"
-            class="w-8 h-8 rounded-full object-cover border"
+            class="w-16 h-16 rounded-full object-cover border"
           />
         </div>
-        <h1 class="text-xl font-semibold">{{ group.name }}</h1>
+        <div class="text-center sm:text-left">
+          <h1 class="text-xl font-semibold">{{ group.name }}</h1>
+          <p v-if="group.description" class="text-sm text-gray-600 mt-1">{{ group.description }}</p>
+        </div>
       </div>
       
-      <!-- Settings button (right-aligned) -->
-      <div class="flex items-center space-x-2">
+      <!-- Settings buttons (remain right-aligned on larger screens) -->
+      <div class="flex items-center space-x-2 mt-4 sm:mt-0">
         <Button 
           variant="outline" 
           size="sm" 

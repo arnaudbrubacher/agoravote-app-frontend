@@ -1,18 +1,18 @@
 <template>
   <div class="container mx-auto p-6 space-y-6">
     <!-- Profile header with consistent styling -->
-    <div class="w-full max-w-2xl mx-auto flex justify-between items-center mb-8">
-      <!-- User info (left-aligned) -->
-      <div class="flex items-center">
-        <div class="flex-shrink-0 mr-2">
-          <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-            <User class="h-5 w-5 text-gray-600" />
+    <div class="w-full max-w-2xl mx-auto flex flex-col items-center mb-8">
+      <!-- User info (centered) -->
+      <div class="flex flex-col items-center text-center">
+        <div class="flex-shrink-0 mb-2">
+          <div v-if="!profilePictureUrl" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+            <User class="h-7 w-7 text-gray-600" />
           </div>
           <img 
             v-else
             :src="profilePictureUrl" 
             alt="User Profile Picture"
-            class="w-8 h-8 rounded-full object-cover border"
+            class="w-12 h-12 rounded-full object-cover border"
           />
         </div>
         <h1 class="text-xl font-semibold">{{ userData?.name || 'User' }}</h1>

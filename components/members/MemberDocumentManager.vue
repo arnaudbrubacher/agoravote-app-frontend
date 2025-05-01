@@ -88,8 +88,8 @@
               </div>
             </div>
             
-            <!-- Update Document Section -->
-            <div v-if="currentDocument || props.requiresDocuments" class="space-y-4 mt-6">
+            <!-- Update Document Section - Always show -->
+            <div class="space-y-4 mt-6">
               <h3 class="text-md font-medium">{{ currentDocument ? 'Replace Document' : 'Upload Document' }}</h3>
               
               <div 
@@ -153,7 +153,6 @@
         <div class="flex justify-end space-x-2 pt-4 border-t">
           <Button variant="outline" @click="$emit('close')">Cancel</Button>
           <Button 
-            v-if="currentDocument || props.requiresDocuments"
             variant="default" 
             :disabled="!newDocumentFile || isSubmitting"
             @click="uploadDocument"

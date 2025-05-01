@@ -2,53 +2,55 @@
 <template>
   <Card class="mt-6">
     <CardContent class="p-6">
-      <!-- Pending Members Section with Add Members dropdown -->
+      <!-- Top Level Actions -->
+      <div class="flex justify-end items-center mb-6 space-x-2">
+         <!-- Add Members Dropdown -->
+         <DropdownMenu>
+           <DropdownMenuTrigger asChild>
+             <Button 
+               size="sm"
+               :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
+               :disabled="!isCurrentUserAdmin"
+               :title="!isCurrentUserAdmin ? 'Only admins can add members' : ''"
+             >
+               Add Members
+               <LucideIcon name="ChevronDown" size="4" class="ml-1 h-4 w-4" />
+             </Button>
+           </DropdownMenuTrigger>
+           <DropdownMenuContent align="end">
+             <DropdownMenuItem @click="triggerCsvFileInput">
+               <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-2" />
+               Upload File
+             </DropdownMenuItem>
+             <DropdownMenuItem @click="showInviteDialog = true" :disabled="!isCurrentUserAdmin">
+               <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
+               Email Invite
+             </DropdownMenuItem>
+             <DropdownMenuItem @click="$emit('show-user-search')">
+               <LucideIcon name="Search" size="4" class="h-4 w-4 mr-2" />
+               Search Users
+             </DropdownMenuItem>
+           </DropdownMenuContent>
+         </DropdownMenu>
+         
+         <!-- Unified Refresh Button -->
+         <Button 
+           variant="outline" 
+           size="sm" 
+           @click="isCurrentUserAdmin ? refreshAllLists() : null"
+           :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
+           :disabled="!isCurrentUserAdmin || isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers" 
+           :title="!isCurrentUserAdmin ? 'Only admins can refresh the lists' : 'Refresh All Lists'"
+         >
+           <LucideIcon name="RefreshCw" size="4" :class="{'animate-spin': isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers, 'mr-1': !(isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers)}" />
+           <span v-if="!(isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers)">Refresh</span>
+         </Button>
+      </div>
+
+      <!-- Pending Members Section -->
       <div class="mb-6">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-medium">Pending Members ({{ pendingMembers.length || 0 }})</h3>
-          <div class="flex items-center space-x-2">
-            <!-- Add Members Dropdown -->
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  size="sm"
-                  :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
-                  :disabled="!isCurrentUserAdmin"
-                  :title="!isCurrentUserAdmin ? 'Only admins can add members' : ''"
-                >
-                  Add Members
-                  <LucideIcon name="ChevronDown" size="4" class="ml-1 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem @click="triggerCsvFileInput">
-                  <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-2" />
-                  Upload File
-                </DropdownMenuItem>
-                <DropdownMenuItem @click="showInviteDialog = true" :disabled="!isCurrentUserAdmin">
-                  <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
-                  Email Invite
-                </DropdownMenuItem>
-                <DropdownMenuItem @click="$emit('show-user-search')">
-                  <LucideIcon name="Search" size="4" class="h-4 w-4 mr-2" />
-                  Search Users
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <!-- Refresh Button - Always visible but only usable by admins -->
-            <Button 
-              variant="outline" 
-              size="sm" 
-              @click="isCurrentUserAdmin ? fetchPendingMembers() : null"
-              :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
-              :disabled="!isCurrentUserAdmin"
-              :title="!isCurrentUserAdmin ? 'Only admins can refresh the pending members list' : ''"
-            >
-              <LucideIcon name="RefreshCw" size="4" class="h-4 w-4 mr-1" />
-              Refresh
-            </Button>
-          </div>
         </div>
         
         <PendingMembersList
@@ -60,25 +62,14 @@
           @refresh="handlePendingMembersRefresh"
         />
         
-        <!-- Separator - only show when there are pending members -->
-        <div v-if="pendingMembers.length > 0" class="my-6 border-t border-gray-200"></div>
+        <!-- Separator - ALWAYS show for consistent spacing -->
+        <div class="my-6 border-t border-gray-200"></div>
       </div>
       
       <!-- Invited Members Section -->
       <div class="mb-6">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-medium">Invited Members ({{ invitedMembers.length || 0 }})</h3>
-          <Button
-            v-if="isCurrentUserAdmin"
-            variant="outline"
-            size="sm"
-            @click="fetchInvitedMembers"
-            :disabled="isLoadingInvitedMembers"
-            title="Refresh invited members list"
-          >
-            <LucideIcon name="RefreshCw" size="4" :class="{'animate-spin': isLoadingInvitedMembers, 'mr-1': !isLoadingInvitedMembers}" />
-            <span v-if="!isLoadingInvitedMembers">Refresh</span>
-          </Button>
         </div>
 
         <InvitedMembersList
@@ -94,8 +85,8 @@
         <div class="my-6 border-t border-gray-200"></div>
       </div>
       
-      <!-- Active Members Section -->
-      <div>
+      <!-- Active Members Section - Added mb-6 for consistency -->
+      <div class="mb-6">
         <!-- Use the shared MembersList component which handles lists of members -->
         <MembersList
           :group-id="group.id"
@@ -868,5 +859,13 @@ const handleInviteSubmit = (email) => {
   emit('invite-member-by-email', email);
   fetchInvitedMembers();
   showInviteDialog.value = false;
+}
+
+// New function to refresh all lists
+const refreshAllLists = () => {
+  console.log('MembersTab - Refreshing all lists...');
+  fetchPendingMembers();
+  fetchInvitedMembers();
+  emit('refresh-group'); // This should trigger the parent to reload active members
 }
 </script>
