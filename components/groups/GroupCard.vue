@@ -20,18 +20,22 @@
     
     <!-- Group Info -->
     <div class="flex-grow min-w-0 pr-4">
-      <h3 class="font-medium">{{ group.name }}</h3>
+      <div class="flex items-center space-x-2">
+        <h3 class="font-medium">{{ group.name }}</h3>
+        <!-- Private Badge (Inline) -->
+        <span 
+          v-if="showPrivateBadge && group.is_private" 
+          class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded"
+        >
+          Private
+        </span>
+      </div>
       <p class="text-sm text-muted-foreground truncate">{{ group.description || 'No description' }}</p>
     </div>
     
     <!-- Top Right Actions Slot -->
     <div class="absolute top-2 right-2 flex items-center space-x-2">
       <slot name="top-right-actions"></slot>
-    </div>
-    
-    <!-- Private Badge (Bottom Right) -->
-    <div v-if="showPrivateBadge && group.is_private" class="absolute bottom-2 right-2">
-      <Badge variant="outline">Private</Badge>
     </div>
     
     <!-- Original Action Buttons (Now likely used for other actions) -->

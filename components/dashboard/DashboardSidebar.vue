@@ -31,8 +31,8 @@
       
       <!-- Email Invitations Section -->
       <SheetHeader class="pb-4">
-        <SheetTitle>Email Invitations</SheetTitle>
-        <p class="text-sm text-muted-foreground">Invitations sent to your email address</p>
+        <SheetTitle>Group Invitations ({{ pendingEmailInvites.length }})</SheetTitle>
+        <p class="text-sm text-muted-foreground">Invitations to groups awaiting your decision.</p>
       </SheetHeader>
       
       <div class="p-4 pt-0 space-y-4">
@@ -42,10 +42,7 @@
           <span class="ml-2 text-sm text-muted-foreground">Loading email invitations...</span>
         </div>
         
-        <!-- Empty State -->
-        <div v-else-if="pendingEmailInvites.length === 0" class="text-center py-6 text-sm text-muted-foreground">
-          No pending email invitations
-        </div>
+       
         
         <!-- Email Invitations List -->
         <div v-else class="space-y-3">
@@ -87,8 +84,8 @@
       
       <!-- Pending Groups Section (formerly Group Invitations) -->
       <SheetHeader class="pb-4">
-        <SheetTitle>Pending Groups</SheetTitle>
-        <p class="text-sm text-muted-foreground">Groups you've been invited to or are waiting for approval</p>
+        <SheetTitle>Pending Admissions ({{ pendingGroups.length }})</SheetTitle>
+        <p class="text-sm text-muted-foreground">Groups for which you are awaiting admission.</p>
       </SheetHeader>
       
       <div class="p-4 pt-0 space-y-4">
@@ -98,10 +95,7 @@
           <span class="ml-2 text-sm text-muted-foreground">Loading pending groups...</span>
         </div>
         
-        <!-- Empty State -->
-        <div v-else-if="pendingGroups.length === 0" class="text-center py-6 text-sm text-muted-foreground">
-          No pending invitations or join requests
-        </div>
+      
         
         <!-- Pending Groups List -->
         <div v-else class="space-y-3">
@@ -147,12 +141,6 @@
               >
                 Accept
               </Button>
-              <div 
-                v-else
-                class="text-xs text-muted-foreground px-2 py-1 bg-muted rounded"
-              >
-                Awaiting Admin Approval
-              </div>
             </template>
           </GroupCard>
         </div>
@@ -160,7 +148,7 @@
       
       <!-- Your Groups Section -->
       <SheetHeader class="pb-4">
-        <SheetTitle>Your Groups</SheetTitle>
+        <SheetTitle>Your Groups ({{ activeGroups.length }})</SheetTitle>
       </SheetHeader>
       
       <div class="p-4 pt-0 space-y-4">
@@ -185,14 +173,22 @@
             @click="navigateToGroup(group.id)"
           >
             <template #top-right-actions>
-              <Button 
-                v-if="hasDocuments(group) || groupRequiresDocuments(group)"
-                variant="outline" 
-                size="sm"
-                @click.stop="manageDocuments(group)"
-              >
-                {{ hasDocuments(group) ? 'View Documents' : 'Upload Documents' }}
-              </Button>
+              <TooltipProvider v-if="hasDocuments(group) || groupRequiresDocuments(group)">
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      @click.stop="manageDocuments(group)"
+                    >
+                      <Paperclip class="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{{ hasDocuments(group) ? 'View Documents' : 'Upload Documents' }}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </template>
           </GroupCard>
         </div>
@@ -217,7 +213,8 @@ import {
   Search, 
   Plus, 
   Users,
-  Loader2
+  Loader2,
+  Paperclip
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
@@ -226,6 +223,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import GroupCard from '@/components/groups/GroupCard.vue'
 import MemberDocumentManager from '@/components/members/MemberDocumentManager.vue'
 import axios from '~/src/utils/axios'

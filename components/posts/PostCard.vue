@@ -6,6 +6,7 @@
       <div class="flex justify-between items-start mb-2">
         <h4 class="font-medium">{{ post.title }}</h4>
         <span class="text-xs text-muted-foreground">
+          <span v-if="post.user">{{ post.user.name || post.user.username }} · </span>
           {{ formatPostDate(post.created_at) }}
         </span>
       </div>

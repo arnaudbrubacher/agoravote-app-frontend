@@ -8,6 +8,7 @@
         </div>
         <DialogDescription>
           Posted {{ formattedDate }}
+          <span v-if="post.user"> by {{ post.user.name || post.user.username }}</span>
           <span v-if="post.isPublic" class="ml-2 text-xs px-2 py-1 bg-muted/70 rounded-full">Public</span>
         </DialogDescription>
       </DialogHeader>
