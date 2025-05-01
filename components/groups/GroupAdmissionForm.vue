@@ -185,7 +185,9 @@ const adminApprovalRequired = computed(() => {
 // Computed property to handle document requirements
 const documentsRequired = computed(() => {
   // Check if the group requires documents
-  const requiresDocuments = props.group.requiresDocuments === true || props.group.requires_documents === true;
+  const requiresDocuments = props.group.requiresDocuments === true || 
+                            props.group.requires_documents === true ||
+                            props.group.documents_are_required === true;
   
   // If the group doesn't require documents, return false immediately
   if (!requiresDocuments) {

@@ -934,6 +934,12 @@ const handleSubmit = async () => {
       }
     }
     
+    // Check if documents are required but none are specified
+    if (formData.value.requires_documents && formData.value.documents.length === 0) {
+      alert('If documents are required, you must specify at least one required document type.');
+      return;
+    }
+    
     // First upload the picture if a new one was selected
     let picturePath = null
     if (selectedFile.value) {

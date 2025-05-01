@@ -1090,15 +1090,13 @@ const acceptEmailInvite = async (invite) => {
 
     // Check requirements
     const requiresPassword = group.requiresPassword === true || group.requires_password === true;
-    let documentsRequired = false;
-    if (group.requiresDocuments === true || group.requires_documents === true) {
-      const reqDocs = group.requiredDocuments || group.required_documents;
-      if (typeof reqDocs === 'string') {
-        try { documentsRequired = JSON.parse(reqDocs).length > 0; } catch(e) {}
-      } else if (Array.isArray(reqDocs)) {
-        documentsRequired = reqDocs.length > 0;
-      }
-    }
+    // Check the documents_are_required field sent by the backend
+    // Default to false if the field is missing
+    const documentsRequired = group.documents_are_required === true;
+    // Log the received required_documents field for debugging
+    console.log(`[acceptEmailInvite] Group ${group.id} - Raw required_documents field:`, group.required_documents);
+    console.log(`[acceptEmailInvite] Group ${group.id} - Determined documentsRequired: ${documentsRequired}`);
+
     console.log(`Requirements check: Password=${requiresPassword}, Documents=${documentsRequired}`);
 
     // If requirements exist, open the admission form

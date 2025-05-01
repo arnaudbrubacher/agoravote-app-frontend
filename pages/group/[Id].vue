@@ -184,19 +184,19 @@ const router = useRouter()
 
 // Check for both uppercase and lowercase param options
 // This makes the code more robust against routing config differences
-const groupId = route.params.Id || route.params.id
+const groupIdRef = ref(route.params.Id || route.params.id) // Use ref for reactivity
 
 // Add debug to see what's happening
 console.log('Route params:', route.params) 
-console.log('Group ID:', groupId)
+console.log('Group ID ref:', groupIdRef.value)
 
 // If groupId is still undefined, try to get it from another source
-if (!groupId) {
+if (!groupIdRef.value) {
   // Try to get from the path
   const pathMatch = route.path.match(/\/group\/([^\/]+)/)
   if (pathMatch && pathMatch[1]) {
-    groupId.value = pathMatch[1]
-    console.log('Extracted group ID from path:', groupId)
+    groupIdRef.value = pathMatch[1]
+    console.log('Extracted group ID from path:', groupIdRef)
   }
 }
 
@@ -237,7 +237,7 @@ const {
   confirmDeleteGroup,
   leaveGroup,
   isCurrentUserAdmin
-} = useGroupData(groupId)
+} = useGroupData(groupIdRef.value)
 
 // Use group members functionality
 const { 
@@ -250,7 +250,7 @@ const {
   promoteMember,
   demoteMember,
   handleMemberRemove
-} = useGroupMembers(groupId, group, fetchGroup)
+} = useGroupMembers(groupIdRef.value, group, fetchGroup)
 
 // Use group posts functionality
 const { 
@@ -259,7 +259,7 @@ const {
   createNewPost: createNewPostApi,
   editPost, 
   deletePost: deletePostApi
-} = useGroupPosts(groupId)
+} = useGroupPosts(groupIdRef.value)
 
 // Use group votes functionality
 const { 
@@ -273,7 +273,7 @@ const {
   endVoteEarly,
   deleteVote,
   tallyAndDecrypt
-} = useGroupVotes(groupId)
+} = useGroupVotes(groupIdRef.value)
 
 // --- NEW State for Multi-Step Voting --- 
 const spoiledSelectionDetails = ref(null); // Stores plaintext of spoiled ballot { choiceId, writeIn }
@@ -317,121 +317,51 @@ watch(selectedVote, (newValue, oldValue) => {
 });
 // END WATCHER
 
-// Initialize
-onMounted(async () => {
-  try {
-    loading.value = true
-    
-    // Fetch all necessary data in parallel
-    await Promise.all([
-      fetchCurrentUser(),
-      fetchGroup(),
-      fetchPosts(),
-      fetchVotes() // Use destructured function
-    ])
-
-    // Check if the user has pending status and redirect if needed
-    if (group.value && (
-      (group.value.membership && group.value.membership.status === 'pending') ||
-      group.value.membership_status === 'pending' ||
-      group.value.status === 'pending'
-    )) {
-      console.log('User has pending status for this group, redirecting to last active group')
-      
-      // Get the last visited group ID from localStorage
-      const lastVisitedGroupId = localStorage.getItem('lastVisitedGroupId')
-      
-      if (lastVisitedGroupId && lastVisitedGroupId !== groupId) {
-        // Redirect to the last visited group
-        console.log('Redirecting to last visited group:', lastVisitedGroupId)
-        router.push(`/group/${lastVisitedGroupId}`)
-      } else {
-        // If no last visited group, redirect to profile
-        console.log('No last visited group found, redirecting to profile')
-        alert('You cannot access this group until your membership is approved.')
-        router.push('/profile')
-      }
-      return
-    }
-
-    // If we got here, the user has access to the group
-    // Save this group as the last visited group
-    localStorage.setItem('lastVisitedGroupId', groupId)
-    
-    // Debug admin status
-    console.log('Group page - isCurrentUserAdmin:', isCurrentUserAdmin.value)
-    console.log('Group data:', group.value)
-    
-    // Check if admin status is missing and try to determine it
-    if (group.value && group.value.currentUserIsAdmin === undefined) {
-      console.log('Admin status is undefined, attempting to determine it')
-      
-      // Get current user ID
-      const currentUserId = localStorage.getItem('userId')
-      
-      // Check if user is admin based on members list
-      if (group.value.members && currentUserId) {
-        const isAdmin = group.value.members.some(member => {
-          const memberId = member.id || member.userId || member.user_id
-          const memberUserId = member.user?.id || member.userId || member.user_id
-          const isCurrentUser = memberId === currentUserId || memberUserId === currentUserId
-          
-          console.log('Member check:', {
-            memberId,
-            memberUserId,
-            currentUserId,
-            isCurrentUser,
-            isAdmin: member.isAdmin
-          })
-          
-          return isCurrentUser && member.isAdmin
-        })
-        
-        if (isAdmin) {
-          console.log('Setting currentUserIsAdmin to true based on members list')
-          group.value.currentUserIsAdmin = true
-        }
-      }
-    }
-    
-    // Add event listener for group data updates
-    window.addEventListener('group-data-updated', refreshGroupData)
-  } catch (err) {
-    console.error('Error initializing page:', err)
-    error.value = err.response?.data?.error || 'Failed to initialize page'
-    
-    // Check if this is a pending membership error with active groups
-    if (err.response?.data?.pending_membership) {
-      if (err.response?.data?.active_groups?.length > 0) {
-        const activeGroups = err.response.data.active_groups
-        console.log('User has active memberships in these groups:', activeGroups)
-        
-        // Redirect to the first active group
-        const firstActiveGroup = activeGroups[0]
-        console.log('Redirecting to active group:', firstActiveGroup.name, firstActiveGroup.id)
-        
-        // Save this as the last visited group
-        localStorage.setItem('lastVisitedGroupId', firstActiveGroup.id)
-        
-        // Show a message and redirect
-        alert(`You cannot access this group until your membership is approved. Redirecting you to ${firstActiveGroup.name}.`)
-        router.push(`/group/${firstActiveGroup.id}`)
-      } else {
-        // No active groups available, redirect to profile
-        console.log('No active groups available, redirecting to profile')
-        alert('You cannot access this group until your membership is approved.')
-        router.push('/profile')
-      }
-    }
-  } finally {
-    loading.value = false
+// ----- NEW EVENT LISTENER LOGIC -----
+const handleGlobalGroupUpdate = (event) => {
+  console.log('[Group Page] Received group-data-updated event:', event.detail);
+  // Check if the update is for the current group
+  if (event.detail && event.detail.groupId === groupIdRef.value) {
+    console.log('[Group Page] Event matches current group ID. Refreshing group data...');
+    fetchGroup(); // Call the fetch function from the composable
+  } else {
+    console.log('[Group Page] Event is for a different group or has no groupId. Ignoring.');
   }
+};
+
+onMounted(async () => {
+  console.log('[Group Page] Component mounted. Group ID:', groupIdRef.value);
+  if (!groupIdRef.value) {
+    console.error('[Group Page] Group ID is missing on mount!');
+    error.value = 'Group ID is missing. Cannot load group page.';
+    loading.value = false;
+    return;
+  }
+  
+  // Fetch initial data
+  loading.value = true;
+  try {
+    await fetchCurrentUser(); // Fetch current user first
+    await fetchGroup(); // Fetch group data
+    await fetchPosts(); // Fetch posts
+    await fetchVotes(); // Fetch votes
+  } catch (err) {
+    console.error('[Group Page] Error fetching initial data:', err);
+    error.value = 'Failed to load group data.';
+  } finally {
+    loading.value = false;
+  }
+  
+  // Add the global event listener
+  window.addEventListener('group-data-updated', handleGlobalGroupUpdate);
 })
 
-// Clean up event listeners when component is unmounted
 onBeforeUnmount(() => {
-  window.removeEventListener('group-data-updated', refreshGroupData)
+  console.log('[Group Page] Component unmounting. Removing event listener.');
+  // Remove the global event listener
+  window.removeEventListener('group-data-updated', handleGlobalGroupUpdate);
 })
+// ----- END NEW EVENT LISTENER LOGIC -----
 
 // Navigation helpers
 const navigateToProfile = () => {
