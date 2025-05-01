@@ -140,7 +140,7 @@
                 Review
               </Button>
               <Button 
-                v-else-if="!isWaitingForAdminApproval(group)"
+                v-else-if="!isWaitingForAdminApproval(group) && !group.membership?.invitation_accepted"
                 variant="default" 
                 size="sm"
                 @click.stop="acceptPendingGroup(group)"
@@ -295,10 +295,10 @@ const activeGroups = computed(() => {
     console.log(`[ActiveGroups Filter]   - group.membership_status:`, group.membership_status);
     console.log(`[ActiveGroups Filter]   - group.status:`, group.status);
 
-    // Check if the group has a membership property with status
-    if (group.membership && group.membership.status === 'pending') {
-      console.log(`[ActiveGroups Filter] Excluding ${groupName} (Reason: group.membership.status === 'pending')`);
-      return false; // Exclude if status is explicitly 'pending'
+    // Check if the group has a membership property with status 'pending' or 'pending_approval'
+    if (group.membership && (group.membership.status === 'pending' || group.membership.status === 'pending_approval')) {
+      console.log(`[ActiveGroups Filter] Excluding ${groupName} (Reason: group.membership.status is '${group.membership.status}')`);
+      return false; // Exclude if status is pending or pending_approval
     }
     
     // Legacy checks for backward compatibility
@@ -334,9 +334,9 @@ const pendingGroups = computed(() => {
       return false;
     }
     
-    // Check if the group has a membership property with status
-    if (group.membership && group.membership.status === 'pending') {
-      console.log(`Including group with pending membership.status in Pending Groups: ${group.name}`);
+    // Check if the group has a membership property with status 'pending' or 'pending_approval'
+    if (group.membership && (group.membership.status === 'pending' || group.membership.status === 'pending_approval')) {
+      console.log(`Including group with status '${group.membership.status}' in Pending Groups: ${group.name}`);
       return true;
     }
     
