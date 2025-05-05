@@ -1,18 +1,16 @@
 <!-- components/group/tabs/PostsTab.vue -->
 <template>
-  <Card class="mt-6">
-    <CardContent class="p-6">
-      <!-- Use the shared PostsList component which handles lists of posts -->
-      <PostsList
-        :posts="posts"
-        :loading="isLoadingPosts"
-        :is-current-user="false"
-        :show-create-button="true"
-        @create-post="showNewPostDialog = true"
-        @open-post="openPostDetails"
-      />
-    </CardContent>
-  </Card>
+  <div class="mt-6 p-6">
+    <!-- Use the shared PostsList component which handles lists of posts -->
+    <PostsList
+      :posts="posts"
+      :loading="isLoadingPosts"
+      :is-current-user="false"
+      :show-create-button="true"
+      @create-post="showNewPostDialog = true"
+      @open-post="openPostDetails"
+    />
+  </div>
   
   <!-- New Post Dialog -->
   <NewPostDialog
@@ -35,7 +33,6 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Card, CardContent } from '@/components/ui/card'
 import PostsList from '~/components/posts/Postslist.vue'
 import NewPostDialog from '~/components/posts/NewPostDialog.vue'
 import PostDetailsDialog from '~/components/posts/PostDetailsDialog.vue'

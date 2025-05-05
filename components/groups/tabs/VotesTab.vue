@@ -1,24 +1,22 @@
 <!-- components/group/tabs/VotesTab.vue -->
 <template>
-  <Card class="mt-6">
-    <CardContent class="p-6">
-      <!-- Message for temporarily disabled voting functionality -->
-      <!-- <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
-        <p class="text-amber-800">
-          Voting functionality is currently under development and will be available soon.
-        </p>
-      </div> -->
-      
-      <!-- Use the shared VotesList component which handles lists of votes -->
-      <VotesList
-        :votes="votes"
-        :loading="loading"
-        :show-create-button="true"
-        @create-vote="$emit('create-vote')"
-        @open-vote="$emit('open-vote', $event)"
-      />
-    </CardContent>
-  </Card>
+  <div class="mt-6 p-6">
+    <!-- Message for temporarily disabled voting functionality -->
+    <!-- <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+      <p class="text-amber-800">
+        Voting functionality is currently under development and will be available soon.
+      </p>
+    </div> -->
+    
+    <!-- Use the shared VotesList component which handles lists of votes -->
+    <VotesList
+      :votes="votes"
+      :loading="loading"
+      :show-create-button="true"
+      @create-vote="$emit('create-vote')"
+      @open-vote="$emit('open-vote', $event)"
+    />
+  </div>
   
   <!-- Dialogs are now handled by the parent component -->
   <!-- New Vote Dialog removed -->
@@ -26,7 +24,7 @@
 </template>
 
 <script setup>
-import { Card, CardContent } from '@/components/ui/card'
+// import { Card, CardContent } from '@/components/ui/card'
 import VotesList from '~/components/votes/Voteslist.vue'
 // Removed imports: NewVoteDialog, VoteDetailsDialog, useGroupVotes, getUserIdFromToken, axios, computed
 

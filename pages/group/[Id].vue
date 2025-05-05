@@ -9,7 +9,7 @@
   <!-- Main content when loaded -->
   <div v-if="!loading && !error && group" class="container mx-auto max-w-2xl p-6 space-y-6">
     <!-- Group header with consistent styling -->
-    <div class="w-full mx-auto flex flex-col sm:flex-row justify-between items-center mb-8 bg-muted p-4 rounded-lg">
+    <div class="w-full mx-auto flex flex-col sm:flex-row justify-between items-center mb-8 p-4 rounded-lg">
       <!-- Group info (centered) -->
       <div class="flex flex-col items-center sm:flex-row sm:items-center text-center sm:text-left mb-4 sm:mb-0">
         <div class="flex-shrink-0 mb-2 sm:mb-0 sm:mr-4">

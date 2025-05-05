@@ -1,144 +1,141 @@
 <!-- components/group/tabs/MembersTab.vue -->
 <template>
-  <Card class="mt-6">
-    <CardContent class="p-6">
-      <!-- Top Level Actions -->
-      <div class="flex justify-end items-center mb-6 space-x-2">
-         <!-- Add Members Dropdown -->
-         <DropdownMenu>
-           <DropdownMenuTrigger asChild>
-             <Button 
-               size="sm"
-               :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
-               :disabled="!isCurrentUserAdmin"
-               :title="!isCurrentUserAdmin ? 'Only admins can add members' : ''"
-             >
-               Add Members
-               <LucideIcon name="ChevronDown" size="4" class="ml-1 h-4 w-4" />
-             </Button>
-           </DropdownMenuTrigger>
-           <DropdownMenuContent align="end">
-             <DropdownMenuItem @click="triggerCsvFileInput">
-               <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-2" />
-               Upload File
-             </DropdownMenuItem>
-             <DropdownMenuItem @click="showInviteDialog = true" :disabled="!isCurrentUserAdmin">
-               <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
-               Email Invite
-             </DropdownMenuItem>
-             <DropdownMenuItem @click="$emit('show-user-search')">
-               <LucideIcon name="Search" size="4" class="h-4 w-4 mr-2" />
-               Search Users
-             </DropdownMenuItem>
-           </DropdownMenuContent>
-         </DropdownMenu>
-         
-         <!-- Unified Refresh Button -->
-         <Button 
-           variant="outline" 
-           size="sm" 
-           @click="isCurrentUserAdmin ? refreshAllLists() : null"
-           :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
-           :disabled="!isCurrentUserAdmin || isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers" 
-           :title="!isCurrentUserAdmin ? 'Only admins can refresh the lists' : 'Refresh All Lists'"
-         >
-           <LucideIcon name="RefreshCw" size="4" :class="{'animate-spin': isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers, 'mr-1': !(isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers)}" />
-           <span v-if="!(isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers)">Refresh</span>
-         </Button>
-      </div>
+  <div class="mt-6 p-6">
+    <!-- Top Level Actions -->
+    <div class="flex justify-end items-center mb-6 space-x-2">
+       <!-- Add Members Dropdown -->
+       <DropdownMenu>
+         <DropdownMenuTrigger asChild>
+           <Button 
+             size="sm"
+             :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
+             :disabled="!isCurrentUserAdmin"
+             :title="!isCurrentUserAdmin ? 'Only admins can add members' : ''"
+           >
+             Add Members
+             <LucideIcon name="ChevronDown" size="4" class="ml-1 h-4 w-4" />
+           </Button>
+         </DropdownMenuTrigger>
+         <DropdownMenuContent align="end">
+           <DropdownMenuItem @click="triggerCsvFileInput">
+             <LucideIcon name="FileUp" size="4" class="h-4 w-4 mr-2" />
+             Upload File
+           </DropdownMenuItem>
+           <DropdownMenuItem @click="showInviteDialog = true" :disabled="!isCurrentUserAdmin">
+             <LucideIcon name="Mail" size="4" class="h-4 w-4 mr-2" />
+             Email Invite
+           </DropdownMenuItem>
+           <DropdownMenuItem @click="$emit('show-user-search')">
+             <LucideIcon name="Search" size="4" class="h-4 w-4 mr-2" />
+             Search Users
+           </DropdownMenuItem>
+         </DropdownMenuContent>
+       </DropdownMenu>
+       
+       <!-- Unified Refresh Button -->
+       <Button 
+         variant="outline" 
+         size="sm" 
+         @click="isCurrentUserAdmin ? refreshAllLists() : null"
+         :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
+         :disabled="!isCurrentUserAdmin || isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers" 
+         :title="!isCurrentUserAdmin ? 'Only admins can refresh the lists' : 'Refresh All Lists'"
+       >
+         <LucideIcon name="RefreshCw" size="4" :class="{'animate-spin': isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers, 'mr-1': !(isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers)}" />
+         <span v-if="!(isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers)">Refresh</span>
+       </Button>
+    </div>
 
-      <!-- Pending Members Section -->
-      <div class="mb-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium">Pending Members ({{ pendingMembers.length || 0 }})</h3>
-        </div>
-        
-        <PendingMembersList
-          :group-id="group.id"
-          :current-user="currentUser"
-          :pending-members="pendingMembers"
-          :loading="isLoadingPendingMembers"
-          :is-current-user-admin="isCurrentUserAdmin"
-          @refresh="handlePendingMembersRefresh"
-        />
-        
-        <!-- Separator - ALWAYS show for consistent spacing -->
-        <div class="my-6 border-t border-gray-200"></div>
+    <!-- Pending Members Section -->
+    <div class="mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium">Pending Members ({{ pendingMembers.length || 0 }})</h3>
       </div>
       
-      <!-- Invited Members Section -->
-      <div class="mb-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium">Invited Members ({{ invitedMembers.length || 0 }})</h3>
-        </div>
-
-        <InvitedMembersList
-          :group-id="group.id"
-          :invited-members="invitedMembers"
-          :loading="isLoadingInvitedMembers"
-          :is-current-user-admin="isCurrentUserAdmin"
-          @resend-invite="resendInvite"
-          @cancel-invite="cancelInvite"
-        />
-
-        <!-- Separator -->
-        <div class="my-6 border-t border-gray-200"></div>
-      </div>
-      
-      <!-- Active Members Section - Added mb-6 for consistency -->
-      <div class="mb-6">
-        <!-- Use the shared MembersList component which handles lists of members -->
-        <MembersList
-          :group-id="group.id"
-          :group="group"
-          :fetch-group="fetchGroup"
-          :members="activeMembers"
-          :loading="isLoadingMembers"
-          :current-user="currentUser"
-          :is-current-user-admin="isCurrentUserAdmin"
-          :show-add-button="false"
-          :show-import-button="false"
-          @promote="promoteMember"
-          @demote="demoteMember"
-          @remove="handleMemberRemove"
-          @refresh-members="$emit('refresh-group')"
-          @admin-status-update="handleAdminStatusUpdate"
-          @review-documents="handleReviewDocuments"
-        />
-      </div>
-      
-      <input
-        type="file"
-        ref="csvFileInput"
-        class="hidden"
-        accept=".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx"
-        @change="handleFileChange"
-      />
-      
-      <!-- Review Documents Dialog -->
-      <ReviewDocumentsDialog
-        v-if="showReviewDialog"
-        :member="selectedPendingMember"
+      <PendingMembersList
         :group-id="group.id"
-        :is-pending="isPendingMember"
-        @close="showReviewDialog = false"
-        @accept="acceptPendingMember"
-        @decline="declinePendingMember"
+        :current-user="currentUser"
+        :pending-members="pendingMembers"
+        :loading="isLoadingPendingMembers"
+        :is-current-user-admin="isCurrentUserAdmin"
+        @refresh="handlePendingMembersRefresh"
+      />
+      
+      <!-- Separator - ALWAYS show for consistent spacing -->
+      <div class="my-6 border-t border-gray-200"></div>
+    </div>
+    
+    <!-- Invited Members Section -->
+    <div class="mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium">Invited Members ({{ invitedMembers.length || 0 }})</h3>
+      </div>
+
+      <InvitedMembersList
+        :group-id="group.id"
+        :invited-members="invitedMembers"
+        :loading="isLoadingInvitedMembers"
+        :is-current-user-admin="isCurrentUserAdmin"
+        @resend-invite="resendInvite"
+        @cancel-invite="cancelInvite"
       />
 
-      <!-- Invite Member Dialog -->
-      <InviteMemberDialog
-        v-if="showInviteDialog"
-        @close="showInviteDialog = false"
-        @submit="handleInviteSubmit"
+      <!-- Separator -->
+      <div class="my-6 border-t border-gray-200"></div>
+    </div>
+    
+    <!-- Active Members Section - Added mb-6 for consistency -->
+    <div class="mb-6">
+      <!-- Use the shared MembersList component which handles lists of members -->
+      <MembersList
+        :group-id="group.id"
+        :group="group"
+        :fetch-group="fetchGroup"
+        :members="activeMembers"
+        :loading="isLoadingMembers"
+        :current-user="currentUser"
+        :is-current-user-admin="isCurrentUserAdmin"
+        :show-add-button="false"
+        :show-import-button="false"
+        @promote="promoteMember"
+        @demote="demoteMember"
+        @remove="handleMemberRemove"
+        @refresh-members="$emit('refresh-group')"
+        @admin-status-update="handleAdminStatusUpdate"
+        @review-documents="handleReviewDocuments"
       />
-    </CardContent>
-  </Card>
+    </div>
+    
+    <input
+      type="file"
+      ref="csvFileInput"
+      class="hidden"
+      accept=".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx"
+      @change="handleFileChange"
+    />
+    
+    <!-- Review Documents Dialog -->
+    <ReviewDocumentsDialog
+      v-if="showReviewDialog"
+      :member="selectedPendingMember"
+      :group-id="group.id"
+      :is-pending="isPendingMember"
+      @close="showReviewDialog = false"
+      @accept="acceptPendingMember"
+      @decline="declinePendingMember"
+    />
+
+    <!-- Invite Member Dialog -->
+    <InviteMemberDialog
+      v-if="showInviteDialog"
+      @close="showInviteDialog = false"
+      @submit="handleInviteSubmit"
+    />
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
-import { Card, CardContent } from '@/components/ui/card'
 import MembersList from '~/components/members/MembersList.vue'
 import PendingMembersList from '~/components/members/PendingMembersList.vue'
 import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'

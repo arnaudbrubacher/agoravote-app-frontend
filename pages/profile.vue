@@ -46,18 +46,16 @@
       
     
       <!-- Personal Posts Card -->
-      <Card class="w-full max-w-2xl mx-auto mt-6">
-        <CardContent class="p-6">
-          <Postslist
-            :posts="posts"
-            :loading="postsLoading"
-            :is-current-user="true"
-            :show-create-button="true"
-            @create-post="showNewPostDialog = true"
-            @open-post="selectedPost = $event"
-          />
-        </CardContent>
-      </Card>
+      <div class="w-full max-w-2xl mx-auto mt-6 p-6">
+        <Postslist
+          :posts="posts"
+          :loading="postsLoading"
+          :is-current-user="true"
+          :show-create-button="true"
+          @create-post="showNewPostDialog = true"
+          @open-post="selectedPost = $event"
+        />
+      </div>
     </template>
 
     <!-- Hidden file input for profile picture -->
@@ -97,7 +95,6 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
 import NewPostDialog from '@/components/posts/NewPostDialog.vue'
 import PostDetailsDialog from '@/components/posts/PostDetailsDialog.vue'

@@ -6,7 +6,7 @@
           <!-- Static Groups Button -->
           <Button 
             variant="ghost" 
-            class="flex items-center cursor-pointer"
+            class="flex items-center cursor-pointer hover:bg-transparent"
             @click="openDashboardSidebar"
             aria-label="Open groups sidebar"
           >

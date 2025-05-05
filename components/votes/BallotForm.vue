@@ -5,7 +5,12 @@
       <LucideIcon name="CheckCircle" class="mx-auto h-10 w-10 text-green-500" />
       <p class="font-medium text-green-800">You have cast your ballot in this election.</p>
       <p class="text-sm text-muted-foreground">Your tracker hash is:</p>
-      <code class="block text-sm font-mono bg-gray-100 p-2 rounded break-all">{{ userTrackerHash }}</code>
+      <div class="flex items-center justify-center space-x-2">
+          <code class="flex-grow text-sm font-mono bg-gray-100 p-2 rounded break-all text-left">{{ userTrackerHash }}</code>
+          <Button variant="ghost" size="icon" @click="copyToClipboard(userTrackerHash, 'copyBtnVoted')">
+              <LucideIcon :name="copyStatus.copyBtnVoted === 'copied' ? 'Check' : 'Copy'" size="4" class="h-4 w-4" />
+          </Button>
+      </div>
       <p class="text-xs text-muted-foreground pt-2">
         You can use this hash later to verify your vote was included in the final tally (verification feature coming soon).
       </p>
@@ -19,7 +24,12 @@
         </div>
         <p class="text-sm text-center text-muted-foreground">Your selection has been securely encrypted. You can now choose to cast or spoil your ballot.</p>
         <p class="text-sm text-muted-foreground">Your unique ballot tracking hash is:</p>
-        <code class="block text-sm font-mono bg-gray-100 p-2 rounded break-all">{{ encryptedBallotData?.tracker_hash || 'Generating...' }}</code>
+        <div class="flex items-center justify-center space-x-2">
+            <code class="flex-grow text-sm font-mono bg-gray-100 p-2 rounded break-all text-left">{{ encryptedBallotData?.tracker_hash || 'Generating...' }}</code>
+            <Button variant="ghost" size="icon" @click="copyToClipboard(encryptedBallotData?.tracker_hash, 'copyBtnEncrypted')" :disabled="!encryptedBallotData?.tracker_hash">
+                 <LucideIcon :name="copyStatus.copyBtnEncrypted === 'copied' ? 'Check' : 'Copy'" size="4" class="h-4 w-4" />
+            </Button>
+         </div>
         <p class="text-xs text-muted-foreground pt-2">Keep this hash safe. You can use it later to verify your ballot.</p>
         <div class="flex justify-center space-x-4 pt-4">
             <Button
@@ -105,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, reactive } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -155,6 +165,11 @@ const emit = defineEmits([
 const selectedEgChoiceId = ref(null)
 const writeInAnswer = ref('')
 const actionType = ref(null) // 'cast' or 'spoil' to show spinner on correct button
+// Reactive state for copy button feedback
+const copyStatus = reactive({
+    copyBtnVoted: 'idle', // 'idle' | 'copied' | 'error'
+    copyBtnEncrypted: 'idle', // 'idle' | 'copied' | 'error'
+});
 
 // Computed Properties
 const hasUserVoted = computed(() => {
@@ -236,6 +251,26 @@ const clearSpoiledDetails = () => {
     console.log("[BallotForm] Emitting clear-spoiled-details");
     emit('clear-spoiled-details');
 }
+
+// Method to copy text to clipboard
+const copyToClipboard = async (text, buttonId) => {
+    if (!text) return;
+    try {
+        await navigator.clipboard.writeText(text);
+        copyStatus[buttonId] = 'copied';
+        console.log('Hash copied to clipboard:', text);
+        // Reset icon after a short delay
+        setTimeout(() => {
+            copyStatus[buttonId] = 'idle';
+        }, 1500);
+    } catch (err) {
+        console.error('Failed to copy hash:', err);
+        copyStatus[buttonId] = 'error'; // Optional: handle error state visually
+         setTimeout(() => {
+            copyStatus[buttonId] = 'idle';
+        }, 1500);
+    }
+};
 
 // Reset action type when submission stops
 watch(() => props.isSubmitting, (newValue) => {

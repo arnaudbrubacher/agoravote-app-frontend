@@ -46,17 +46,15 @@
     <template v-else-if="userData">
       <div class="max-w-2xl mx-auto">
         <!-- User's posts -->
-        <Card class="mt-6">
-          <CardContent class="p-6">
-            <PostCard
-              :posts="posts"
-              :loading="postsLoading"
-              :is-current-user="false"
-              :show-create-button="false"
-              @open-post="openPostDetails"
-            />
-          </CardContent>
-        </Card>
+        <div class="mt-6 p-6">
+          <PostCard
+            :posts="posts"
+            :loading="postsLoading"
+            :is-current-user="false"
+            :show-create-button="false"
+            @open-post="openPostDetails"
+          />
+        </div>
       </div>
       
       <!-- Post details dialog -->
@@ -79,7 +77,6 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon, Settings as SettingsIcon, User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import LucideIcon from '@/components/LucideIcon.vue'
 import PostDetailsDialog from '~/components/posts/PostDetailsDialog.vue'
 import UserProfileCard from '~/components/users/UserCard.vue'
