@@ -60,151 +60,180 @@
 
       <SidebarSeparator />
 
-      <!-- Email Invitations Section -->
-      <SidebarGroup class="p-4">
-        <SidebarGroupLabel class="text-sm font-medium text-muted-foreground px-2 pb-1">
-          Email Invitations ({{ pendingEmailInvites.length }})
-        </SidebarGroupLabel>
-        <SidebarGroupContent class="space-y-2">
-          <div v-if="isLoadingEmailInvites" class="text-center py-4">
-             <Loader2 class="h-5 w-5 animate-spin inline-block" />
-             <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
-           </div>
-          <p v-else-if="pendingEmailInvites.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
-            No pending email invitations.
-          </p>
-          <div v-else class="space-y-2">
-            <GroupCard
-              v-for="invite in pendingEmailInvites"
-              :key="invite.token"
-              :group="{ id: invite.group_id, name: invite.group_name, picture: invite.group_picture_url, description: 'Invited to join' }" 
-              :clickable="false" 
-              :show-private-badge="false" 
-              :show-actions="true" 
-              class="py-2 px-2 border-0 shadow-none hover:bg-accent/80 rounded-md"
-            >
-               <template #actions>
-                 <div class="flex space-x-1">
-                   <Button
-                     variant="outline"
-                     size="xs"
-                     @click.stop="declineEmailInvite(invite)"
-                   >
-                     Decline
-                   </Button>
-                   <Button
-                     variant="default"
-                     size="xs"
-                     @click.stop="acceptEmailInvite(invite)"
-                   >
-                     Accept
-                   </Button>
-                 </div>
-               </template>
-            </GroupCard>
-          </div>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <!-- Email Invitations Section (Collapsible) -->
+       <Collapsible defaultOpen>
+         <SidebarGroup class="p-4 pt-0 pb-0"> <!-- Reduced bottom padding -->
+           <CollapsibleTrigger asChild>
+             <Button variant="ghost" class="w-full flex justify-between items-center px-2 py-1 text-sm font-medium hover:bg-accent/50 group">
+               <span>Email Invitations ({{ pendingEmailInvites.length }})</span>
+               <ChevronDown class="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180 flex-shrink-0" />
+             </Button>
+           </CollapsibleTrigger>
+           <CollapsibleContent class="overflow-hidden">
+             <SidebarGroupContent class="mt-2 space-y-2">
+               <!-- Loading/Empty/List -->
+               <div v-if="isLoadingEmailInvites" class="text-center py-4">
+                 <Loader2 class="h-5 w-5 animate-spin inline-block" />
+                 <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
+               </div>
+               <p v-else-if="pendingEmailInvites.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
+                 No pending email invitations.
+               </p>
+               <div v-else class="space-y-2">
+                 <GroupCard
+                   v-for="invite in pendingEmailInvites"
+                   :key="invite.token"
+                   :group="{ id: invite.group_id, name: invite.group_name, picture: invite.group_picture_url, description: 'Invited to join' }" 
+                   :clickable="false" 
+                   :show-private-badge="false" 
+                   :show-actions="true" 
+                   class="py-2 px-2 border-0 shadow-none hover:bg-accent/80 rounded-md"
+                 >
+                    <template #actions>
+                      <div class="flex space-x-1">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          @click.stop="declineEmailInvite(invite)"
+                        >
+                          Decline
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="xs"
+                          @click.stop="acceptEmailInvite(invite)"
+                        >
+                          Accept
+                        </Button>
+                      </div>
+                    </template>
+                 </GroupCard>
+               </div>
+             </SidebarGroupContent>
+           </CollapsibleContent>
+         </SidebarGroup>
+       </Collapsible>
 
       <SidebarSeparator />
 
-      <!-- Pending Admissions Section -->
-      <SidebarGroup class="p-4">
-        <SidebarGroupLabel class="text-sm font-medium text-muted-foreground px-2 pb-1">
-          Pending Admissions ({{ pendingGroups.length }})
-        </SidebarGroupLabel>
-        <SidebarGroupContent class="space-y-2">
-          <div v-if="isLoading" class="text-center py-4">
-             <Loader2 class="h-5 w-5 animate-spin inline-block" />
-             <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
-           </div>
-          <p v-else-if="pendingGroups.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
-            No groups awaiting admission.
-          </p>
-          <div v-else class="space-y-2">
-            <GroupCard
-              v-for="group in pendingGroups"
-              :key="group.id"
-              :group="group"
-              :clickable="false" 
-              :show-private-badge="false" 
-              :show-actions="true" 
-              class="py-2 px-2 border-0 shadow-none hover:bg-accent/80 rounded-md"
-            >
-              <template #top-right-actions>
-                 <span v-if="isWaitingForAdminApproval(group)" class="text-[10px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded-full leading-none">
-                   {{ group.isInvitation === false ? 'Join Req. Pending' : 'Awaiting Admin' }}
-                 </span>
-                 <span v-else-if="(group.isInvitation === true || group.isInvitation === undefined) && group.membership && group.membership.status === 'pending' && group.membership.invitation_accepted !== true" class="text-[10px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded-full leading-none">
-                   Invitation
-                 </span>
-              </template>
-              <template #actions>
-                <div class="flex space-x-1">
-                   <Button
-                     variant="outline"
-                     size="xs"
-                     @click.stop="cancelPendingGroup(group)"
-                   >
-                     Cancel
-                   </Button>
-                   <Button
-                     v-if="hasDocuments(group)"
-                     variant="secondary" 
-                     size="xs"
-                     @click.stop="manageDocuments(group)"
-                   >
-                     Review Docs
-                   </Button>
-                   <Button
-                     v-else-if="!isWaitingForAdminApproval(group) && !group.membership?.invitation_accepted"
-                     variant="default"
-                     size="xs"
-                     @click.stop="acceptPendingGroup(group)"
-                   >
-                     Accept
-                   </Button>
-                 </div>
-              </template>
-            </GroupCard>
-          </div>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <!-- Pending Admissions Section (Collapsible) -->
+       <Collapsible defaultOpen>
+         <SidebarGroup class="p-4 pt-0 pb-0"> <!-- Reduced bottom padding -->
+           <CollapsibleTrigger asChild>
+             <Button variant="ghost" class="w-full flex justify-between items-center px-2 py-1 text-sm font-medium hover:bg-accent/50 group">
+               <span>Pending Admissions ({{ pendingGroups.length }})</span>
+               <ChevronDown class="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180 flex-shrink-0" />
+             </Button>
+           </CollapsibleTrigger>
+           <CollapsibleContent class="overflow-hidden">
+             <SidebarGroupContent class="mt-2 space-y-2">
+               <!-- Loading/Empty/List -->
+                <div v-if="isLoading" class="text-center py-4">
+                  <Loader2 class="h-5 w-5 animate-spin inline-block" />
+                  <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
+                </div>
+               <p v-else-if="pendingGroups.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
+                 No groups awaiting admission.
+               </p>
+               <div v-else class="space-y-2">
+                 <GroupCard
+                   v-for="group in pendingGroups"
+                   :key="group.id"
+                   :group="group"
+                   :clickable="false" 
+                   :show-private-badge="false" 
+                   :show-actions="true" 
+                   class="py-2 px-2 border-0 shadow-none hover:bg-accent/80 rounded-md"
+                 >
+                   <template #top-right-actions>
+                      <span v-if="isWaitingForAdminApproval(group)" class="text-[10px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded-full leading-none">
+                        {{ group.isInvitation === false ? 'Join Req. Pending' : 'Awaiting Admin' }}
+                      </span>
+                      <span v-else-if="(group.isInvitation === true || group.isInvitation === undefined) && group.membership && group.membership.status === 'pending' && group.membership.invitation_accepted !== true" class="text-[10px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded-full leading-none">
+                        Invitation
+                      </span>
+                   </template>
+                   <template #actions>
+                     <div class="flex space-x-1">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          @click.stop="cancelPendingGroup(group)"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          v-if="hasDocuments(group)"
+                          variant="secondary" 
+                          size="xs"
+                          @click.stop="manageDocuments(group)"
+                        >
+                          Review Docs
+                        </Button>
+                        <Button
+                          v-else-if="!isWaitingForAdminApproval(group) && !group.membership?.invitation_accepted"
+                          variant="default"
+                          size="xs"
+                          @click.stop="acceptPendingGroup(group)"
+                        >
+                          Accept
+                        </Button>
+                      </div>
+                   </template>
+                 </GroupCard>
+               </div>
+             </SidebarGroupContent>
+           </CollapsibleContent>
+         </SidebarGroup>
+       </Collapsible>
 
       <SidebarSeparator />
 
-      <!-- Your Groups Section -->
-      <SidebarGroup class="p-4">
-        <SidebarGroupLabel class="text-sm font-medium text-muted-foreground px-2 pb-1">
-          Your Groups ({{ activeGroups.length }})
-        </SidebarGroupLabel>
-        <SidebarGroupContent class="space-y-2">
-          <div v-if="isLoading" class="text-center py-4">
-             <Loader2 class="h-5 w-5 animate-spin inline-block" />
-             <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
-           </div>
-          <p v-else-if="activeGroups.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
-            No groups yet. Find or create one!
-          </p>
-          <div v-else class="space-y-2">
-            <GroupCard
-              v-for="group in activeGroups"
-              :key="group.id"
-              :group="group"
-              :clickable="true"
-              @click="navigateToGroup(group.id)"
-              :show-private-badge="true" 
-              :show-actions="false" 
-              class="py-2 px-2 border-0 shadow-none hover:bg-accent/80 rounded-md"
-            >
-               <!-- No actions needed here as the card itself is clickable -->
-            </GroupCard>
-          </div>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <!-- Your Groups Section (Collapsible) -->
+       <Collapsible defaultOpen>
+         <SidebarGroup class="p-4 pt-0 pb-0"> <!-- Reduced bottom padding -->
+           <CollapsibleTrigger asChild>
+             <Button variant="ghost" class="w-full flex justify-between items-center px-2 py-1 text-sm font-medium hover:bg-accent/50 group">
+               <span>Your Groups ({{ activeGroups.length }})</span>
+               <ChevronDown class="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180 flex-shrink-0" />
+             </Button>
+           </CollapsibleTrigger>
+           <CollapsibleContent class="overflow-hidden">
+             <SidebarGroupContent class="mt-2 space-y-2">
+                <!-- Loading/Empty/List -->
+               <div v-if="isLoading" class="text-center py-4">
+                 <Loader2 class="h-5 w-5 animate-spin inline-block" />
+                 <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
+               </div>
+               <p v-else-if="activeGroups.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
+                 No groups yet. Find or create one!
+               </p>
+               <div v-else class="space-y-2">
+                 <GroupCard
+                   v-for="group in activeGroups"
+                   :key="group.id"
+                   :group="group"
+                   :clickable="true"
+                   @click="navigateToGroup(group.id)"
+                   :show-private-badge="true" 
+                   :show-actions="false" 
+                   class="py-2 px-2 border-0 shadow-none hover:bg-accent/80 rounded-md"
+                 >
+                    <!-- No actions needed here as the card itself is clickable -->
+                 </GroupCard>
+               </div>
+             </SidebarGroupContent>
+           </CollapsibleContent>
+         </SidebarGroup>
+       </Collapsible>
 
     </SidebarContent>
-    <SidebarFooter class="p-4 border-t">
+    <SidebarFooter class="p-4 border-t space-y-2">
+       <!-- Close Sidebar Button -->
+       <Button variant="ghost" class="w-full justify-start" @click="$emit('close-sidebar')">
+         <PanelLeftClose class="mr-2 h-4 w-4" />
+         Close Sidebar
+       </Button>
        <div class="text-xs text-center text-muted-foreground">
          AgoraVote v0.1.0
        </div>
@@ -234,7 +263,9 @@ import {
   User,
   LogIn,
   Settings,
-  LogOut
+  LogOut,
+  ChevronDown,
+  PanelLeftClose
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
@@ -260,6 +291,11 @@ import GroupCard from '@/components/groups/GroupCard.vue'
 import MemberDocumentManager from '@/components/members/MemberDocumentManager.vue'
 import axios from '~/src/utils/axios'
 import { signOut } from '@/src/utils/auth'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 
 // Props
 const props = defineProps({
@@ -293,9 +329,10 @@ const emit = defineEmits([
   'create-group',
   'refresh-groups',
   'join-group',
-  'review-documents', // Still needed if review logic triggers dialog here
+  'review-documents',
   'navigate-to-group',
-  'process-group-admission'
+  'process-group-admission',
+  'close-sidebar'
 ])
 
 // Router instance

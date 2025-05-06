@@ -1,5 +1,5 @@
 <template>
-  <SidebarProvider>
+  <SidebarProvider v-model:open="isSidebarExplicitlyOpen">
     <AppSidebar
       :groups="userGroups"
       :isLoading="isLoadingGroups"
@@ -13,23 +13,21 @@
       @review-documents="handleReviewDocuments"
       @navigate-to-group="navigateToGroup"
       @process-group-admission="handleProcessGroupAdmission"
+      @close-sidebar="closeSidebar"
     />
-    <div class="min-h-screen bg-background flex flex-col flex-grow">
-      <main class="container mx-auto py-6 px-4 flex-grow relative">
-        <!-- Sidebar Trigger moved here -->
-        <div class="absolute top-4 left-4 z-20"> <!-- Position trigger top-left -->
-          <SidebarTrigger as-child>
-            <Button variant="outline" size="icon">
-              <PanelLeftOpen class="h-5 w-5" />
-              <span class="sr-only">Toggle Sidebar</span>
-            </Button>
-          </SidebarTrigger>
+    <!-- Wrapper for main content and dialogs -->
+    <div class="min-h-screen bg-background flex flex-col container mx-auto">
+      <main class="min-h-screen bg-background py-6 px-4 relative flex-grow transition-all duration-300 ease-in-out group-data-[state=expanded]:ml-[var(--sidebar-width)]">
+        <!-- Centering Container INSIDE main -->
+        <div class="container mx-auto h-full">
+          <!-- Sidebar Trigger moved here -->
+          <div class="absolute top-2 left-2 z-20"> <!-- Adjusted position -->
+            <CustomSidebarTrigger />
+          </div>
+          <slot />
         </div>
-        <slot />
       </main>
-
-      <!-- Dialogs remain outside the main flow, but inside SidebarProvider -->
-      <!-- Find Group Dialog -->
+      <!-- Dialogs -->
       <FindGroupDialog
         v-model:open="showFindGroupDialog"
         :userGroups="userGroups"
@@ -79,11 +77,12 @@
 <script setup>
 import { ref, computed, onMounted, provide, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, PanelLeftOpen } from 'lucide-vue-next'
+import { User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import axios from '~/src/utils/axios'
 import AppSidebar from '@/components/dashboard/AppSidebar.vue'
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { SidebarProvider } from '@/components/ui/sidebar'
+import CustomSidebarTrigger from '@/components/common/CustomSidebarTrigger.vue'
 import FindGroupDialog from '@/components/groups/FindGroupDialog.vue'
 import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 import NewGroupDialog from '@/components/groups/NewGroupDialog.vue'
@@ -98,6 +97,7 @@ const userData = ref(null)
 const loading = ref(false)
 const showUserSettingsDialog = ref(false)
 const pendingGroups = ref([])
+const isSidebarExplicitlyOpen = ref(true)
 
 // Groups data
 const userGroups = ref([])
@@ -629,6 +629,11 @@ const closeAdmissionForm = () => {
   admissionInvitationToken.value = null;
   admissionError.value = '';
   isReviewMode.value = false;
+};
+
+// Function to explicitly close the sidebar
+const closeSidebar = () => {
+  isSidebarExplicitlyOpen.value = false;
 };
 
 onMounted(() => {
