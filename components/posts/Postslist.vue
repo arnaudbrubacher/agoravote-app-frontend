@@ -9,7 +9,8 @@
         size="sm"
         @click="$emit('create-post')"
       >
-        <PlusIcon class="h-4 w-4 mr-1" />
+        <Plus class="h-4 w-4" />
+        <Newspaper class="h-4 w-4 mr-1" />
         New Post
       </Button>
     </div>
@@ -38,7 +39,7 @@
 </template>
 
 <script setup>
-import { Plus as PlusIcon } from 'lucide-vue-next'
+import { Plus, Newspaper } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import LucideIcon from '@/components/LucideIcon.vue'
 import PostCard from '~/components/posts/PostCard.vue'

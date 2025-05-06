@@ -22,7 +22,7 @@
           <div 
             v-if="isAuthenticated" 
             class="flex items-center cursor-pointer"
-            @click="openUserSettings"
+            @click="() => router.push('/profile')"
           >
             <div class="flex-shrink-0 mr-2">
               <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -51,11 +51,11 @@
     </footer>
 
     <!-- User Settings Sheet Component -->
-    <UserSettingsSheet 
+    <!-- <UserSettingsSheet 
       v-model:open="isUserSettingsOpen" 
       :userData="userData || {}"
       @refresh-user-data="fetchUserData"
-    />
+    /> -->
     
     <!-- Dashboard Sidebar Component -->
     <DashboardSidebar
@@ -127,7 +127,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import axios from '~/src/utils/axios'
-import UserSettingsSheet from '@/components/users/UserSettingsSheet.vue'
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import {
   Dialog,
@@ -149,7 +148,6 @@ const router = useRouter()
 const route = useRoute()
 const userData = ref(null)
 const loading = ref(false)
-const isUserSettingsOpen = ref(false)
 const isDashboardSidebarOpen = ref(false)
 const showUserSettingsDialog = ref(false)
 const pendingGroups = ref([])
@@ -417,11 +415,6 @@ const profilePictureUrl = computed(() => {
 provide('appUserData', userData)
 provide('refreshAppUserData', fetchUserData) // Keep old provide for compatibility if needed
 provide('loadLayoutData', loadLayoutData); // Provide new loader
-
-// Open user settings sheet
-const openUserSettings = () => {
-  isUserSettingsOpen.value = true
-}
 
 // Open dashboard sidebar
 const openDashboardSidebar = () => {

@@ -9,7 +9,8 @@
         size="sm"
         @click="$emit('create-vote')"
       >
-        <PlusIcon class="h-4 w-4 mr-1" />
+        <Plus class="h-4 w-4" />
+        <Vote class="h-4 w-4 mr-1" />
         New Vote
       </Button>
     </div>
@@ -38,7 +39,7 @@
 </template>
 
 <script setup>
-import { Plus as PlusIcon } from 'lucide-vue-next'
+import { Plus, Vote } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import LucideIcon from '@/components/LucideIcon.vue'
 import VoteCard from '~/components/votes/VoteCard.vue'

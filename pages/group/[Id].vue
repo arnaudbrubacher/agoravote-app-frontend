@@ -29,26 +29,25 @@
         </div>
       </div>
       
-      <!-- Settings buttons (remain right-aligned on larger screens) -->
+      <!-- Leave Button -->
       <div class="flex items-center space-x-2 mt-4 sm:mt-0">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="handleLeaveGroup"
-          class="flex items-center gap-1"
-        >
-          <LogOut class="h-4 w-4" />
-          <span>Leave</span>
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="showSettingsDialog = true"
-          class="flex items-center gap-1"
-        >
-          <Settings class="h-4 w-4" />
-          <span>Settings</span>
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button
+                variant="destructive"
+                size="icon"
+                @click="handleLeaveGroup"
+                class="flex items-center justify-center"
+              >
+                <LogOut class="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Leave Group</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
 
@@ -72,11 +71,12 @@
       @member-demoted="handleMemberDemoted"
       @refresh-group="refreshGroupData"
       @admin-status-update="handleAdminStatusUpdate"
+      @group-updated="handleGroupUpdated"
+      @group-deleted="handleGroupDeleted"
     />
 
     <!-- All dialogs -->
     <GroupDialogs
-      :show-settings-dialog="showSettingsDialog"
       :show-new-post-dialog="showNewPostDialog"
       :show-new-vote-dialog="showNewVoteDialog"
       :is-creating-vote="isCreatingVote"
@@ -94,14 +94,11 @@
       :is-submitting="isSubmittingVote"
       :spoiled-selection-details="spoiledSelectionDetails"
       :is-deleting-vote="isDeletingVote"
-      @close-settings="showSettingsDialog = false"
       @close-new-post="showNewPostDialog = false"
       @close-new-vote="showNewVoteDialog = false"
       @close-user-search="showUserSearchDialog = false"
       @close-post-details="selectedPost = null"
       @close-vote-details="closeVoteDetailsHandler"
-      @group-updated="handleGroupUpdated"
-      @group-deleted="handleGroupDeleted"
       @vote-created="handleVoteCreated"
       @post-created="handlePostCreated"
       @post-edited="handlePostEdited"
@@ -154,6 +151,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Users, Settings, LogOut } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import LoadingError from '@/components/group/core/LoadingError.vue'
 import GroupTabs from '@/components/group/core/GroupTabs.vue'
 import GroupDialogs from '@/components/group/core/GroupDialogs.vue'
@@ -208,7 +206,6 @@ const loading = ref(true)
 const error = ref(null)
 
 // Dialog states
-const showSettingsDialog = ref(false)
 const showNewPostDialog = ref(false)
 const showNewVoteDialog = ref(false)
 const showUserSearchDialog = ref(false)
@@ -375,10 +372,10 @@ const navigateToProfile = () => {
 const handleGroupUpdated = async (updatedGroupData) => {
   try {
     await updateGroupSettings(updatedGroupData)
-    showSettingsDialog.value = false
+    showAlert('Success', 'Group settings updated successfully.')
   } catch (err) {
     console.error('Failed to update group:', err)
-    alert('Failed to update group: ' + (err.response?.data?.error || err.message))
+    showAlert('Error Updating Group', err.response?.data?.error || err.message || 'Could not update group settings.')
   }
 }
 

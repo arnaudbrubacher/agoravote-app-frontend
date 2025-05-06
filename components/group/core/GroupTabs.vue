@@ -1,10 +1,31 @@
 <!-- components/group/GroupTabs.vue -->
 <template>
   <Tabs defaultValue="votes" class="w-full">
-    <TabsList>
-      <TabsTrigger value="votes">Votes</TabsTrigger>
-      <TabsTrigger value="posts">Posts</TabsTrigger>
-      <TabsTrigger value="members">Members</TabsTrigger>
+    <TabsList class="grid w-full" :style="`grid-template-columns: repeat(${tabCount}, minmax(0, 1fr))`">
+      <TabsTrigger value="votes" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+        <span class="flex items-center">
+          <Vote class="h-4 w-4 mr-2" />
+          Votes
+        </span>
+      </TabsTrigger>
+      <TabsTrigger value="posts" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+        <span class="flex items-center">
+          <Newspaper class="h-4 w-4 mr-2" />
+          Posts
+        </span>
+      </TabsTrigger>
+      <TabsTrigger value="members" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+        <span class="flex items-center">
+          <Users class="h-4 w-4 mr-2" />
+          Members
+        </span>
+      </TabsTrigger>
+      <TabsTrigger v-if="isCurrentUserAdmin" value="settings" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+        <span class="flex items-center">
+          <Settings class="h-4 w-4 mr-2" />
+          Settings
+        </span>
+      </TabsTrigger>
     </TabsList>
 
     <!-- Votes Tab -->
@@ -47,6 +68,17 @@
         @invite-member-by-email="$emit('invite-member-by-email', $event)"
       />
     </TabsContent>
+
+    <!-- Settings Tab (Only shown to admins) -->
+    <TabsContent v-if="isCurrentUserAdmin" value="settings">
+      <SettingsTab
+        :group="group"
+        :is-current-user-admin="isCurrentUserAdmin"
+        :fetch-group="fetchGroup"
+        @group-updated="$emit('group-updated', $event)"
+        @group-deleted="$emit('group-deleted')"
+      />
+    </TabsContent>
   </Tabs>
 </template>
 
@@ -57,11 +89,13 @@ import {
   TabsTrigger,
   TabsContent
 } from '@/components/ui/tabs'
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
+import { Vote, Newspaper, Users, Settings } from 'lucide-vue-next'
 
 import VotesTab from '@/components/groups/tabs/VotesTab.vue'
 import PostsTab from '@/components/groups/tabs/PostsTab.vue'
 import MembersTab from '@/components/groups/tabs/MembersTab.vue'
+import SettingsTab from '@/components/groups/tabs/SettingsTab.vue'
 
 const props = defineProps({
   group: {
@@ -94,6 +128,11 @@ const props = defineProps({
   }
 })
 
+// Calculate the number of tabs dynamically
+const tabCount = computed(() => {
+  return props.isCurrentUserAdmin ? 4 : 3;
+});
+
 // Debug admin status
 onMounted(() => {
   console.log('GroupTabs - isCurrentUserAdmin:', props.isCurrentUserAdmin)
@@ -117,6 +156,8 @@ const emit = defineEmits([
   'refresh-group',
   'admin-status-update',
   'invite-member',
-  'invite-member-by-email'
+  'invite-member-by-email',
+  'group-updated',
+  'group-deleted'
 ])
 </script>
