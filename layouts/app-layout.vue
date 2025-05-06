@@ -1,68 +1,11 @@
 <template>
-  <div class="min-h-screen bg-background">
-    <header class="border-b">
-      <div class="container mx-auto flex h-16 items-center px-4">
-        <div class="flex w-full items-center justify-between">
-          <!-- Static Groups Button -->
-          <Button 
-            variant="ghost" 
-            class="flex items-center cursor-pointer hover:bg-transparent"
-            @click="openDashboardSidebar"
-            aria-label="Open groups sidebar"
-          >
-            <img src="/agora-vote-icon.png" alt="Groups Icon" class="h-10 w-10 mr-2" />
-            <span class="text-sm font-medium">Groups</span>
-          </Button>
-          
-          
-          <!-- App Title (center) -->
-          <h1 class="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Agora Vote</h1>
-          
-          <!-- User Card (right) - Only show when authenticated -->
-          <div 
-            v-if="isAuthenticated" 
-            class="flex items-center cursor-pointer"
-            @click="() => router.push('/profile')"
-          >
-            <div class="flex-shrink-0 mr-2">
-              <div v-if="!profilePictureUrl" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <User class="h-5 w-5 text-gray-400" />
-              </div>
-              <img 
-                v-else
-                :src="profilePictureUrl" 
-                alt="User Profile Picture"
-                class="w-8 h-8 rounded-full object-cover border"
-              />
-            </div>
-            <span class="text-sm font-medium">{{ userData?.name || 'User' }}</span>
-          </div>
-          <div v-else class="w-[120px]"></div> <!-- Spacer when user card is not shown -->
-        </div>
-      </div>
-    </header>
-    <main class="container mx-auto py-6 px-4">
-      <slot />
-    </main>
-    <footer class="border-t">
-      <div class="container mx-auto py-6 px-4 text-center text-sm text-muted-foreground">
-        <p>&copy; 2025 Agora Vote. All rights reserved.</p>
-      </div>
-    </footer>
-
-    <!-- User Settings Sheet Component -->
-    <!-- <UserSettingsSheet 
-      v-model:open="isUserSettingsOpen" 
-      :userData="userData || {}"
-      @refresh-user-data="fetchUserData"
-    /> -->
-    
-    <!-- Dashboard Sidebar Component -->
-    <DashboardSidebar
-      v-model:open="isDashboardSidebarOpen"
+  <SidebarProvider>
+    <AppSidebar
       :groups="userGroups"
-      :pendingGroups="pendingGroups"
       :isLoading="isLoadingGroups"
+      :isAuthenticated="isAuthenticated"
+      :userData="userData"
+      :profilePictureUrl="profilePictureUrl"
       @find-group="showFindGroupDialog = true"
       @create-group="showCreateGroupDialog = true"
       @refresh-groups="fetchUserGroups"
@@ -71,71 +14,76 @@
       @navigate-to-group="navigateToGroup"
       @process-group-admission="handleProcessGroupAdmission"
     />
-    
-    <!-- Find Group Dialog -->
-    <FindGroupDialog
-      v-model:open="showFindGroupDialog"
-      :userGroups="userGroups"
-      @view-group="navigateToGroup"
-      @join-group="joinGroup"
-    />
-    
-    <!-- Group Admission Form -->
-    <GroupAdmissionForm
-      v-if="showAdmissionForm && selectedGroup"
-      :group="selectedGroup"
-      :error="admissionError"
-      :review-mode="isReviewMode"
-      :invitationToken="admissionInvitationToken"
-      @close="closeAdmissionForm"
-      @submit="handleAdmissionSubmit"
-    />
-    
-    <!-- Create Group Dialog -->
-    <NewGroupDialog
-      v-if="showCreateGroupDialog"
-      @close="showCreateGroupDialog = false"
-      @group-created="handleGroupCreated"
-    />
-    
-    <!-- User Settings Dialog -->
-    <UserSettingsDialog 
-      v-model:open="showUserSettingsDialog"
-      :userData="userData || {}"
-      @refresh-user-data="fetchUserData"
-    />
-    
-    <!-- Global Alert Dialog -->
-    <GlobalAlertDialog />
+    <div class="min-h-screen bg-background flex flex-col flex-grow">
+      <main class="container mx-auto py-6 px-4 flex-grow relative">
+        <!-- Sidebar Trigger moved here -->
+        <div class="absolute top-4 left-4 z-20"> <!-- Position trigger top-left -->
+          <SidebarTrigger as-child>
+            <Button variant="outline" size="icon">
+              <PanelLeftOpen class="h-5 w-5" />
+              <span class="sr-only">Toggle Sidebar</span>
+            </Button>
+          </SidebarTrigger>
+        </div>
+        <slot />
+      </main>
 
-    <!-- App Alert Dialog for Global Errors -->
-    <AppAlertDialog
-      :open="!!globalError" 
-      :message="globalError || 'An unexpected error occurred.'"
-      title="Error"
-      @close="globalError = null"
-    />
-  </div>
+      <!-- Dialogs remain outside the main flow, but inside SidebarProvider -->
+      <!-- Find Group Dialog -->
+      <FindGroupDialog
+        v-model:open="showFindGroupDialog"
+        :userGroups="userGroups"
+        @view-group="navigateToGroup"
+        @join-group="joinGroup"
+      />
+
+      <!-- Group Admission Form -->
+      <GroupAdmissionForm
+        v-if="showAdmissionForm && selectedGroup"
+        :group="selectedGroup"
+        :error="admissionError"
+        :review-mode="isReviewMode"
+        :invitationToken="admissionInvitationToken"
+        @close="closeAdmissionForm"
+        @submit="handleAdmissionSubmit"
+      />
+
+      <!-- Create Group Dialog -->
+      <NewGroupDialog
+        v-if="showCreateGroupDialog"
+        @close="showCreateGroupDialog = false"
+        @group-created="handleGroupCreated"
+      />
+
+      <!-- User Settings Dialog -->
+      <UserSettingsDialog
+        v-model:open="showUserSettingsDialog"
+        :userData="userData || {}"
+        @refresh-user-data="fetchUserData"
+      />
+
+      <!-- Global Alert Dialog -->
+      <GlobalAlertDialog />
+
+      <!-- App Alert Dialog for Global Errors -->
+      <AppAlertDialog
+        :open="!!globalError"
+        :message="globalError || 'An unexpected error occurred.'"
+        title="Error"
+        @close="globalError = null"
+      />
+    </div>
+  </SidebarProvider>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, provide, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, Search } from 'lucide-vue-next'
+import { User, PanelLeftOpen } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import axios from '~/src/utils/axios'
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import AppSidebar from '@/components/dashboard/AppSidebar.vue'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import FindGroupDialog from '@/components/groups/FindGroupDialog.vue'
 import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 import NewGroupDialog from '@/components/groups/NewGroupDialog.vue'
@@ -148,7 +96,6 @@ const router = useRouter()
 const route = useRoute()
 const userData = ref(null)
 const loading = ref(false)
-const isDashboardSidebarOpen = ref(false)
 const showUserSettingsDialog = ref(false)
 const pendingGroups = ref([])
 
@@ -195,28 +142,22 @@ const appLayoutHandlers = ref({}) // Store event handler references
 
 // Check if user is authenticated
 const isAuthenticated = computed(() => {
-  // This computed property will primarily react to userData presence.
-  // Actual auth check happens in loadLayoutData using Session.doesSessionExist()
-  return !!userData.value; 
+  return !!userData.value;
 })
 
 // Encapsulated data loading function with SuperTokens check
 const loadLayoutData = async () => {
-  // Check if this is during intentional group deletion
   const isIntentionalDeletion = localStorage.getItem('intentionalGroupDeletion') === 'true';
-  
   if (isIntentionalDeletion) {
     console.log('Skipping session check during intentional group deletion');
-    return; // Skip session check during intentional deletion
+    return;
   }
-  
   console.log('loadLayoutData checking session...');
   let sessionExists = false;
   try {
     sessionExists = await Session.doesSessionExist();
   } catch (sessionError) {
     console.error('Error checking SuperTokens session existence:', sessionError);
-    // Treat error during check as session not existing for safety
     clearAuthDataAndRedirect();
     return;
   }
@@ -225,60 +166,50 @@ const loadLayoutData = async () => {
   if (sessionExists) {
     console.log('Session exists. Proceeding to fetch data.');
     let fetchUserSuccess = true;
-    // Fetch user data if not already loaded or if it was nullified by a previous error
-    if (!userData.value) { 
+    if (!userData.value) {
       console.log('Fetching user data in loadLayoutData...');
       try {
-        // Directly call fetchUserData which handles its own try/catch
-        await fetchUserData(); 
+        await fetchUserData();
         if (!userData.value) {
-          // Fetch succeeded but returned no data (shouldn't happen for /users/me)
-          // Or fetchUserData caught an error and set userData to null
           console.warn('fetchUserData completed but userData is still null.');
-          fetchUserSuccess = false; // Mark as failed
+          fetchUserSuccess = false;
         }
       } catch (fetchError) {
-        // This catch might be redundant if fetchUserData handles its own errors
-        // but added for safety
         console.error('Error occurred during fetchUserData call:', fetchError);
-        fetchUserSuccess = false; // Mark as failed
-        userData.value = null; // Ensure userData is null on error
+        fetchUserSuccess = false;
+        userData.value = null;
       }
     }
-    
-    // ---> MODIFICATION: Only redirect if session is definitively lost, 
-    // --->             otherwise handle data fetch failure gracefully.
+
     if (!fetchUserSuccess) {
         console.warn('Failed to fetch user data, but session still seems to exist. Will not redirect immediately.');
-        // Optionally: Show a non-blocking error message to the user in the UI
-        // Example: globalErrorState.value = "Could not load user profile. Please try refreshing.";
-        // We avoid redirecting here just because data fetch failed.
-        // Let the user stay logged in if the session token is still valid.
     }
-    // ---> END MODIFICATION
 
-    // Fetch groups only if user data fetch was successful and groups are empty
+    // Fetch groups only if user data fetch was successful and groups are empty OR explicitly requested refresh
+    // The AppSidebar will emit 'refresh-groups' on mount, triggering this.
     if (userData.value && fetchUserSuccess && userGroups.value.length === 0) {
-      console.log('Fetching user groups in loadLayoutData...');
-      await fetchUserGroups(); // fetchUserGroups should also handle its own errors
-    } else {
-      console.log('Skipping groups fetch: User data missing/fetch failed or groups already loaded.');
-    }
+       console.log('Fetching user groups in loadLayoutData (initial or forced)...');
+       await fetchUserGroups();
+     } else if (userData.value && fetchUserSuccess) {
+        // We have user data, but maybe groups are already loaded.
+        // AppSidebar will manage subsequent refreshes via emits.
+        console.log('Skipping initial groups fetch: User data present and groups might be loaded.');
+     } else {
+       console.log('Skipping groups fetch: User data missing or fetch failed.');
+     }
+
   } else {
     console.log('No active session found by SuperTokens. Clearing state and redirecting.');
-    // ---> ADDED CHECK: Avoid redirecting if already on /auth page <---
     if (route.path !== '/auth') {
         clearAuthDataAndRedirect();
     } else {
         console.log('Already on /auth page, skipping redirect.');
-        // Ensure data is still cleared even if not redirecting
         userData.value = null;
         userGroups.value = [];
         removeLocalStorage('token');
         removeLocalStorage('userId');
         removeLocalStorage('lastUsedGroupId');
     }
-    // ---> END ADDED CHECK <---
   }
 }
 
@@ -290,7 +221,6 @@ const clearAuthDataAndRedirect = () => {
   removeLocalStorage('token');
   removeLocalStorage('userId');
   removeLocalStorage('lastUsedGroupId');
-  // Check if already on auth page to prevent loop (redundant with check above, but safe)
   if (route.path !== '/auth') {
      router.push('/auth');
   }
@@ -299,67 +229,54 @@ const clearAuthDataAndRedirect = () => {
 // Fetch user data if authenticated
 const fetchUserData = async () => {
   try {
-    // Removed loading.value toggle from here, manage in calling context if needed
     console.log('Attempting to fetch /users/me');
     const response = await axios.get('/users/me');
-    userData.value = response.data; // Assuming response.data is the user object
+    userData.value = response.data;
     console.log('User data fetched successfully:', userData.value);
-    // Clear any previous error state related to user fetch
-    // Example: globalErrorState.value = null;
   } catch (error) {
     console.error('Failed to fetch user data (/users/me):', error);
-    userData.value = null; // CRITICAL: Ensure userData is null on failure
-    // Do not redirect here, let the caller (loadLayoutData) decide based on session status
-    // Re-throw the error if the caller needs to know about it
-    // throw error; 
-  } 
+    userData.value = null;
+  }
 }
 
 // Fetch user groups
 const fetchUserGroups = async () => {
+  // Check if already loading to prevent concurrent requests
+  if (isLoadingGroups.value) {
+    console.log('Already fetching groups, skipping duplicate request.');
+    return;
+  }
   try {
     isLoadingGroups.value = true;
+    console.log('Fetching user groups...'); // Added log
     const response = await axios.get('/user/groups');
     console.log('Raw API response for user groups:', response.data);
 
-    // Handle different response types
     if (Array.isArray(response.data)) {
-      // Normal case: API returns an array of groups
       userGroups.value = response.data;
       console.log('User groups set:', userGroups.value);
     } else if (response.data === null) {
-      // Backend can return null if user has no groups
       console.warn('/user/groups endpoint returned null, defaulting to empty array');
-      userGroups.value = []; // Use empty array when response is null
+      userGroups.value = [];
     } else if (typeof response.data === 'object' && response.data !== null) {
-      // Handle case where response might be an object with groups inside
-      // (This branch might not be needed, but added for robustness)
       const possibleGroups = response.data.groups || response.data.data || [];
       console.warn('/user/groups returned an object instead of array, attempting to extract groups:', possibleGroups);
       userGroups.value = Array.isArray(possibleGroups) ? possibleGroups : [];
     } else {
-      // Any other unexpected response
       console.warn('/user/groups returned unexpected data type:', typeof response.data);
-      userGroups.value = []; // Default to empty array
+      userGroups.value = [];
     }
-    
-    // Always update last used group after setting groups, 
-    // this handles the case where groups are now empty
+
     updateLastUsedGroup();
   } catch (error) {
     console.error('Failed to fetch user groups:', error);
-    
-    // Check if this is during intentional group deletion
     const isIntentionalDeletion = localStorage.getItem('intentionalGroupDeletion') === 'true';
-    
-    // Only trigger session check on auth errors if not during intentional deletion
     if (error.response && error.response.status === 401 && !isIntentionalDeletion) {
       console.warn('Authentication error during groups fetch, checking session status');
-      // Use setTimeout to avoid immediate check during navigation
       setTimeout(() => loadLayoutData(), 500);
     } else {
-      userGroups.value = []; // Always set to empty array on error
-      updateLastUsedGroup(); // Also update last used group on error
+      userGroups.value = [];
+      updateLastUsedGroup();
     }
   } finally {
     isLoadingGroups.value = false;
@@ -373,26 +290,22 @@ const updateLastUsedGroup = () => {
     const lastGroupExists = storedLastUsedGroupId && userGroups.value.some(g => g.id === storedLastUsedGroupId);
 
     if (!lastGroupExists) {
-      // Update the ref AND localStorage
-      lastUsedGroupId.value = userGroups.value[0].id 
-      setLocalStorage('lastUsedGroupId', lastUsedGroupId.value) // Use the ref's value
+      lastUsedGroupId.value = userGroups.value[0].id
+      setLocalStorage('lastUsedGroupId', lastUsedGroupId.value)
 
       const currentPath = route.path
       const groupMatch = currentPath.match(/\/group\/([^/]+)/);
-      // Check if the stored ID exists before comparing
       if (storedLastUsedGroupId && groupMatch && groupMatch[1] === storedLastUsedGroupId) {
         console.log('User is on a group page they no longer belong to, redirecting to profile')
         router.push('/profile')
       }
     } else {
-      // Update the ref if it's different from the stored value
       if (lastUsedGroupId.value !== storedLastUsedGroupId) {
-         lastUsedGroupId.value = storedLastUsedGroupId 
+         lastUsedGroupId.value = storedLastUsedGroupId
       }
     }
   } else {
-    // Update the ref AND localStorage
-    lastUsedGroupId.value = null 
+    lastUsedGroupId.value = null
     removeLocalStorage('lastUsedGroupId')
   }
 }
@@ -400,190 +313,124 @@ const updateLastUsedGroup = () => {
 // Computed property for profile picture URL
 const profilePictureUrl = computed(() => {
   if (!userData.value?.profile_picture) return null
-  
-  // If the profile picture is a full URL, return it as is
   if (userData.value.profile_picture.startsWith('http')) {
     return userData.value.profile_picture
   }
-  
-  // Otherwise, prepend the API base URL
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
   return `${baseUrl}/${userData.value.profile_picture}`
 })
 
 // Provide user data and refresh function to child components
 provide('appUserData', userData)
-provide('refreshAppUserData', fetchUserData) // Keep old provide for compatibility if needed
-provide('loadLayoutData', loadLayoutData); // Provide new loader
-
-// Open dashboard sidebar
-const openDashboardSidebar = () => {
-  // Fetch groups if not already loaded
-  if (userGroups.value.length === 0 && !isLoadingGroups.value) {
-    fetchUserGroups()
-  }
-  // Toggle the sidebar
-  isDashboardSidebarOpen.value = !isDashboardSidebarOpen.value
-}
+provide('refreshAppUserData', fetchUserData)
+provide('loadLayoutData', loadLayoutData);
 
 // Navigate to group page
 const navigateToGroup = (groupId) => {
-  // Store the last used group ID
   lastUsedGroupId.value = groupId
   setLocalStorage('lastUsedGroupId', groupId)
-  
-  // Close the sidebar and navigate
-  isDashboardSidebarOpen.value = false
   router.push(`/group/${groupId}`)
 }
 
 // Handle group created event from NewGroupDialog
 const handleGroupCreated = async (newGroup) => {
-  // Close dialog
   showCreateGroupDialog.value = false
-  
-  // Refresh groups
-  await fetchUserGroups()
-  
-  // Navigate to the new group and set as last used
+  await fetchUserGroups() // Refresh list in sidebar
   if (newGroup && newGroup.id) {
     lastUsedGroupId.value = newGroup.id
-    setLocalStorage('lastUsedGroupId', newGroup.id)
-    router.push(`/group/${newGroup.id}`)
+    setLocalState('lastUsedGroupId', newGroup.id)
+    router.push(`/group/${newGroup.id}`) // Navigate
   }
 }
 
-// Join a group
+// Join a group (triggered by FindGroupDialog or AppSidebar's accept action)
 const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false) => {
+   console.log(`app-layout joinGroup called with: groupId=${groupId}, isInvitation=${isInvitation}, isSuccessfulJoin=${isSuccessfulJoin}`); // Debug log
   try {
-    // Check if this is a callback from a successful join in FindGroupDialog
     if (isSuccessfulJoin) {
       console.log('This is a callback from a successful join, skipping group existence check');
-      // Just refresh groups and return
-      await fetchUserGroups();
+      await fetchUserGroups(); // Refresh sidebar
       return;
     }
-    
-    // Get the group details
+
+    // Attempt to find the group in the current userGroups list first
     let group = userGroups.value.find(g => g.id === groupId);
-    
-    // If the group wasn't found in userGroups, it might be a pending group
-    // In that case, we need to set isInvitation to true
+
+    // If not found locally, fetch group details directly, needed for requirement checks
+    // This handles cases like joining via FindGroupDialog where the group isn't in userGroups yet
     if (!group) {
-      console.log('Group not found in userGroups, checking if it is a pending group');
-      // Try to find the group in the pendingGroups (groups with pending membership)
-      const pendingGroup = userGroups.value.find(g => g.id === groupId && g.membership?.status === 'pending');
-      if (pendingGroup) {
-        group = pendingGroup;
-        isInvitation = true; // Override the isInvitation parameter since this is a pending group
-      }
+       console.log(`Group ${groupId} not found locally, fetching details...`);
+       try {
+          // We might need an invitation token if this is triggered by an email invite flow later
+          const fetchUrl = `/groups/${groupId}${admissionInvitationToken.value ? '?invitation_token='+admissionInvitationToken.value : ''}`;
+          const response = await axios.get(fetchUrl);
+          group = response.data;
+          console.log(`Fetched group details for ${groupId}:`, group);
+       } catch (fetchError) {
+          console.error(`Failed to fetch details for group ${groupId}:`, fetchError);
+          alert('Group not found or could not be fetched.');
+          return;
+       }
+    } else {
+        console.log(`Group ${groupId} found locally.`);
     }
-    
+
+    // If still no group after fetch attempt (should not happen if fetch succeeded)
     if (!group) {
-      console.error('Group not found:', groupId);
-      alert('Group not found');
-      return;
+       console.error('Group not found after fetch attempt:', groupId);
+       alert('Group not found');
+       return;
     }
-    
-    // Check if the group requires password or documents
+
+
+    // Check requirements (using potentially freshly fetched group data)
     const requiresPassword = group?.requiresPassword === true || group?.requires_password === true;
-    
-    // More robust check for required documents
     let requiresDocuments = false;
     let requiredDocumentsArray = [];
-    
-    // Check both camelCase and snake_case versions
     const documents = group?.requiredDocuments || group?.required_documents;
-    
     if (documents) {
-      // If it's a string (JSON), parse it
       if (typeof documents === 'string') {
-        try {
-          requiredDocumentsArray = JSON.parse(documents);
-          requiresDocuments = Array.isArray(requiredDocumentsArray) && requiredDocumentsArray.length > 0;
-        } catch (e) {
-          console.error('Error parsing required documents:', e);
-        }
-      } 
-      // If it's already an array
-      else if (Array.isArray(documents)) {
-        requiredDocumentsArray = documents;
-        requiresDocuments = documents.length > 0;
+        try { requiredDocumentsArray = JSON.parse(documents); requiresDocuments = Array.isArray(requiredDocumentsArray) && requiredDocumentsArray.length > 0; } catch (e) { console.error('Error parsing required documents:', e); }
+      } else if (Array.isArray(documents)) {
+        requiredDocumentsArray = documents; requiresDocuments = documents.length > 0;
       }
     }
-    
-    // Also check the requiresDocuments flag
     const hasRequiresDocumentsFlag = group?.requiresDocuments === true || group?.requires_documents === true;
-    
-    console.log('Group join requirements:', {
-      requiresPassword,
-      requiresDocuments,
-      hasRequiresDocumentsFlag,
-      requiredDocumentsArray,
-      groupId,
-      isInvitation
-    });
-    
-    // Only show the admission form if there are actual requirements
-    if ((requiresPassword) || (hasRequiresDocumentsFlag && requiresDocuments)) {
-      // Show the admission form
-      selectedGroup.value = {
-        ...group,
-        // Ensure the required documents are properly set
-        requiredDocuments: requiredDocumentsArray
-      };
-      showAdmissionForm.value = true;
-      admissionError.value = '';
-      
-      // Store whether this is an invitation acceptance
-      selectedGroup.value.isInvitation = isInvitation;
-      
-      // Close the dashboard sidebar
-      isDashboardSidebarOpen.value = false;
-      return;
+     // Check for admin approval requirement as well
+    const requiresAdminApproval = group.requiresAdminApproval === true || group.requires_admin_approval === true;
+
+
+    console.log('Group join requirements:', { requiresPassword, requiresDocuments, hasRequiresDocumentsFlag, requiresAdminApproval, groupId, isInvitation });
+
+    // Show admission form IF requirements exist OR if it's an invitation acceptance (to handle potential password/doc entry)
+    // The AppSidebar's acceptPendingGroup logic already handles the case where no requirements exist,
+    // so if joinGroup is called with isInvitation=true, it implies requirements OR the need for the form.
+    if ((requiresPassword || (hasRequiresDocumentsFlag && requiresDocuments) || requiresAdminApproval) || isInvitation) {
+       // Ensure we pass the potentially fetched group details to the form
+       selectedGroup.value = {
+         ...group,
+         requiredDocuments: requiredDocumentsArray, // Use parsed array
+         isInvitation: isInvitation // Store if it's an invitation flow
+       };
+       showAdmissionForm.value = true;
+       admissionError.value = '';
+       return;
     }
-    
-    // If no special requirements, proceed with direct join/accept
-    if (isInvitation) {
-      // This is an invitation acceptance
-      const response = await axios.post(`/groups/${groupId}/accept`);
-      console.log('Invitation acceptance response:', response.data);
-      
-      // Check if the user was immediately approved
-      const status = response.data?.status || 'pending';
-      
-      // Refresh groups after joining
-      await fetchUserGroups();
-      
-      // If the user was immediately approved, navigate to the group
-      if (status === 'approved') {
-        console.log('User was immediately approved, navigating to group');
-        navigateToGroup(groupId);
-      } else {
-        console.log('Invitation acceptance is pending approval');
-        // Dispatch a custom event to refresh the dashboard sidebar
-        window.dispatchEvent(new CustomEvent('group-data-updated'));
-      }
+
+
+    // If no special requirements and NOT an invitation acceptance flow (handled by AppSidebar), proceed with direct join request
+     console.log('No special requirements/invitation, sending direct join request...'); // Added log
+    const response = await axios.post(`/groups/${groupId}/join`);
+    console.log('Join response:', response.data);
+    const status = response.data?.status || 'pending';
+    await fetchUserGroups(); // Refresh sidebar
+
+    if (status === 'approved') {
+      console.log('User was immediately approved, navigating to group');
+      navigateToGroup(groupId);
     } else {
-      // This is a regular join
-      const response = await axios.post(`/groups/${groupId}/join`);
-      console.log('Join response:', response.data);
-      
-      // Check if the user was immediately approved
-      const status = response.data?.status || 'pending';
-      
-      // Refresh groups after joining
-      await fetchUserGroups();
-      
-      // If the user was immediately approved, navigate to the group
-      if (status === 'approved') {
-        console.log('User was immediately approved, navigating to group');
-        navigateToGroup(groupId);
-      } else {
-        console.log('Join request is pending approval');
-        // Dispatch a custom event to refresh the dashboard sidebar
-        window.dispatchEvent(new CustomEvent('group-data-updated'));
-      }
+      console.log('Join request is pending approval');
+      window.dispatchEvent(new CustomEvent('group-data-updated')); // Notify sidebar
     }
   } catch (error) {
     console.error('Failed to join group:', error);
@@ -591,209 +438,184 @@ const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false
   }
 }
 
+
 // Handle admission form submission
 const handleAdmissionSubmit = async (admissionData) => {
   try {
-    // Make sure we have a selected group
     if (!selectedGroup.value) {
       console.error('No group selected for admission');
       return;
     }
-    
-    // Check if the message has already been handled by the form component
+
     if (admissionData.handledMessage) {
       console.log('Message already handled by the form component, skipping additional API calls');
-      
-      // Close the admission form
-      showAdmissionForm.value = false;
-      selectedGroup.value = null;
-      isReviewMode.value = false;
-      
-      // Refresh the groups list
-      fetchUserGroups();
+      closeAdmissionForm(); // Use helper
+      fetchUserGroups(); // Refresh sidebar
       return;
     }
-    
-    // Determine if this is an invitation acceptance or a regular join
+
+    // Use the isInvitation flag stored when the form was opened
     const isInvitation = selectedGroup.value.isInvitation === true;
-    
-    // Log the admission data being sent
     console.log('Sending admission data:', JSON.stringify(admissionData));
     console.log('Group ID:', selectedGroup.value.id);
     console.log('Is invitation:', isInvitation);
-    
-    // Ensure we have a valid object to send
+     // Add invitation token if available (for email invites)
+     if (admissionInvitationToken.value) {
+       admissionData.invitation_token = admissionInvitationToken.value;
+     }
+
+
     if (!admissionData || Object.keys(admissionData).length === 0) {
       console.error('No admission data provided');
       alert('Please provide the required information');
       return;
     }
-    
-    // Send the admission data to the server
+
     let response;
+    // Use different endpoints based on whether it's an invitation or join request
     if (isInvitation) {
-      // This is an invitation acceptance
-      response = await axios.post(`/groups/${selectedGroup.value.id}/accept`, admissionData);
-      
-      // Check if the response indicates documents are pending review
+       // Invitation acceptance (might include password/docs)
+       // Use the token-based endpoint if available, otherwise the standard accept
+       if (admissionInvitationToken.value) {
+         console.log('Submitting via /member/accept-invitation with token');
+         response = await axios.post('/member/accept-invitation', admissionData); // Send token within data
+       } else {
+          console.log('Submitting via /groups/:id/accept');
+          response = await axios.post(`/groups/${selectedGroup.value.id}/accept`, admissionData);
+       }
+
       if (response.data && response.data.status === 'pending') {
-        alert('Your documents have been submitted for review. You will be notified when your membership is approved.');
-        // Dispatch a custom event to refresh the dashboard sidebar
-        window.dispatchEvent(new CustomEvent('group-data-updated'));
+        alert('Your submission is pending review. You will be notified upon approval.');
+        window.dispatchEvent(new CustomEvent('group-data-updated')); // Notify sidebar
       } else {
         alert(`You have successfully accepted the invitation to join ${selectedGroup.value.name || 'the group'}`);
       }
     } else {
-      // This is a regular join
+      // Regular join request (with password/docs)
+       console.log('Submitting via /groups/:id/join');
       response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
-      
-      // Check if the response indicates documents are pending review
       if (response.data && response.data.status === 'pending') {
-        alert('Your documents have been submitted for review. You will be notified when your membership is approved.');
-        // Dispatch a custom event to refresh the dashboard sidebar
-        window.dispatchEvent(new CustomEvent('group-data-updated'));
+        alert('Your join request is pending review. You will be notified upon approval.');
+        window.dispatchEvent(new CustomEvent('group-data-updated')); // Notify sidebar
       } else {
+        // This case (immediate approval on join with requirements) might be less common
         alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
       }
     }
-    
-    // Log the response
+
     console.log('Server response:', response.data);
-    
-    // Close the admission form
-    showAdmissionForm.value = false;
-    selectedGroup.value = null;
-    isReviewMode.value = false;
-    
-    // Refresh the groups list
-    fetchUserGroups();
+    closeAdmissionForm(); // Use helper
+    fetchUserGroups(); // Refresh sidebar
+     // Navigate if immediately approved (check response for groupId or success status)
+     const navigateGroupId = response.data?.groupId || (response.data?.status === 'approved' ? selectedGroup.value.id : null);
+     if (navigateGroupId) {
+        navigateToGroup(navigateGroupId);
+     }
+
   } catch (error) {
     console.error('Failed to submit admission form:', error);
     console.error('Error response:', error.response?.data);
-    
-    // Check if the error is related to password
-    if (error.response?.data?.error?.includes('password')) {
-      admissionError.value = error.response.data.error;
-    } else if (error.response?.data?.error?.includes('document')) {
-      // Handle document-related errors
-      admissionError.value = error.response.data.error;
-      alert('Document error: ' + error.response.data.error);
-    } else {
-      const actionText = selectedGroup.value.isInvitation ? 'accept invitation' : 'join group';
-      alert(`Failed to ${actionText}: ${error.response?.data?.error || 'Unknown error'}`);
+    const errorMsg = error.response?.data?.error || 'Unknown error';
+    admissionError.value = errorMsg; // Show error in the form if possible
+    if (!errorMsg.toLowerCase().includes('password')) { // Avoid duplicate alerts for password
+       alert(`Submission failed: ${errorMsg}`);
     }
   }
 }
 
-// Function to handle reviewing documents
+
+// Function to handle reviewing documents (triggered by AppSidebar)
 const handleReviewDocuments = async (groupId) => {
+   console.log(`app-layout handleReviewDocuments called for group: ${groupId}`); // Debug log
   try {
-    // Get the group details
-    const group = userGroups.value.find(g => g.id === groupId);
-    
+    // Fetch fresh group details to ensure we have the latest membership status and doc requirements
+    let group;
+     try {
+        const response = await axios.get(`/groups/${groupId}`);
+        group = response.data;
+     } catch (fetchError) {
+        console.error(`Failed to fetch group ${groupId} for document review:`, fetchError);
+        alert('Could not load group details for document review.');
+        return;
+     }
+
+
     if (!group) {
-      console.error('Group not found:', groupId);
+      console.error('Group not found for review:', groupId);
       alert('Group not found');
       return;
     }
-    
+
     // Set the selected group and show the admission form in review mode
     selectedGroup.value = group;
     isReviewMode.value = true;
-    showAdmissionForm.value = true;
+    showAdmissionForm.value = true; // Use the same admission form
     admissionError.value = '';
-    
-    // Close the dashboard sidebar
-    isDashboardSidebarOpen.value = false;
   } catch (error) {
-    console.error('Failed to review documents:', error);
-    alert('Failed to review documents: ' + (error.response?.data?.error || 'Unknown error'));
+    console.error('Failed to prepare document review:', error);
+    alert('Failed to prepare document review: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
 
-// Handle the group-data-updated event
+
+// Handle the group-data-updated event (emitted by AppSidebar or other components)
 const handleGroupDataUpdated = (event) => {
-  console.log('Group data updated event received in app-layout');
-  
-  // Check if this is a deletion event
-  if (event.detail && event.detail.isDeleted) {
-    console.log('Group deletion detected for group:', event.detail.groupId);
-    
-    // For group deletion, do minimal processing to avoid triggering session checks
-    // Clear the last used group if it matches the deleted group
-    if (lastUsedGroupId.value === event.detail.groupId) {
+  console.log('Group data updated event received in app-layout', event?.detail); // Log event detail
+  const isDeletion = event?.detail?.isDeleted === true;
+  const deletedGroupId = isDeletion ? localStorage.getItem('deletedGroupId') : null;
+
+  if (isDeletion && deletedGroupId) {
+    console.log('Group deletion confirmed for group:', deletedGroupId);
+    if (lastUsedGroupId.value === deletedGroupId) {
       console.log('Clearing last used group ID since it was deleted');
       lastUsedGroupId.value = null;
       removeLocalStorage('lastUsedGroupId');
     }
-    
-    // Empty the user groups array (will be refreshed on next view that needs it)
-    userGroups.value = [];
-    return; // Skip the rest of the processing
+    // Clear deletion flags AFTER handling
+    localStorage.removeItem('intentionalGroupDeletion');
+    localStorage.removeItem('deletedGroupId');
+    // No need to refresh here, handled by sidebar already or navigation
+  } else if (!isDeletion) {
+     // Non-deletion event or generic update, refresh the groups
+     console.log('Refreshing groups due to group-data-updated event.');
+     fetchUserGroups();
   }
-  
-  // Non-deletion event handling (existing code)
-  if (event.detail && event.detail.groupId && event.detail.isJoinRequest) {
-    console.log('Join request detected for group:', event.detail.groupId);
-    
-    // Find the group in userGroups
-    const groupIndex = userGroups.value.findIndex(g => g.id === event.detail.groupId);
-    
-    // If the group exists, update its isInvitation flag
-    if (groupIndex !== -1) {
-      // Create a new object to ensure reactivity
-      userGroups.value[groupIndex] = {
-        ...userGroups.value[groupIndex],
-        isInvitation: false
-      };
-    }
-  }
-  
-  // Refresh the groups list (for non-deletion events)
-  fetchUserGroups();
 }
+
 
 // Handle when a user leaves a group
 const handleUserLeftGroup = (event) => {
-  console.log('User left group event received in app-layout')
-  
-  // Check if the event has detail with groupId
-  if (event.detail && event.detail.groupId) {
+  console.log('User left group event received in app-layout', event?.detail)
+  if (event?.detail?.groupId) {
     console.log('User left group:', event.detail.groupId)
-    
-    // If the user is currently on the page of the group they left, redirect to profile
     if (route.path === `/group/${event.detail.groupId}`) {
       console.log('User is on the page of the group they left, redirecting to profile')
       router.push('/profile')
     }
-    
-    // If this was the last used group, clear it
     if (lastUsedGroupId.value === event.detail.groupId) {
       lastUsedGroupId.value = null
       removeLocalStorage('lastUsedGroupId')
     }
-    
-    // Refresh the groups list
-    fetchUserGroups()
+    fetchUserGroups() // Refresh sidebar
   }
 }
 
 // State for Group Admission Form
-const groupForAdmission = ref(null)
-const admissionInvitationToken = ref(null) // To store the token for email invites
+// selectedGroup is already defined
+const admissionInvitationToken = ref(null)
 
 // Reactive state for global error
 const globalError = ref(null)
 
-// Handler for email invitations requiring admission steps
+// Handler for email invitations requiring admission steps (triggered by AppSidebar)
 const handleProcessGroupAdmission = (payload) => {
   console.log("app-layout: Received process-group-admission event:", payload);
   if (payload && payload.group && payload.invitationToken) {
-    selectedGroup.value = payload.group; // Use selectedGroup instead of groupForAdmission
-    admissionInvitationToken.value = payload.invitationToken; // Store the token
-    admissionError.value = ''; // Clear any previous error
-    isReviewMode.value = false; // Ensure review mode is off
-    showAdmissionForm.value = true; // Open the form
+    selectedGroup.value = payload.group;
+    admissionInvitationToken.value = payload.invitationToken;
+    admissionError.value = '';
+    isReviewMode.value = false;
+    showAdmissionForm.value = true; // Open the admission form
   } else {
     console.error("Invalid payload received for process-group-admission");
     globalError.value = "Could not process the group invitation properly.";
@@ -803,60 +625,54 @@ const handleProcessGroupAdmission = (payload) => {
 // Close the admission form
 const closeAdmissionForm = () => {
   showAdmissionForm.value = false;
-  selectedGroup.value = null; // Clear selectedGroup
+  selectedGroup.value = null;
   admissionInvitationToken.value = null;
-  admissionError.value = ''; // Clear error
-  isReviewMode.value = false; // Reset review mode
+  admissionError.value = '';
+  isReviewMode.value = false;
 };
 
 onMounted(() => {
   lastUsedGroupId.value = getLocalStorage('lastUsedGroupId');
-  loadLayoutData(); // Load initial data
-  
+  loadLayoutData(); // Load initial data (will trigger group fetch if needed)
+
   // Event listener for successful group joins from FindGroupDialog
   window.addEventListener('group-joined-successfully', handleGroupJoinedEvent);
-  
-  // Event listener for group deletion
+
+  // Event listener for generic group data updates (including deletions handled above)
   window.addEventListener('group-data-updated', handleGroupDataUpdatedEvent);
+
+  // Event listener for user leaving a group
+   window.addEventListener('user-left-group', handleUserLeftGroupEvent); // Renamed handler slightly
+
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('group-joined-successfully', handleGroupJoinedEvent);
   window.removeEventListener('group-data-updated', handleGroupDataUpdatedEvent);
+   window.removeEventListener('user-left-group', handleUserLeftGroupEvent); // Renamed handler slightly
+
 });
 
-// Handle the group-joined-successfully event
+// Handle the group-joined-successfully event (from FindGroupDialog)
 const handleGroupJoinedEvent = (event) => {
   console.log('app-layout: Received group-joined-successfully event', event.detail);
-  fetchUserGroups(); // Refresh the user's group list
+  fetchUserGroups(); // Refresh the user's group list in the sidebar
   if (event.detail?.groupId) {
     navigateToGroup(event.detail.groupId); // Navigate to the newly joined group
   }
 };
 
-// Handle the group-data-updated event (specifically for deletions)
+// Handle the group-data-updated event (for deletions primarily now)
 const handleGroupDataUpdatedEvent = (event) => {
-  console.log('app-layout: Received group-data-updated event', event.detail);
-  if (event.detail?.isDeleted === true) {
-    const deletedGroupId = localStorage.getItem('deletedGroupId'); // Get the ID stored before deletion
-    console.log('app-layout: Group deletion confirmed, deletedGroupId:', deletedGroupId);
-    
-    // If the deleted group was the last visited group, clear the last visited state
-    if (lastUsedGroupId.value === deletedGroupId) {
-      console.log('app-layout: Deleted group was the last visited group, clearing lastUsedGroupId.');
-      lastUsedGroupId.value = null;
-      removeLocalStorage('lastUsedGroupId');
-    }
-    
-    // Clear the deletion flags AFTER handling
-    localStorage.removeItem('intentionalGroupDeletion');
-    localStorage.removeItem('deletedGroupId');
-    
-    // No need to fetchUserGroups here, as the sidebar event handler should trigger it
-    // and we might be navigating away anyway.
-  } else {
-    // If it's not a deletion, just refresh the groups
-    fetchUserGroups();
-  }
+  // Delegate most handling to the main handleGroupDataUpdated function
+  handleGroupDataUpdated(event);
 };
+
+// Handle the user-left-group event
+const handleUserLeftGroupEvent = (event) => {
+   // Delegate handling to the main handleUserLeftGroup function
+   handleUserLeftGroup(event);
+};
+
+
 </script>

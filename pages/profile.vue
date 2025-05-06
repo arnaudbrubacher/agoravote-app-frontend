@@ -2,7 +2,6 @@
   <div class="container mx-auto p-6 space-y-6">
     <!-- Profile header with consistent styling -->
     <div class="w-full max-w-2xl mx-auto flex items-center justify-between mb-8">
-      <!-- User Info Group (Left) -->
       <div class="flex items-center">
         <div class="flex-shrink-0 mr-3">
           <div v-if="!profilePictureUrl" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
@@ -16,27 +15,6 @@
           />
         </div>
         <h1 class="text-xl font-semibold">{{ userData?.name || 'User' }}</h1>
-      </div>
-        
-      <!-- Action Buttons (Right) -->
-      <div class="flex items-center space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="navigateToSettings" 
-        >
-          <Settings class="h-4 w-4 mr-1" />
-          User Settings
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="logout"
-          :disabled="isLoggingOut"
-        >
-          <LogOut class="h-4 w-4 mr-1" />
-          {{ isLoggingOut ? 'Logging out...' : 'Log Out' }}
-        </Button>
       </div>
     </div>
     
@@ -114,7 +92,7 @@ definePageMeta({
 
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Settings, LogOut } from 'lucide-vue-next'
+import { User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import LucideIcon from '@/components/LucideIcon.vue'
 import NewPostDialog from '@/components/posts/NewPostDialog.vue'
@@ -125,7 +103,6 @@ import { useUserProfile } from '@/composables/useUserProfile'
 import { useAlert } from '@/composables/useAlert'
 import axios from 'axios'
 import Session from 'supertokens-web-js/recipe/session'
-import { signOut } from '@/src/utils/auth'
 
 const router = useRouter()
 const fileInput = ref(null)
@@ -154,14 +131,6 @@ const {
 } = useUserPosts()
 
 const { alert, confirm } = useAlert()
-
-// Logging out state
-const isLoggingOut = ref(false)
-
-// Navigation function
-const navigateToSettings = () => {
-  router.push('/usersettings')
-}
 
 // Trigger file input for profile picture
 const triggerFileInput = () => {
@@ -204,28 +173,6 @@ const handlePostDeleted = async (post) => {
     selectedPost.value = null
   } catch (error) {
     console.error('Failed to delete post:', error)
-  }
-}
-
-// Log out user
-const logout = async () => {
-  const confirmed = await confirm(
-    'Are you sure you want to log out?',
-    'Confirm Logout',
-    { actionText: 'Yes, log out', cancelText: 'Cancel' }
-  )
-  
-  if (confirmed) {
-    isLoggingOut.value = true
-    try {
-      await signOut(); 
-      window.location.href = '/auth'; // Full refresh redirect
-    } catch(logoutError) {
-        console.error('Logout failed:', logoutError);
-        alert('Logout failed. Please try again.');
-    } finally {
-      isLoggingOut.value = false
-    }
   }
 }
 

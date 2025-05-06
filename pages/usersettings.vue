@@ -2,14 +2,6 @@
   <div class="container mx-auto p-6 space-y-6">
     <!-- Page Header with Back Button and Title -->
     <div class="max-w-2xl mx-auto flex items-center mb-6">
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        class="mr-2"
-        @click="goBack"
-      >
-        <ArrowLeft class="h-5 w-5" />
-      </Button>
       <h1 class="text-2xl font-semibold">User Settings</h1>
     </div>
 
@@ -212,7 +204,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Camera, CheckCircle, AlertCircle, LogOut, Trash, ArrowLeft, Save } from 'lucide-vue-next'
+import { User, Camera, CheckCircle, AlertCircle, LogOut, Trash, Save } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -436,11 +428,6 @@ const resendVerification = async () => {
   } finally {
     resendLoading.value = false
   }
-}
-
-// Function to navigate back
-const goBack = () => {
-  router.back()
 }
 
 // Fetch user data on component mount
