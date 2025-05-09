@@ -53,6 +53,7 @@
 
     <!-- Group content tabs -->
     <GroupTabs
+      v-model:modelValue="activeTab"
       :group="group"
       :posts="posts"
       :votes="votes"
@@ -182,6 +183,10 @@ import { useGroupVotes } from '@/composables/useGroupVotes'
 // Get group id from route
 const route = useRoute()
 const router = useRouter()
+
+// Reactive ref for controlling the active tab in GroupTabs.vue
+// Assuming 'posts' or similar is your default. Adjust if needed.
+const activeTab = ref('posts') 
 
 // Check for both uppercase and lowercase param options
 // This makes the code more robust against routing config differences
@@ -317,6 +322,23 @@ watch(selectedVote, (newValue, oldValue) => {
 });
 // END WATCHER
 
+// Helper to process Stripe redirect query parameters
+const processStripeRedirectParams = () => {
+  const query = route.query;
+  if (query.redirect_status) {
+    if (query.redirect_status === 'succeeded') {
+      showAlert('Payment Successful!', 'Your subscription has been processed and your settings tab may reflect the update shortly.');
+      activeTab.value = 'settings'; // Switch to settings tab
+    } else {
+      showAlert('Payment Issue', `There was an issue with your payment: ${query.redirect_status}. Please check your payment details or try again.`);
+      activeTab.value = 'settings'; // Switch to settings tab to show any billing component errors
+    }
+    // Clean the URL by removing Stripe-specific query parameters
+    const { payment_intent, payment_intent_client_secret, redirect_status, ...restQuery } = query;
+    router.replace({ query: restQuery });
+  }
+};
+
 // ----- NEW EVENT LISTENER LOGIC -----
 const handleGlobalGroupUpdate = (event) => {
   console.log('[Group Page] Received group-data-updated event:', event.detail);
@@ -352,6 +374,9 @@ onMounted(async () => {
     loading.value = false;
   }
   
+  // Process Stripe redirect parameters on initial load
+  processStripeRedirectParams();
+
   // Add the global event listener
   window.addEventListener('group-data-updated', handleGlobalGroupUpdate);
 })
@@ -361,7 +386,17 @@ onBeforeUnmount(() => {
   // Remove the global event listener
   window.removeEventListener('group-data-updated', handleGlobalGroupUpdate);
 })
-// ----- END NEW EVENT LISTENER LOGIC -----
+
+// Watch for query parameter changes (e.g., if user navigates with browser back/forward after redirect)
+watch(() => route.query, (newQuery, oldQuery) => {
+  // Check if relevant Stripe params are present to avoid processing unrelated query changes
+  if (newQuery.redirect_status && 
+      (newQuery.redirect_status !== oldQuery.redirect_status || 
+       newQuery.payment_intent !== oldQuery.payment_intent)) {
+    processStripeRedirectParams();
+  }
+}, { deep: true });
+// END WATCHER
 
 // Navigation helpers
 const navigateToProfile = () => {

@@ -1,6 +1,6 @@
 <!-- components/group/GroupTabs.vue -->
 <template>
-  <Tabs defaultValue="votes" class="w-full">
+  <Tabs :modelValue="props.modelValue" @update:modelValue="handleTabChange" class="w-full">
     <TabsList class="grid w-full" :style="`grid-template-columns: repeat(${tabCount}, minmax(0, 1fr))`">
       <TabsTrigger value="votes" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
         <span class="flex items-center">
@@ -125,6 +125,10 @@ const props = defineProps({
   fetchGroup: {
     type: Function,
     required: true
+  },
+  modelValue: {
+    type: String,
+    required: true 
   }
 })
 
@@ -158,6 +162,12 @@ const emit = defineEmits([
   'invite-member',
   'invite-member-by-email',
   'group-updated',
-  'group-deleted'
+  'group-deleted',
+  'update:modelValue'
 ])
+
+// Function to emit the update event when the tab changes
+const handleTabChange = (newValue) => {
+  emit('update:modelValue', newValue)
+}
 </script>

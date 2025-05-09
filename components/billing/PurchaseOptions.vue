@@ -3,47 +3,36 @@
     <h2 class="text-xl font-medium">Choose Your Plan</h2>
 
     <!-- Option Selection -->
-    <RadioGroup v-model="selectedOption" :disabled="isLoading || isProcessingPayment">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Single Election Option -->
-        <Label
-          for="single-election"
-          :class="[
-            'flex flex-col items-start p-4 border rounded-md cursor-pointer transition-colors',
-            selectedOption === 'single' ? 'bg-primary/10 border-primary ring-2 ring-primary' : 'hover:bg-muted/50',
-            (isLoading || isProcessingPayment) ? 'opacity-50 cursor-not-allowed' : ''
-          ]"
-        >
-          <div class="flex items-center justify-between w-full mb-2">
-            <span class="font-semibold">Single Election Purchase</span>
-            <RadioGroupItem id="single-election" value="single" />
-          </div>
-          <p class="text-sm text-muted-foreground mb-1">Pay per election you create.</p>
-          <p class="text-lg font-semibold">$5.00</p> 
-          <p class="text-xs text-muted-foreground">(One-time payment per vote)</p>
-        </Label>
-
+    <!-- Now only shows the monthly subscription option -->
+    <RadioGroup v-model="selectedOption" :disabled="isLoading || isProcessingPayment || isLoadingPrices">
+      <div class="grid grid-cols-1 gap-4">
         <!-- Monthly Subscription Option -->
         <Label
           for="monthly-subscription"
           :class="[
             'flex flex-col items-start p-4 border rounded-md cursor-pointer transition-colors',
             selectedOption === 'monthly' ? 'bg-primary/10 border-primary ring-2 ring-primary' : 'hover:bg-muted/50',
-            (isLoading || isProcessingPayment) ? 'opacity-50 cursor-not-allowed' : ''
+            (isLoading || isProcessingPayment || isLoadingPrices) ? 'opacity-50 cursor-not-allowed' : ''
           ]"
         >
            <div class="flex items-center justify-between w-full mb-2">
             <span class="font-semibold">Monthly Subscription</span>
+            <!-- Ensure RadioGroupItem value matches selectedOption state -->
             <RadioGroupItem id="monthly-subscription" value="monthly" />
           </div>
           <p class="text-sm text-muted-foreground mb-1">Create unlimited elections.</p>
-          <p class="text-lg font-semibold">$20.00 / month</p>
+           <!-- Display Fetched Price -->
+          <p class="text-lg font-semibold" v-if="monthlyPriceDetails">{{ monthlyPriceDetails.formatted }}</p>
+          <p class="text-lg font-semibold animate-pulse" v-else-if="isLoadingPrices">Loading...</p> <!-- Loading state -->
+           <p class="text-sm text-destructive" v-else>Price unavailable</p> <!-- Error state -->
+
            <p class="text-xs text-muted-foreground">(Billed monthly)</p>
         </Label>
       </div>
     </RadioGroup>
 
     <!-- Stripe Payment Element Container -->
+    <!-- Conditionally rendered only when a client secret exists -->
     <div v-if="stripeClientSecret" id="payment-element-purchase" class="py-4 border-t mt-4 pt-4">
       <p class="text-sm font-medium mb-2">Enter Payment Details:</p>
       <!-- Stripe Elements will mount here -->
@@ -107,7 +96,8 @@ const props = defineProps({
 });
 
 // --- State ---
-const selectedOption = ref(null); // 'single' or 'monthly'
+// selectedOption defaults to 'monthly' since it's the only option
+const selectedOption = ref('monthly'); 
 const isLoading = ref(false);
 const isProcessingPayment = ref(false);
 const stripeClientSecret = ref(null);
@@ -120,18 +110,29 @@ const isAlertOpen = ref(false)
 const alertTitle = ref('')
 const alertMessage = ref('')
 
+// --- New State for Prices ---
+const isLoadingPrices = ref(false);
+const priceFetchError = ref(null);
+// Removed singlePriceDetails
+// const singlePriceDetails = ref(null);
+const monthlyPriceDetails = ref(null);
+
 // --- Stripe Setup ---
-// IMPORTANT: Replace with your actual keys and Price IDs from your Stripe dashboard
-const stripePublishableKey = 'pk_test_YOUR_PUBLISHABLE_KEY'; 
-const singleElectionPriceId = 'price_YOUR_SINGLE_ELECTION_PRICE_ID';
-const monthlySubscriptionPriceId = 'price_YOUR_MONTHLY_SUBSCRIPTION_PRICE_ID';
+const stripePublishableKey = 'pk_test_51RLFlZH0qQW9H6xGryuJv11JK97ZRYPlu0PH3efCPnt8NGGDU5v4K9iYzjXfCi8qnBzhqK3g2y7F7VyZz6lVvCrH00XUqBQyfS'; 
+// Removed singleElectionPriceId
+// const singleElectionPriceId = 'price_1RLQdbH0qQW9H6xGhoNW5Bfw'; 
+const monthlySubscriptionPriceId = 'price_1RLQb4H0qQW9H6xGYOaHK6Cu'; 
 
 const stripePromise = loadStripe(stripePublishableKey);
 
 onMounted(async () => {
   stripe.value = await stripePromise;
-  // TODO: Optionally fetch current subscription status for the group/user
-  // to potentially pre-select 'monthly' or disable options.
+  await fetchPriceDetails(); // Fetch prices when component mounts
+  // Since 'monthly' is the only option, maybe auto-initiate payment?
+  // Consider UX implications before doing this.
+  // if (monthlyPriceDetails.value) { 
+  //    await initiatePayment(); 
+  // } 
 });
 
 // --- Methods ---
@@ -141,19 +142,18 @@ function showAlert(title, message) {
   isAlertOpen.value = true
 }
 
-watch(selectedOption, (newVal, oldVal) => {
-  // Reset payment state if the option changes after payment element is shown
-  if (stripeClientSecret.value && newVal !== oldVal) {
-      stripeClientSecret.value = null;
-      paymentError.value = null;
-      // Destroy previous elements instance if needed (optional, Stripe might handle it)
-      elements.value = null; 
-  }
-});
+// Watcher for selectedOption might not be needed anymore if it defaults to 'monthly'
+// and never changes. Removing it for now.
+// watch(selectedOption, (newVal, oldVal) => {
+//   if (stripeClientSecret.value && newVal !== oldVal) {
+//       stripeClientSecret.value = null;
+//       paymentError.value = null;
+//       elements.value = null; 
+//   }
+// });
 
 async function handlePurchaseAction() {
-  if (!selectedOption.value) return;
-
+  // Since 'monthly' is pre-selected, no need to check !selectedOption.value
   if (!stripeClientSecret.value) {
     await initiatePayment();
   } else {
@@ -161,22 +161,49 @@ async function handlePurchaseAction() {
   }
 }
 
+async function fetchPriceDetails() {
+  isLoadingPrices.value = true;
+  priceFetchError.value = null;
+  // Removed singlePriceDetails assignment
+  // singlePriceDetails.value = null;
+  monthlyPriceDetails.value = null;
+  try {
+    console.log('Fetching price details from /api/payments/prices...');
+    const response = await axios.get('/api/payments/prices');
+    const prices = response.data;
+    console.log('Received price details:', prices);
+
+    // Only check for monthly price
+    if (prices[monthlySubscriptionPriceId]) {
+      monthlyPriceDetails.value = prices[monthlySubscriptionPriceId];
+    } else {
+      console.error(`Price details not found for monthly subscription ID: ${monthlySubscriptionPriceId}`);
+      throw new Error('Could not load subscription price details.');
+    }
+
+  } catch (err) {
+    console.error("Error fetching price details:", err);
+    priceFetchError.value = `Failed to load prices: ${err.response?.data?.error || err.message}`;
+  } finally {
+    isLoadingPrices.value = false;
+  }
+}
+
 async function initiatePayment() {
-  if (!selectedOption.value || isLoading.value) return;
+  // Removed check for selectedOption, assuming 'monthly'
+  if (isLoading.value) return;
 
   isLoading.value = true;
   paymentError.value = null;
-  stripeClientSecret.value = null; // Clear previous state
+  stripeClientSecret.value = null; 
 
-  const priceId = selectedOption.value === 'single' 
-                    ? singleElectionPriceId 
-                    : monthlySubscriptionPriceId;
+  // priceId is now always the monthly one
+  const priceId = monthlySubscriptionPriceId; 
 
   try {
     console.log(`Initiating payment for group ${props.groupId} with price ${priceId}`);
     
-    // Call backend to create PaymentIntent or Subscription setup
-    const response = await axios.post('/api/payments/prepare-purchase', { // Use a dedicated endpoint
+    const response = await axios.post('/api/payments/prepare-purchase', {
       priceId: priceId,
       groupId: props.groupId 
     });
@@ -187,82 +214,87 @@ async function initiatePayment() {
 
     stripeClientSecret.value = response.data.clientSecret;
 
-    // Initialize Stripe Elements
-    await nextTick(); // Ensure the #payment-element-purchase div exists
+    await nextTick(); 
     
     elements.value = stripe.value.elements({ clientSecret: stripeClientSecret.value });
     const paymentElement = elements.value.create('payment');
     paymentElement.mount('#payment-element-purchase');
+    
+    // Set isLoading to false after mounting the payment element
+    isLoading.value = false;
 
   } catch (err) {
     console.error("Error initiating payment:", err);
     paymentError.value = `Failed to prepare payment: ${err.response?.data?.error || err.message}`;
-    showAlert('Payment Setup Error', paymentError.value);
-  } finally {
-    isLoading.value = false;
+    isLoading.value = false; 
+    showAlert('Payment Error', paymentError.value);
   }
 }
 
 async function confirmPayment() {
-  if (!stripe.value || !elements.value || isProcessingPayment.value) {
-    paymentError.value = "Payment system not ready or already processing.";
-    return;
-  }
+  if (!elements.value || isProcessingPayment.value) return;
 
   isProcessingPayment.value = true;
   paymentError.value = null;
 
-  // Define the return_url: Where Stripe redirects after authentication (if needed)
-  // This page should check the status of the PaymentIntent/SetupIntent
-  const returnUrl = `${window.location.origin}/group/${props.groupId}/purchase?status=complete`; 
-
   try {
-    // Confirmation depends on whether it's a one-time or subscription setup
-    let error;
-    if (selectedOption.value === 'single') {
-        // Confirm PaymentIntent for one-time purchase
-        ({ error } = await stripe.value.confirmPayment({
-            elements: elements.value,
-            confirmParams: {
-                return_url: returnUrl,
-            },
-            redirect: 'if_required' // Handle result directly if no redirect needed
-        }));
-    } else { // Monthly subscription
-        // Confirm SetupIntent associated with the subscription
-        // The backend should ideally return a SetupIntent client_secret for subscriptions
-        // OR confirm the PaymentIntent of the first invoice.
-        // Assuming confirmPayment works for the first invoice's PI:
-         ({ error } = await stripe.value.confirmPayment({ // Adjust if using confirmSetup
-            elements: elements.value,
-            confirmParams: {
-                return_url: returnUrl,
-            },
-            redirect: 'if_required'
-        }));
-    }
+    const { error, paymentIntent } = await stripe.value.confirmPayment({
+      elements: elements.value,
+      confirmParams: {
+        // Updated return_url to point to the main group page
+        // Stripe will append payment_intent, payment_intent_client_secret, and redirect_status
+        return_url: `${window.location.origin}/group/${props.groupId}`,
+      },
+    });
 
     if (error) {
-      // Handle immediate errors (e.g., invalid card details, declined)
-      console.error("Stripe confirmation error:", error);
+      // Handle errors from Stripe.js (e.g., card declined)
+      console.error("Stripe confirmPayment error:", error);
+      // Use error.message - more user friendly than error.type
       paymentError.value = error.message || "An unexpected payment error occurred.";
       showAlert('Payment Failed', paymentError.value);
-      isProcessingPayment.value = false; // Re-enable button
+      // Only reset processing state on actionable error for user
+      isProcessingPayment.value = false; 
     } else {
-      // Payment submitted, potentially processing or succeeded immediately.
-      // If redirect: 'if_required' was used and no redirect happened, it succeeded.
-      console.log("Payment/Setup submitted or succeeded. Waiting for server confirmation via webhook or redirect.");
-      // Show success message (can be improved by checking status on returnUrl)
-      showAlert('Payment Processing', 'Your payment is being processed. You might be redirected.');
-      // Don't reset processing flag here if redirect might happen
-      // isProcessingPayment.value = false; 
+      // Payment succeeded (or requires further action like 3DS)
+      console.log("PaymentIntent Status:", paymentIntent.status);
+      if (paymentIntent.status === 'succeeded') {
+        showAlert('Payment Successful!', 'Your subscription has been activated.');
+        // Optionally, redirect or update UI based on success
+        // Reset state after showing success alert
+        // Note: isProcessingPayment remains true until alert is dismissed
+        // Consider resetting state AFTER alert dismissal or navigation.
+        stripeClientSecret.value = null; // Reset to hide payment element
+
+      } else if (paymentIntent.status === 'processing') {
+         // Inform the user the payment is processing
+         showAlert('Payment Processing', 'Your payment is processing. We will update your subscription status soon.');
+         // Keep processing state active
+      } else if (paymentIntent.status === 'requires_payment_method') {
+         // Likely an issue with the payment method during confirmation
+         paymentError.value = "Payment failed. Please try another payment method.";
+         showAlert('Payment Failed', paymentError.value);
+         isProcessingPayment.value = false; 
+      } else if (paymentIntent.status === 'requires_action') {
+        // Redirects for 3D Secure will be handled by Stripe.js automatically
+        // if using payment elements. No explicit handling needed here usually.
+         console.log('Payment requires further action (e.g., 3D Secure).');
+         // Keep processing state active while Stripe handles the redirect/modal
+      } else {
+        paymentError.value = `Unexpected payment status: ${paymentIntent.status}`;
+        showAlert('Payment Status Unknown', paymentError.value);
+        isProcessingPayment.value = false; 
+      }
     }
   } catch (err) {
-      console.error("Exception during confirmPayment:", err);
-      paymentError.value = "A critical error occurred during payment processing.";
-      showAlert('Payment Error', paymentError.value);
-      isProcessingPayment.value = false;
+    // Catch any unexpected errors during the confirmation process
+    console.error("Unexpected error during payment confirmation:", err);
+    paymentError.value = "An unexpected error occurred during payment confirmation.";
+    showAlert('Error', paymentError.value);
+    isProcessingPayment.value = false; // Reset processing state on unexpected error
   }
+  // Do NOT reset isProcessingPayment here if payment is successful/processing/requires_action,
+  // only on failure states where the user needs to retry.
 }
 
 </script>

@@ -17,7 +17,7 @@ export function useGroupData(groupId) {
   const fetchGroup = async () => {
     try {
       isLoading.value = true
-      const response = await axios.get(`/groups/${groupId}`)
+      const response = await axios.get(`/api/groups/${groupId}`)
       group.value = response.data
       
       // Add debugging to see what's coming from API

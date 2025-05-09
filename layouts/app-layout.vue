@@ -248,22 +248,22 @@ const fetchUserGroups = async () => {
   }
   try {
     isLoadingGroups.value = true;
-    console.log('Fetching user groups...'); // Added log
-    const response = await axios.get('/user/groups');
+    console.log('Fetching user groups from /api/groups/user-groups...'); // Updated log
+    const response = await axios.get('/api/groups/user-groups'); // Corrected path
     console.log('Raw API response for user groups:', response.data);
 
     if (Array.isArray(response.data)) {
       userGroups.value = response.data;
       console.log('User groups set:', userGroups.value);
     } else if (response.data === null) {
-      console.warn('/user/groups endpoint returned null, defaulting to empty array');
+      console.warn('/api/groups/user-groups endpoint returned null, defaulting to empty array');
       userGroups.value = [];
     } else if (typeof response.data === 'object' && response.data !== null) {
       const possibleGroups = response.data.groups || response.data.data || [];
-      console.warn('/user/groups returned an object instead of array, attempting to extract groups:', possibleGroups);
+      console.warn('/api/groups/user-groups returned an object instead of array, attempting to extract groups:', possibleGroups);
       userGroups.value = Array.isArray(possibleGroups) ? possibleGroups : [];
     } else {
-      console.warn('/user/groups returned unexpected data type:', typeof response.data);
+      console.warn('/api/groups/user-groups returned unexpected data type:', typeof response.data);
       userGroups.value = [];
     }
 
