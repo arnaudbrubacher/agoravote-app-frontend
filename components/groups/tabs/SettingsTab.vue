@@ -239,10 +239,65 @@
     </div>
 
     <!-- Billing Section (Integrated) -->
-    <PurchaseOptions
-        v-if="props.group && props.group.id"
-        :group-id="props.group.id"
-    />
+    <div class="border rounded-lg p-4 space-y-4">
+      <h3 class="text-lg font-medium border-b pb-2">Billing</h3>
+      
+      <!-- Subscription Status -->
+      <div v-if="props.group.stripe_subscription_id" class="mb-4">
+        <div class="flex items-center mb-2">
+          <span class="font-medium mr-2">Status:</span>
+          <Badge v-if="props.group.subscription_status === 'active'" class="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+            Active
+          </Badge>
+          <Badge v-else-if="props.group.subscription_status === 'incomplete'" class="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+            Processing
+          </Badge>
+          <Badge v-else-if="props.group.subscription_status === 'past_due' || props.group.subscription_status === 'unpaid'" class="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+            Payment Issue
+          </Badge>
+          <Badge v-else class="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+            {{ props.group.subscription_status || 'Unknown' }}
+          </Badge>
+        </div>
+        
+        <div v-if="formattedRenewalDate" class="mb-2">
+          <span class="font-medium">Current Period Ends:</span> {{ formattedRenewalDate }}
+        </div>
+        
+        <div v-if="props.group.subscription_status === 'active'" class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          Your subscription is active. You have full access to all premium features.
+        </div>
+        <div v-else-if="props.group.subscription_status === 'incomplete'" class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          Your payment is being processed. The subscription will become active shortly.
+          <div class="flex gap-2 mt-2">
+            <Button variant="outline" size="sm" @click="refreshPage">
+              Refresh Status
+            </Button>
+            <Button variant="destructive" size="sm" @click="deleteIncompleteSubscription" :disabled="isDeletingSubscription">
+              <span v-if="isDeletingSubscription">Deleting...</span>
+              <span v-else>Delete Incomplete Subscription</span>
+            </Button>
+          </div>
+        </div>
+        <div v-else-if="props.group.subscription_status === 'past_due' || props.group.subscription_status === 'unpaid'" class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          There was an issue with your latest payment. Please update your payment details.
+        </div>
+        
+        <p v-if="!props.group.stripe_subscription_id" class="text-sm text-orange-600 mt-2">
+          Note: Subscription active, but some details might still be updating.
+        </p>
+      </div>
+      
+      <!-- Purchase Options -->
+      <div v-if="!hasActiveMonthlySubscription && props.group && props.group.id">
+        <h4 class="text-md font-medium mb-2">Choose Your Plan</h4>
+        <PurchaseOptions :group-id="props.group.id" />
+      </div>
+      
+      <div v-if="!props.group || !props.group.id" class="text-sm text-muted-foreground">
+        Group information not available for billing.
+      </div>
+    </div>
 
     <!-- Action Buttons Section -->
     <div class="pt-6 border-t flex justify-between w-full">
@@ -341,6 +396,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { cloneDeep } from 'lodash'
 import PurchaseOptions from '@/components/billing/PurchaseOptions.vue'
+import { Badge } from '~/components/ui/badge'
 
 const props = defineProps({
     group: {
@@ -766,4 +822,160 @@ const changePassword = async () => {
         }
     }
 }
-</script> 
+
+// --- BEGIN NEW COMPUTED PROPERTIES FOR BILLING ---
+const testMonthlyPriceId = 'price_1RLQb4H0qQW9H6xGYOaHK6Cu'; // Updated to the actual price ID from logs
+
+const hasActiveMonthlySubscription = computed(() => {
+  console.log('[SettingsTab] Checking for active subscription. Group data:', JSON.parse(JSON.stringify(props.group)));
+  console.log('[SettingsTab] props.group.subscription_status:', props.group?.subscription_status);
+  console.log('[SettingsTab] props.group.subscription_price_id:', props.group?.subscription_price_id);
+  console.log('[SettingsTab] testMonthlyPriceId:', testMonthlyPriceId);
+  console.log('[SettingsTab] props.group.stripe_subscription_id:', props.group?.stripe_subscription_id);
+  
+  const isActive = props.group &&
+         props.group.subscription_status === 'active' &&
+         props.group.subscription_price_id === testMonthlyPriceId &&
+         props.group.stripe_subscription_id;
+  console.log('[SettingsTab] hasActiveMonthlySubscription result:', isActive);
+  return isActive;
+});
+
+const formattedRenewalDate = computed(() => {
+  if (props.group && props.group.subscription_current_period_end) {
+    try {
+      // Stripe's period end is often a Unix timestamp (seconds). Convert to milliseconds for JS Date.
+      // If it's already an ISO string from your backend, new Date() will parse it.
+      let dateValue = props.group.subscription_current_period_end;
+      if (typeof dateValue === 'string' && /^[0-9]+$/.test(dateValue)) { // If it's a string of numbers (timestamp)
+        dateValue = parseInt(dateValue, 10);
+      }
+      if (typeof dateValue === 'number' && dateValue > 1000000000 && dateValue < 99999999999) { // Heuristic for Unix timestamp in seconds
+         dateValue = dateValue * 1000;
+      }
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) { // Check for invalid date
+          console.warn("Invalid date for subscription_current_period_end:", props.group.subscription_current_period_end);
+          // Attempt to parse as ISO string if it failed as timestamp
+          const isoDate = new Date(props.group.subscription_current_period_end);
+          if(!isNaN(isoDate.getTime())) return isoDate.toLocaleDateString();
+          return 'Invalid Date';
+      }
+      return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (e) {
+      console.error("Error formatting renewal date:", props.group.subscription_current_period_end, e);
+      return props.group.subscription_current_period_end; // Fallback to raw value
+    }
+  }
+  return null;
+});
+
+// --- END NEW COMPUTED PROPERTIES FOR BILLING ---
+
+// Helper function to refresh the page to update subscription status
+function refreshPage() {
+  window.location.reload();
+}
+
+// Add state for delete subscription button
+const isDeletingSubscription = ref(false);
+
+// Add the delete subscription function
+async function deleteIncompleteSubscription() {
+  if (isDeletingSubscription.value) return;
+  
+  isDeletingSubscription.value = true;
+  
+  try {
+    // Send a PUT request to update the group with null subscription fields
+    const response = await axios.put(`/api/groups/${props.group.id}`, {
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      subscription_status: null, 
+      subscription_price_id: null,
+      subscription_current_period_end: null
+    });
+    
+    console.log("Subscription deleted successfully:", response.data);
+    alert('The incomplete subscription has been deleted successfully.');
+    
+    // Refresh the page to update the UI
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+    
+  } catch (err) {
+    console.error("Error deleting subscription:", err);
+    alert(`Failed to delete subscription: ${err.response?.data?.error || err.message}`);
+  } finally {
+    isDeletingSubscription.value = false;
+  }
+}
+
+// Add auto-refresh timer logic for incomplete subscriptions
+const refreshInterval = ref(null);
+const refreshing = ref(false);
+
+const setupAutoRefresh = () => {
+  // Clear any existing interval
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value);
+    refreshInterval.value = null;
+  }
+  
+  // If subscription status is incomplete, set up periodic refresh
+  if (props.group?.subscription_status === 'incomplete') {
+    console.log('Setting up auto-refresh for incomplete subscription status');
+    refreshInterval.value = setInterval(async () => {
+      if (refreshing.value) return; // Prevent multiple simultaneous refreshes
+      
+      refreshing.value = true;
+      console.log('Auto-refreshing group data to check subscription status');
+      
+      try {
+        if (props.fetchGroup) {
+          await props.fetchGroup();
+          console.log('Group data refreshed, new subscription status:', props.group?.subscription_status);
+          
+          // If status is no longer incomplete, clear the interval
+          if (props.group?.subscription_status !== 'incomplete') {
+            console.log('Subscription status changed, stopping auto-refresh');
+            clearInterval(refreshInterval.value);
+            refreshInterval.value = null;
+          }
+        }
+      } catch (err) {
+        console.error('Error refreshing group data:', err);
+      } finally {
+        refreshing.value = false;
+      }
+    }, 10000); // Check every 10 seconds
+  }
+};
+
+// Watch for changes in subscription status
+watch(() => props.group?.subscription_status, (newStatus, oldStatus) => {
+  console.log(`Subscription status changed from ${oldStatus} to ${newStatus}`);
+  setupAutoRefresh();
+}, { immediate: true });
+
+// Set up auto-refresh on mount if needed
+onMounted(() => {
+  setupAutoRefresh();
+});
+
+// Clean up on unmount
+onBeforeUnmount(() => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value);
+    refreshInterval.value = null;
+  }
+});
+</script>
+
+<style scoped>
+/* Add any specific styles if needed */
+.capitalize {
+  text-transform: capitalize;
+}
+</style> 

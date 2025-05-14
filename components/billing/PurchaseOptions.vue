@@ -43,15 +43,30 @@
 
     <!-- Action Button -->
     <div class="flex justify-end pt-4 border-t">
-       <Button 
+      <div class="flex gap-2">
+        <!-- Delete Subscription Button (only shown when an incomplete subscription might exist) -->
+        <Button 
+          v-if="stripeClientSecret"
+          @click="deleteIncompleteSubscription"
+          variant="destructive"
+          size="sm"
+          :disabled="isDeletingSubscription"
+        >
+          <span v-if="isDeletingSubscription">Deleting...</span>
+          <span v-else>Delete Incomplete Subscription</span>
+        </Button>
+        
+        <!-- Main Action Button -->
+        <Button 
           @click="handlePurchaseAction"
-          :disabled="isLoading || isProcessingPayment || !selectedOption"
+          :disabled="isLoading || isProcessingPayment || !selectedOption || isDeletingSubscription"
         >
           <span v-if="isLoading">Preparing...</span>
           <span v-else-if="isProcessingPayment">Processing Payment...</span>
           <span v-else-if="!stripeClientSecret">Proceed to Payment</span>
           <span v-else>Confirm Purchase</span>
         </Button>
+      </div>
     </div>
 
   </div>
@@ -104,6 +119,7 @@ const stripeClientSecret = ref(null);
 const paymentError = ref(null);
 const stripe = ref(null);
 const elements = ref(null);
+const isDeletingSubscription = ref(false);
 
 // Alert Dialog State
 const isAlertOpen = ref(false)
@@ -241,9 +257,8 @@ async function confirmPayment() {
     const { error, paymentIntent } = await stripe.value.confirmPayment({
       elements: elements.value,
       confirmParams: {
-        // Updated return_url to point to the main group page
-        // Stripe will append payment_intent, payment_intent_client_secret, and redirect_status
-        return_url: `${window.location.origin}/group/${props.groupId}`,
+        // Add a refresh parameter to indicate subscription status should be checked
+        return_url: `${window.location.origin}/group/${props.groupId}?refresh_subscription=true`,
       },
     });
 
@@ -295,6 +310,36 @@ async function confirmPayment() {
   }
   // Do NOT reset isProcessingPayment here if payment is successful/processing/requires_action,
   // only on failure states where the user needs to retry.
+}
+
+async function deleteIncompleteSubscription() {
+  if (isDeletingSubscription.value) return;
+  
+  isDeletingSubscription.value = true;
+  
+  try {
+    // Send a PUT request to update the group with null subscription fields
+    const response = await axios.put(`/api/groups/${props.groupId}`, {
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      subscription_status: null,
+      subscription_price_id: null,
+      subscription_current_period_end: null
+    });
+    
+    console.log("Subscription deleted successfully:", response.data);
+    showAlert('Subscription Deleted', 'The incomplete subscription has been deleted successfully.');
+    
+    // Reset the payment flow state
+    stripeClientSecret.value = null;
+    elements.value = null;
+    
+  } catch (err) {
+    console.error("Error deleting subscription:", err);
+    showAlert('Error', `Failed to delete subscription: ${err.response?.data?.error || err.message}`);
+  } finally {
+    isDeletingSubscription.value = false;
+  }
 }
 
 </script>

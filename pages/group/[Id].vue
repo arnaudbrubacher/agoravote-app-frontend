@@ -323,18 +323,46 @@ watch(selectedVote, (newValue, oldValue) => {
 // END WATCHER
 
 // Helper to process Stripe redirect query parameters
-const processStripeRedirectParams = () => {
+const processStripeRedirectParams = async () => {
   const query = route.query;
-  if (query.redirect_status) {
-    if (query.redirect_status === 'succeeded') {
-      showAlert('Payment Successful!', 'Your subscription has been processed and your settings tab may reflect the update shortly.');
+  
+  // Check for refresh_subscription parameter (added by PurchaseOptions.vue)
+  const shouldRefreshSubscription = query.refresh_subscription === 'true';
+  
+  if (query.redirect_status || shouldRefreshSubscription) {
+    try {
+      console.log('[Group Page] Payment redirect detected, re-fetching group data...');
+      await fetchGroup(); // Re-fetch group data to get latest subscription status
+      console.log('[Group Page] Group data re-fetched.');
+      
+      // Show appropriate message based on subscription status
+      if (group.value?.subscription_status) {
+        const status = group.value.subscription_status;
+        console.log(`[Group Page] Current subscription status: ${status}`);
+        
+        if (status === 'active') {
+          showAlert('Subscription Active', 'Your subscription is now active and you have full access to all features.');
+        } else if (status === 'incomplete') {
+          showAlert('Payment Processing', 'Your payment is being processed. The subscription status will update shortly.');
+        } else if (status === 'past_due' || status === 'unpaid') {
+          showAlert('Payment Issue', 'There was an issue with your payment. Please check your payment details.');
+        }
+      }
+      
+      if (query.redirect_status === 'succeeded') {
+        showAlert('Payment Received', 'Your payment has been received successfully.');
+      } else if (query.redirect_status && query.redirect_status !== 'succeeded') {
+        showAlert('Payment Issue', `There was an issue with your payment: ${query.redirect_status}. Please check your payment details or try again.`);
+      }
+      
       activeTab.value = 'settings'; // Switch to settings tab
-    } else {
-      showAlert('Payment Issue', `There was an issue with your payment: ${query.redirect_status}. Please check your payment details or try again.`);
-      activeTab.value = 'settings'; // Switch to settings tab to show any billing component errors
+    } catch (err) {
+      console.error('[Group Page] Error re-fetching group data after payment:', err);
+      showAlert('Payment Processed', 'Your payment was processed, but we had trouble refreshing group details. The page may update shortly.');
     }
+    
     // Clean the URL by removing Stripe-specific query parameters
-    const { payment_intent, payment_intent_client_secret, redirect_status, ...restQuery } = query;
+    const { payment_intent, payment_intent_client_secret, redirect_status, refresh_subscription, ...restQuery } = query;
     router.replace({ query: restQuery });
   }
 };
