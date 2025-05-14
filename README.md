@@ -23,6 +23,7 @@ Always consider both repositories when making changes.
 - **Voting System**: Cast and retrieve votes on posts.
 - **User Authentication**: Login and manage user sessions.
 - **Secure Voting**: End-to-end verifiable voting with ElectionGuard.
+- **Subscription Billing**: Stripe integration for group subscriptions and self-service management.
 
 ## Project Structure
 
@@ -172,6 +173,17 @@ http://localhost:3000/electionguard-test
 ```
 
 For more information about the ElectionGuard integration, see [README-ELECTIONGUARD.md](README-ELECTIONGUARD.md).
+
+## Billing Integration
+
+AgoraVote uses Stripe for payment processing and subscription management. Key features include:
+
+- Monthly subscription offerings for groups
+- Self-service subscription management via Stripe Customer Portal
+- Secure payment processing and invoice generation
+- Billing history tracking
+
+For detailed information about the billing implementation, see [README-BILLING.md](README-BILLING.md).
 
 ## Production
 

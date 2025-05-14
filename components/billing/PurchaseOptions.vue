@@ -257,7 +257,9 @@ async function confirmPayment() {
     const { error, paymentIntent } = await stripe.value.confirmPayment({
       elements: elements.value,
       confirmParams: {
-        // Add a refresh parameter to indicate subscription status should be checked
+        // IMPORTANT: setup_future_usage must be set when creating the PaymentIntent on the backend,
+        // not during confirmation. Setting it here will cause an IntegrationError.
+        // The backend sets this with SetupFutureUsage: "off_session" in the PaymentIntent creation.
         return_url: `${window.location.origin}/group/${props.groupId}?refresh_subscription=true`,
       },
     });
