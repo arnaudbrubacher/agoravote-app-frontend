@@ -31,23 +31,14 @@
       
       <!-- Leave Button -->
       <div class="flex items-center space-x-2 mt-4 sm:mt-0">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
-                variant="destructive"
-                size="icon"
-                @click="handleLeaveGroup"
-                class="flex items-center justify-center"
-              >
-                <LogOut class="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Leave Group</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Button
+          variant="outline"
+          @click="handleLeaveGroup"
+          class="flex items-center space-x-2 text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+        >
+          <LogOut class="h-4 w-4 mr-1" />
+          <span>Leave Group</span>
+        </Button>
       </div>
     </div>
 
@@ -195,6 +186,19 @@ const groupIdRef = ref(route.params.Id || route.params.id) // Use ref for reacti
 // Add debug to see what's happening
 console.log('Route params:', route.params) 
 console.log('Group ID ref:', groupIdRef.value)
+
+// Check for tab query parameter to set active tab (for direct navigation to a tab)
+if (route.query.tab) {
+  console.log('Tab parameter found in URL:', route.query.tab)
+  activeTab.value = route.query.tab
+  
+  // Also check for billing subtab parameter
+  if (route.query.tab === 'settings' && route.query.settings_subtab === 'billing') {
+    console.log('Billing subtab parameter found')
+    // We'll set a flag to open the billing subtab after component is mounted
+    const billingSubtabRequested = true
+  }
+}
 
 // If groupId is still undefined, try to get it from another source
 if (!groupIdRef.value) {
@@ -816,13 +820,22 @@ const closeVoteDetailsHandler = () => {
 
 // Handle leaving the group
 const handleLeaveGroup = async () => {
+  // Check if user is an admin and prevent leaving
+  if (isCurrentUserAdmin.value) {
+    showAlert(
+      'Cannot Leave Group',
+      'You cannot leave the group while you are an admin. Please transfer admin privileges or demote yourself first.'
+    );
+    return;
+  }
+
   showConfirm(
     'Confirm Leave Group',
     'Are you sure you want to leave this group?',
     async () => { // Action to perform on confirmation
       try {
         await leaveGroup(); // Call the original composable function
-        router.push('/');
+        router.push('/profile');
         showAlert('Success', 'You have left the group.'); // Optional success message
       } catch (err) {
         console.error('Failed to leave group:', err);

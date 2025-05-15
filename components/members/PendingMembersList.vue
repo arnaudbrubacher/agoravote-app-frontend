@@ -20,8 +20,8 @@
           :has-documents="hasDocuments(member)"
           :invitation-accepted="member.invitation_accepted === true"
           @review-documents="reviewDocuments(member)"
-          @accept="approveMember(member)"
-          @decline="declineMember(member)"
+          @accept="confirmApprovalDialog(member)"
+          @decline="confirmDeclineDialog(member)"
         />
       </div>
     </div>
@@ -38,9 +38,64 @@
     :group-id="groupId"
     :is-pending="true"
     @close="selectedMember = null"
-    @accept="approveWithDocuments"
-    @decline="declineMember"
+    @accept="confirmDocumentsApproval"
+    @decline="confirmDeclineDialog"
   />
+
+  <!-- Shadcn UI Alert Dialog for Approval Confirmation -->
+  <AlertDialog :open="showApprovalDialog" @update:open="showApprovalDialog = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Approve Member</AlertDialogTitle>
+        <AlertDialogDescription>
+          Are you sure you want to approve {{ memberToApprove ? (memberToApprove.user?.name || memberToApprove.name || 'this member') : '' }}?
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="showApprovalDialog = false">Cancel</AlertDialogCancel>
+        <AlertDialogAction @click="processMemberApproval">
+          Approve
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+  <!-- Shadcn UI Alert Dialog for Document Approval Confirmation -->
+  <AlertDialog :open="showDocumentsApprovalDialog" @update:open="showDocumentsApprovalDialog = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Approve Member with Documents</AlertDialogTitle>
+        <AlertDialogDescription>
+          Are you sure you want to approve {{ selectedMember ? (selectedMember.name || 'this member') : '' }} with their submitted documents?
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="showDocumentsApprovalDialog = false">Cancel</AlertDialogCancel>
+        <AlertDialogAction @click="processDocumentsApproval">
+          Approve
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+  <!-- Shadcn UI Alert Dialog for Decline Confirmation -->
+  <AlertDialog :open="showDeclineDialog" @update:open="showDeclineDialog = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Decline Member</AlertDialogTitle>
+        <AlertDialogDescription>
+          Are you sure you want to decline {{ memberToDecline ? (memberToDecline.user?.name || memberToDecline.name || 'this member') : '' }}? 
+          This action cannot be undone.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="showDeclineDialog = false">Cancel</AlertDialogCancel>
+        <AlertDialogAction @click="processMemberDecline" class="bg-destructive hover:bg-destructive/90">
+          Decline
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
 
 <script setup>
@@ -50,6 +105,16 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import MemberRow from '~/components/members/MemberRow.vue'
 import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 const props = defineProps({
   groupId: {
@@ -81,6 +146,13 @@ const emit = defineEmits([
 const pendingMembersLocal = ref([])
 const loadingLocal = ref(false)
 const selectedMember = ref(null)
+
+// Variables for the alert dialogs
+const showApprovalDialog = ref(false)
+const memberToApprove = ref(null)
+const showDocumentsApprovalDialog = ref(false)
+const showDeclineDialog = ref(false)
+const memberToDecline = ref(null)
 
 // Use either provided props or local state
 const pendingMembers = computed(() => {
@@ -192,22 +264,36 @@ const reviewDocuments = (member) => {
   selectedMember.value = preparedMember
 }
 
-// Approve a pending member
-const approveMember = async (member) => {
+// Show the approval confirmation dialog
+const confirmApprovalDialog = (member) => {
   // Check if the invitation has been accepted or if this is a join request
   if (member.invitation_accepted !== true && !member.isJoinRequest) {
     console.log('Cannot approve member - invitation not accepted and not a join request:', member);
     alert(`Cannot approve ${member.user?.name || 'this member'} yet. They need to accept the invitation first.`);
     return;
   }
+  
+  // Set the member to approve and show the dialog
+  memberToApprove.value = member;
+  showApprovalDialog.value = true;
+}
 
+// Process the actual member approval after confirmation
+const processMemberApproval = async () => {
+  // Close the dialog
+  showApprovalDialog.value = false;
+  
+  if (!memberToApprove.value) return;
+  
   try {
     // Get the member ID - prioritize user_id since that's the column name in the database
-    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+    const memberId = memberToApprove.value.user_id || 
+                     memberToApprove.value.userId || 
+                     (memberToApprove.value.user && memberToApprove.value.user.id) || 
+                     memberToApprove.value.id;
     
     if (!memberId) {
-      console.error('Cannot approve member: Missing member ID', member);
-      alert('Cannot approve member: Missing member ID');
+      console.error('Cannot approve member: Missing member ID', memberToApprove.value);
       return;
     }
     
@@ -225,32 +311,56 @@ const approveMember = async (member) => {
     // Emit refresh event to update the members list
     emit('refresh', { 
       action: 'approve', 
-      member: member,
-      message: `${member.user?.name || member.name || 'Member'} has been approved`
+      member: memberToApprove.value,
+      message: `${memberToApprove.value.user?.name || memberToApprove.value.name || 'Member'} has been approved`
     });
     
-    // Show success message
-    alert(`${member.user?.name || member.name || 'Member'} has been approved`);
+    // Clear the member to approve
+    memberToApprove.value = null;
   } catch (error) {
     console.error('Failed to approve member:', error);
     alert('Failed to approve member: ' + (error.response?.data?.error || error.message || 'Unknown error'));
   }
 }
 
-// Decline a pending member
-const declineMember = async (member) => {
-  // Confirm before declining
-  if (!confirm(`Are you sure you want to decline ${member.user?.name || member.name || 'this member'}?`)) {
+// Legacy approve member function - now handled by confirmApprovalDialog and processMemberApproval
+const approveMember = async (member) => {
+  confirmApprovalDialog(member);
+}
+
+// Show decline confirmation dialog
+const confirmDeclineDialog = (member) => {
+  // If member is not provided but we have a selected member (from documents dialog)
+  if (!member && selectedMember.value) {
+    member = selectedMember.value;
+  }
+  
+  if (!member) {
+    console.error('Cannot decline member: No member provided');
     return;
   }
   
+  // Set the member to decline and show the dialog
+  memberToDecline.value = member;
+  showDeclineDialog.value = true;
+}
+
+// Process the actual member decline after confirmation
+const processMemberDecline = async () => {
+  // Close the dialog
+  showDeclineDialog.value = false;
+  
+  if (!memberToDecline.value) return;
+  
   try {
     // Get the member ID - prioritize user_id since that's the column name in the database
-    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+    const memberId = memberToDecline.value.user_id || 
+                     memberToDecline.value.userId || 
+                     (memberToDecline.value.user && memberToDecline.value.user.id) || 
+                     memberToDecline.value.id;
     
     if (!memberId) {
-      console.error('Cannot decline member: Missing member ID', member);
-      alert('Cannot decline member: Missing member ID');
+      console.error('Cannot decline member: Missing member ID', memberToDecline.value);
       return;
     }
     
@@ -265,7 +375,7 @@ const declineMember = async (member) => {
       return mId !== memberId;
     });
     
-    // If the dialog is open for this member, close it
+    // If the document review dialog is open for this member, close it
     if (selectedMember.value && (
       selectedMember.value.user_id === memberId || 
       selectedMember.value.userId === memberId || 
@@ -278,29 +388,32 @@ const declineMember = async (member) => {
     // Emit refresh event to update the members list
     emit('refresh', { 
       action: 'decline', 
-      member: member,
-      message: `${member.user?.name || member.name || 'Member'} has been declined`
+      member: memberToDecline.value,
+      message: `${memberToDecline.value.user?.name || memberToDecline.value.name || 'Member'} has been declined`
     });
     
-    // Show success message
-    alert(`${member.user?.name || member.name || 'Member'} has been declined`);
+    // Clear the member to decline
+    memberToDecline.value = null;
   } catch (error) {
     console.error('Failed to decline member:', error);
     alert('Failed to decline member: ' + (error.response?.data?.error || error.message || 'Unknown error'));
   }
 }
 
-// Approve a member with documents
-const approveWithDocuments = async (member) => {
-  // If no member is provided, use the selected member
+// Legacy decline function - now handled by confirmDeclineDialog and processMemberDecline
+const declineMember = async (member) => {
+  confirmDeclineDialog(member);
+}
+
+// Show document approval confirmation dialog
+const confirmDocumentsApproval = (member) => {
   if (!member) {
-    member = selectedMember.value
+    member = selectedMember.value;
   }
   
-  // Check if we have a valid member
   if (!member) {
-    console.error('Cannot approve member with documents: No member provided')
-    return
+    console.error('Cannot approve member with documents: No member provided');
+    return;
   }
   
   // Check if the invitation has been accepted or if this is a join request
@@ -310,12 +423,26 @@ const approveWithDocuments = async (member) => {
     selectedMember.value = null;
     return;
   }
+  
+  // Show the dialog (selectedMember.value is already set by reviewDocuments)
+  showDocumentsApprovalDialog.value = true;
+}
 
+// Process document approval after confirmation
+const processDocumentsApproval = async () => {
+  // Close the dialog
+  showDocumentsApprovalDialog.value = false;
+  
+  if (!selectedMember.value) return;
+  
   try {
-    console.log(`Approving member with documents: ${member.name || member.user?.name || 'Unknown member'}`);
+    console.log(`Approving member with documents: ${selectedMember.value.name || selectedMember.value.user?.name || 'Unknown member'}`);
     
     // Get the member ID
-    const memberId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
+    const memberId = selectedMember.value.user_id || 
+                     selectedMember.value.userId || 
+                     (selectedMember.value.user && selectedMember.value.user.id) || 
+                     selectedMember.value.id;
     
     // Call API to approve the member with documents
     await axios.post(`/groups/${props.groupId}/members/${memberId}/approve-documents`);
@@ -326,6 +453,9 @@ const approveWithDocuments = async (member) => {
       return mId !== memberId;
     });
     
+    // Get member for the refresh event
+    const member = selectedMember.value;
+    
     // Close the dialog
     selectedMember.value = null;
     
@@ -335,13 +465,15 @@ const approveWithDocuments = async (member) => {
       member: member,
       message: `${member.user?.name || member.name || 'Member'} has been approved with documents`
     });
-    
-    // Show success message
-    alert(`${member.user?.name || member.name || 'Member'} has been approved with documents`);
   } catch (error) {
     console.error('Failed to approve member with documents:', error);
     alert('Failed to approve member: ' + (error.response?.data?.error || error.message || 'Unknown error'));
   }
+}
+
+// Legacy function for approving with documents
+const approveWithDocuments = async (member) => {
+  confirmDocumentsApproval(member);
 }
 
 // Check if a member has documents

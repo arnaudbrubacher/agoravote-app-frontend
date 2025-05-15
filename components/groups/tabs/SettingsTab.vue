@@ -1,18 +1,62 @@
 <template>
   <div class="space-y-8 p-4">
+    <!-- Non-admin notice -->
+    <div v-if="!isCurrentUserAdmin" class="bg-muted p-4 rounded-lg mb-4 border border-border">
+      <div class="flex items-center">
+        <Info class="h-5 w-5 text-muted-foreground mr-2" />
+        <p class="text-sm text-muted-foreground">You are viewing group settings in read-only mode. Only group administrators can modify these settings.</p>
+      </div>
+    </div>
+    
     <!-- Single card containing all tabs -->
-    <div class="border rounded-lg p-4 space-y-4">
-      <Tabs default-value="group-settings" class="w-full">
-        <!-- Tabs List -->
-        <TabsList class="mb-4">
-          <TabsTrigger value="group-settings">Group Settings</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
-        </TabsList>
-
+    <div class="rounded-lg p-4 space-y-4" :class="{ 'opacity-75 pointer-events-none': !isCurrentUserAdmin }">
+      <Tabs :value="settingsSubtab" @update:value="settingsSubtab = $event" class="w-full">
+        <!-- Tabs List with Delete Group Button -->
+        <div class="flex items-center mb-4">
+          <TabsList class="border border-border rounded-md p-1 flex">
+            <TabsTrigger 
+              value="group-settings" 
+              class="border border-transparent data-[state=inactive]:border-border data-[state=inactive]:border mx-0.5"
+            >
+              Informations
+            </TabsTrigger>
+            <TabsTrigger 
+              value="permissions" 
+              class="border border-transparent data-[state=inactive]:border-border data-[state=inactive]:border mx-0.5"
+            >
+              Permissions
+            </TabsTrigger>
+            <TabsTrigger 
+              value="security" 
+              class="border border-transparent data-[state=inactive]:border-border data-[state=inactive]:border mx-0.5"
+            >
+              Security
+            </TabsTrigger>
+            <TabsTrigger 
+              value="billing" 
+              class="border border-transparent data-[state=inactive]:border-border data-[state=inactive]:border mx-0.5"
+            >
+              Billing
+            </TabsTrigger>
+          </TabsList>
+          
+          <Button
+            variant="destructive"
+            size="sm"
+            @click="handleDelete"
+            :disabled="!isCurrentUserAdmin"
+            v-if="isCurrentUserAdmin"
+            class="ml-4"
+          >
+            <LucideIcon name="Trash" class="mr-2 h-4 w-4" />
+            Delete Group
+          </Button>
+        </div>
+        
         <!-- Group Settings Tab -->
-        <TabsContent value="group-settings" class="space-y-8">
+        <TabsContent value="group-settings" class="space-y-4">
           <!-- Group Picture Section -->
-          <div class="space-y-2 pb-3">
+          <div class="space-y-1 pb-2">
             <Label class="text-sm font-medium">Group Picture</Label>
             <div class="flex items-center">
               <input
@@ -37,250 +81,327 @@
           </div>
 
           <!-- Group Name Field -->
-          <div class="space-y-2 pb-3">
+          <div class="space-y-2">
             <Label for="name" class="text-sm font-medium">Name</Label>
-            <Input
-              id="name"
-              v-model="formData.name"
-              class="w-full"
-              placeholder="Enter group name"
-              required
-              :disabled="!isCurrentUserAdmin"
-            />
+            <div class="flex items-center space-x-2">
+              <Input
+                id="name"
+                v-model="formData.name"
+                class="flex-grow"
+                placeholder="Enter group name"
+                required
+                :disabled="!isCurrentUserAdmin"
+              />
+              <Button 
+                v-if="isCurrentUserAdmin"
+                variant="ghost" 
+                size="icon" 
+                @click="saveField('name')" 
+                :disabled="formData.name === originalFormData.name"
+                class="flex-shrink-0 border disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Save name"
+              >
+                <Save class="h-5 w-5" />
+              </Button>
+            </div>
           </div>
 
           <!-- Group Description Field -->
-          <div class="space-y-2 pb-3">
+          <div class="space-y-2">
             <Label for="description" class="text-sm font-medium">Description</Label>
-            <Textarea
-              id="description"
-              v-model="formData.description"
-              class="w-full"
-              placeholder="Enter group description"
-              :disabled="!isCurrentUserAdmin"
-            />
-          </div>
-
-          <!-- Group Privacy Field -->
-          <div class="space-y-2 pb-3">
-            <div class="flex items-center space-x-1 mb-1">
-              <Label for="is-private-toggle" class="text-sm font-medium">Privacy</Label>
-              <TooltipProvider :delay-duration="100">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Info class="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p class="max-w-xs">
-                      Toggle whether the group is public (discoverable via search) or private (not discoverable).
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
             <div class="flex items-center space-x-2">
-              <Switch
-                id="is-private-toggle"
-                v-model="formData.isPrivate"
-                @update:modelValue="savePrivacy"
+              <Textarea
+                id="description"
+                v-model="formData.description"
+                class="flex-grow"
+                placeholder="Enter group description"
                 :disabled="!isCurrentUserAdmin"
               />
-              <Label for="is-private-toggle" class="text-sm text-muted-foreground">
-                {{ formData.isPrivate ? 'Private Group' : 'Public Group' }}
-              </Label>
+              <Button 
+                v-if="isCurrentUserAdmin"
+                variant="ghost" 
+                size="icon" 
+                @click="saveField('description')" 
+                :disabled="formData.description === originalFormData.description"
+                class="flex-shrink-0 border disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Save description"
+              >
+                <Save class="h-5 w-5" />
+              </Button>
             </div>
           </div>
+        </TabsContent>
 
-          <!-- Membership Approval Field -->
-          <div class="space-y-2 pb-3">
-            <div class="flex items-center space-x-1 mb-1">
-              <Label for="requires-admin-approval-toggle" class="text-sm font-medium">Membership Approval</Label>
-              <TooltipProvider :delay-duration="100">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Info class="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p class="max-w-xs">
-                      Toggle whether new members require admin approval to join or are approved automatically.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div class="flex items-center space-x-2">
-              <Switch
-                id="requires-admin-approval-toggle"
-                v-model="formData.requires_admin_approval"
-                @update:modelValue="toggleAdminApprovalRequirement"
-                :disabled="!isCurrentUserAdmin"
-              />
-              <Label for="requires-admin-approval-toggle" class="text-sm text-muted-foreground">
-                {{ formData.requires_admin_approval ? 'Admin approval required' : 'Automatic approval' }}
-              </Label>
+        <!-- Permissions Tab -->
+        <TabsContent value="permissions" class="space-y-8">
+          <!-- Non-admin notice specifically for permissions -->
+          <div v-if="!isCurrentUserAdmin" class="bg-muted p-4 rounded-lg mb-4 border border-border">
+            <div class="flex items-center">
+              <Info class="h-5 w-5 text-muted-foreground mr-2" />
+              <p class="text-sm text-muted-foreground">Only group administrators can modify permission settings.</p>
             </div>
           </div>
+          
+          <!-- Permissions Content -->
+          <div class="space-y-6 pt-4">
+            
+              <!-- Voting Permissions -->
+              <div class="mb-3">
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <Switch
+                      id="non-admin-create-votes"
+                      :disabled="!isCurrentUserAdmin"
+                      v-model="permissionsData.allowNonAdminCreateVotes"
+                      @update:modelValue="savePermissionSetting('allowNonAdminCreateVotes')"
+                    />
+                    <Label for="non-admin-create-votes" class="text-sm">
+                      Allow non-admin members to create votes
+                    </Label>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Content Permissions -->
+              <div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <Switch
+                      id="non-admin-create-posts"
+                      :disabled="!isCurrentUserAdmin"
+                      v-model="permissionsData.allowNonAdminCreatePosts"
+                      @update:modelValue="savePermissionSetting('allowNonAdminCreatePosts')"
+                    />
+                    <Label for="non-admin-create-posts" class="text-sm">
+                      Allow non-admin members to create posts
+                    </Label>
+                  </div>
+                </div>
+              </div>
+          </div>
+        </TabsContent>
+        
+        <!-- Security Tab -->
+        <TabsContent value="security" class="space-y-8">
+          <!-- Non-admin notice for security tab -->
+          <div v-if="!isCurrentUserAdmin" class="bg-muted p-4 rounded-lg mb-4 border border-border">
+            <div class="flex items-center">
+              <Info class="h-5 w-5 text-muted-foreground mr-2" />
+              <p class="text-sm text-muted-foreground">Only group administrators can modify security settings.</p>
+            </div>
+          </div>
+          
+          <!-- Security Settings Content -->
+          <div class="space-y-6">
+            <!-- Group Privacy Field -->
+            <div class="space-y-2 pb-3">
+              <div class="flex items-center space-x-1 mb-1">
+                <Label for="is-private-toggle" class="text-sm font-medium">Privacy</Label>
+                <TooltipProvider :delay-duration="100">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Info class="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p class="max-w-xs">
+                        Toggle whether the group is public (discoverable via search) or private (not discoverable).
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="is-private-toggle"
+                  v-model="formData.isPrivate"
+                  @update:modelValue="savePrivacy"
+                  :disabled="!isCurrentUserAdmin"
+                />
+                <Label for="is-private-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.isPrivate ? 'Private Group' : 'Public Group' }}
+                </Label>
+              </div>
+            </div>
 
-          <!-- Password Requirement Field - Reverted -->
-          <div class="space-y-2 pb-3">
-            <div class="flex items-center space-x-1 mb-1">
-              <Label for="requires-password-toggle" class="text-sm font-medium">Password</Label>
-              <TooltipProvider :delay-duration="100">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Info class="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p class="max-w-xs">
-                      Toggle whether users must enter a password to join the group.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <!-- Membership Approval Field -->
+            <div class="space-y-2 pb-3">
+              <div class="flex items-center space-x-1 mb-1">
+                <Label for="requires-admin-approval-toggle" class="text-sm font-medium">Membership Approval</Label>
+                <TooltipProvider :delay-duration="100">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Info class="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p class="max-w-xs">
+                        Toggle whether new members require admin approval to join or are approved automatically.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="requires-admin-approval-toggle"
+                  v-model="formData.requires_admin_approval"
+                  @update:modelValue="toggleAdminApprovalRequirement"
+                  :disabled="!isCurrentUserAdmin"
+                />
+                <Label for="requires-admin-approval-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.requires_admin_approval ? 'Admin approval required' : 'Automatic approval' }}
+                </Label>
+              </div>
             </div>
-            <div class="flex items-center space-x-2">
-              <Switch
-                id="requires-password-toggle"
-                v-model="formData.requires_password"
-                @update:modelValue="togglePasswordRequirementUpdate"
-                :disabled="!isCurrentUserAdmin"
-              />
-              <Label for="requires-password-toggle" class="text-sm text-muted-foreground">
-                {{ formData.requires_password ? 'Password Required' : 'No Password Required' }}
-              </Label>
+
+            <!-- Password Requirement Field -->
+            <div class="space-y-2 pb-3">
+              <div class="flex items-center space-x-1 mb-1">
+                <Label for="requires-password-toggle" class="text-sm font-medium">Password</Label>
+                <TooltipProvider :delay-duration="100">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Info class="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p class="max-w-xs">
+                        Toggle whether users must enter a password to join the group.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="requires-password-toggle"
+                  v-model="formData.requires_password"
+                  @update:modelValue="togglePasswordRequirementUpdate"
+                  :disabled="!isCurrentUserAdmin"
+                />
+                <Label for="requires-password-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.requires_password ? 'Password Required' : 'No Password Required' }}
+                </Label>
+              </div>
+              <div class="space-y-2 mt-2">
+                <div class="h-10 flex items-center space-x-2">
+                  <Button
+                    v-if="isCurrentUserAdmin"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="showPasswordChange = true"
+                    :disabled="!formData.requires_password"
+                    class="flex items-center"
+                    :class="{ 'opacity-50': !formData.requires_password }"
+                  >
+                    <KeyRound class="h-4 w-4 mr-2"/>
+                    Change Password
+                  </Button>
+                  <Button
+                    v-if="isCurrentUserAdmin && formData.requires_password"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="fetchCurrentPassword"
+                    :disabled="showPasswordLoading"
+                    class="flex items-center"
+                  >
+                    <LucideIcon 
+                      :name="showPasswordLoading ? 'Loader2' : 'Eye'" 
+                      class="h-4 w-4 mr-2"
+                      :class="{ 'animate-spin': showPasswordLoading }"
+                    />
+                    {{ showPasswordLoading ? 'Loading...' : 'View Password' }}
+                  </Button>
+                  <p v-else-if="!isCurrentUserAdmin && props.group.requires_password" class="text-sm text-muted-foreground ml-2">
+                    Password is required to join.
+                  </p>
+                  <p v-else-if="!isCurrentUserAdmin && !props.group.requires_password" class="text-sm text-muted-foreground ml-2">
+                    No password required.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div class="space-y-2 mt-2">
-              <div class="h-10 flex items-center">
+
+            <!-- Required Documents Field -->
+            <div class="space-y-2 pb-3">
+              <div class="flex items-center space-x-1 mb-1">
+                <Label for="requires-documents-toggle" class="text-sm font-medium">Documents</Label>
+                <TooltipProvider :delay-duration="100">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Info class="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p class="max-w-xs">
+                        Toggle whether users must upload specified documents for admin review before joining.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div class="flex items-center space-x-2">
+                <Switch
+                  id="requires-documents-toggle"
+                  v-model="formData.requires_documents"
+                  @update:modelValue="toggleDocumentRequirementUpdate"
+                  :disabled="!isCurrentUserAdmin"
+                />
+                <Label for="requires-documents-toggle" class="text-sm text-muted-foreground">
+                  {{ formData.requires_documents ? 'Documents Required' : 'No Documents Required' }}
+                </Label>
+              </div>
+              <div class="space-y-2 mt-2">
                 <Button
-                  v-if="isCurrentUserAdmin"
                   type="button"
                   variant="outline"
-                  size="sm"
-                  @click="showPasswordChange = true"
-                  :disabled="!formData.requires_password"
+                  @click="addDocument"
                   class="flex items-center"
-                  :class="{ 'opacity-50': !formData.requires_password }"
+                  :disabled="!isCurrentUserAdmin || !formData.requires_documents"
+                  :class="{ 'opacity-50': !isCurrentUserAdmin || !formData.requires_documents }"
                 >
-                  <KeyRound class="h-4 w-4 mr-2"/>
-                  Change Password
+                  <LucideIcon name="Plus" class="h-4 w-4 mr-1" />
+                  Add Required Document
                 </Button>
-                <p v-else-if="!isCurrentUserAdmin && props.group.requires_password" class="text-sm text-muted-foreground ml-2">
-                  Password is required to join.
-                </p>
-                <p v-else-if="!isCurrentUserAdmin && !props.group.requires_password" class="text-sm text-muted-foreground ml-2">
-                  No password required.
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <!-- Required Documents Field - Reverted -->
-          <div class="space-y-2 pb-3">
-            <div class="flex items-center space-x-1 mb-1">
-              <Label for="requires-documents-toggle" class="text-sm font-medium">Documents</Label>
-              <TooltipProvider :delay-duration="100">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Info class="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p class="max-w-xs">
-                      Toggle whether users must upload specified documents for admin review before joining.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div class="flex items-center space-x-2">
-              <Switch
-                id="requires-documents-toggle"
-                v-model="formData.requires_documents"
-                @update:modelValue="toggleDocumentRequirementUpdate"
-                :disabled="!isCurrentUserAdmin"
-              />
-              <Label for="requires-documents-toggle" class="text-sm text-muted-foreground">
-                {{ formData.requires_documents ? 'Documents Required' : 'No Documents Required' }}
-              </Label>
-            </div>
-            <div class="space-y-2 mt-2">
-              <Button
-                type="button"
-                variant="outline"
-                @click="addDocument"
-                class="flex items-center"
-                :disabled="!isCurrentUserAdmin || !formData.requires_documents"
-                :class="{ 'opacity-50': !isCurrentUserAdmin || !formData.requires_documents }"
-              >
-                <LucideIcon name="Plus" class="h-4 w-4 mr-1" />
-                Add Required Document
-              </Button>
-
-              <div class="space-y-2">
-                <div v-if="formData.documents.length === 0 && !isCurrentUserAdmin && props.group.requires_documents" class="text-sm text-muted-foreground mt-2">
-                  Documents required, but types not specified by admin yet.
-                </div>
-                <div v-else-if="formData.documents.length === 0 && !isCurrentUserAdmin && !props.group.requires_documents" class="text-sm text-muted-foreground mt-2">
-                  No documents required.
-                </div>
-                <div v-for="(doc, index) in formData.documents" :key="index" class="flex items-center space-x-2">
-                  <Input
-                    v-model="doc.name"
-                    placeholder="Document name (e.g. ID Card, Student Card)"
-                    :disabled="!isCurrentUserAdmin || !formData.requires_documents"
-                    :class="{ 'opacity-50': !isCurrentUserAdmin || !formData.requires_documents }"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    @click="removeDocument(index)"
-                    title="Remove this document requirement"
-                    :disabled="!isCurrentUserAdmin || !formData.requires_documents"
-                    :class="{ 'opacity-50': !isCurrentUserAdmin || !formData.requires_documents }"
-                  >
-                    <LucideIcon name="Trash" class="h-4 w-4" />
-                  </Button>
+                <div class="space-y-2">
+                  <div v-if="formData.documents.length === 0 && !isCurrentUserAdmin && props.group.requires_documents" class="text-sm text-muted-foreground mt-2">
+                    Documents required, but types not specified by admin yet.
+                  </div>
+                  <div v-else-if="formData.documents.length === 0 && !isCurrentUserAdmin && !props.group.requires_documents" class="text-sm text-muted-foreground mt-2">
+                    No documents required.
+                  </div>
+                  <div v-for="(doc, index) in formData.documents" :key="index" class="flex items-center space-x-2">
+                    <Input
+                      v-model="doc.name"
+                      placeholder="Document name (e.g. ID Card, Student Card)"
+                      :disabled="!isCurrentUserAdmin || !formData.requires_documents"
+                      :class="{ 'opacity-50': !isCurrentUserAdmin || !formData.requires_documents }"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      @click="removeDocument(index)"
+                      title="Remove this document requirement"
+                      :disabled="!isCurrentUserAdmin || !formData.requires_documents"
+                      :class="{ 'opacity-50': !isCurrentUserAdmin || !formData.requires_documents }"
+                    >
+                      <LucideIcon name="Trash" class="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Action Buttons Section (Now inside the Group Settings tab) -->
-          <div class="pt-6 border-t flex justify-between w-full">
-            <Button
-              variant="destructive"
-              size="sm"
-              @click="handleDelete"
-              :disabled="!isCurrentUserAdmin"
-              v-if="isCurrentUserAdmin"
-            >
-              <LucideIcon name="Trash" class="mr-2 h-4 w-4" />
-              Delete Group
-            </Button>
-            <div v-else></div>
-
-            <div class="flex space-x-2">
-              <Button
-                v-if="isCurrentUserAdmin"
-                variant="outline"
-                @click="handleCancel"
-              >
-                Reset Changes
-              </Button>
-              <Button
-                v-if="isCurrentUserAdmin"
-                type="button"
-                @click="handleSubmit"
-                :disabled="!formModified"
-              >
-                Save All Changes
-              </Button>
             </div>
           </div>
         </TabsContent>
 
         <!-- Billing Tab -->
         <TabsContent value="billing" class="space-y-8">
+          <!-- Non-admin notice specifically for billing -->
+          <div v-if="!isCurrentUserAdmin" class="text-sm text-muted-foreground mb-4">
+            <p>Only group administrators can modify subscription settings.</p>
+          </div>
+          
           <!-- Subscription Management Section -->
           <div class="mb-6">
             <h4 class="text-md font-medium mb-4">Subscription Management</h4>
@@ -384,28 +505,51 @@
     <Dialog :open="showPasswordChange" @update:open="showPasswordChange = $event">
       <DialogContent class="w-full max-w-lg">
         <DialogHeader>
-          <DialogTitle> {{ props.group.requires_password ? 'Change' : 'Set' }} Group Password</DialogTitle>
+          <DialogTitle>{{ props.group.requires_password ? 'Change' : 'Set' }} Group Password</DialogTitle>
           <DialogDescription>
-            {{ props.group.requires_password ? 'Enter the current and a new password for the group.' : 'Set a password for the group.' }}
+            {{ props.group.requires_password ? 'Enter a new password for the group.' : 'Set a password for the group.' }}
           </DialogDescription>
         </DialogHeader>
 
         <div class="grid gap-4 py-4">
-          <div v-if="props.group.requires_password" class="space-y-2">
-            <Label for="current-password" class="text-sm font-medium">
-              Current Password
-            </Label>
-            <Input id="current-password" type="password" v-model="currentPassword" required />
+          <div class="space-y-2">
+            <Label for="new-password" class="text-sm font-medium">{{ props.group.requires_password ? 'New Password' : 'Password' }}</Label>
+            <div class="relative">
+              <Input 
+                id="new-password" 
+                :type="showPassword ? 'text' : 'password'" 
+                v-model="newPassword" 
+                required 
+                class="pr-10"
+              />
+              <button 
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                @click="showPassword = !showPassword"
+              >
+                <LucideIcon :name="showPassword ? 'EyeOff' : 'Eye'" class="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <div class="space-y-2">
-            <Label for="new-password" class="text-sm font-medium">New Password</Label>
-            <Input id="new-password" type="password" v-model="newPassword" required />
-          </div>
-
-          <div class="space-y-2">
-            <Label for="confirm-password" class="text-sm font-medium">Confirm New Password</Label>
-            <Input id="confirm-password" type="password" v-model="confirmPassword" required />
+            <Label for="confirm-password" class="text-sm font-medium">Confirm Password</Label>
+            <div class="relative">
+              <Input 
+                id="confirm-password" 
+                :type="showConfirmPassword ? 'text' : 'password'" 
+                v-model="confirmPassword" 
+                required 
+                class="pr-10"
+              />
+              <button 
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                @click="showConfirmPassword = !showConfirmPassword"
+              >
+                <LucideIcon :name="showConfirmPassword ? 'EyeOff' : 'Eye'" class="h-5 w-5" />
+              </button>
+            </div>
             <p v-if="passwordMismatch" class="text-xs text-destructive">
               Passwords do not match
             </p>
@@ -414,7 +558,47 @@
 
         <DialogFooter>
           <Button variant="outline" @click="showPasswordChange = false">Cancel</Button>
-          <Button type="submit" @click="changePassword"> {{ props.group.requires_password ? 'Change' : 'Set' }} Password</Button>
+          <Button type="submit" @click="changePassword">{{ props.group.requires_password ? 'Change' : 'Set' }} Password</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Current Password View Dialog -->
+    <Dialog :open="showCurrentPassword" @update:open="showCurrentPassword = $event">
+      <DialogContent class="w-full max-w-md">
+        <DialogHeader>
+          <DialogTitle>Group Password</DialogTitle>
+          <DialogDescription>
+            This is the current password required to join the group.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="py-4">
+          <div v-if="showPasswordLoading" class="flex justify-center">
+            <LucideIcon name="Loader2" class="h-6 w-6 animate-spin" />
+          </div>
+          <div v-else class="space-y-2">
+            <Label class="text-sm font-medium">Current Password</Label>
+            <div class="relative">
+              <Input 
+                readonly
+                :value="currentGroupPassword"
+                :type="showCurrentPasswordAsPlaintext ? 'text' : 'password'"
+                class="pr-10 bg-muted"
+              />
+              <button 
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                @click="showCurrentPasswordAsPlaintext = !showCurrentPasswordAsPlaintext"
+              >
+                <LucideIcon :name="showCurrentPasswordAsPlaintext ? 'EyeOff' : 'Eye'" class="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button @click="showCurrentPassword = false">Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -429,7 +613,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
-import { Users, Camera, Info, KeyRound } from 'lucide-vue-next'
+import { Users, Camera, Info, KeyRound, Save, Eye } from 'lucide-vue-next'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import axios from '~/src/utils/axios'
 import { changeGroupPassword, emergencyChangeGroupPassword } from '@/src/utils/auth'
@@ -447,6 +631,7 @@ import PurchaseOptions from '@/components/billing/PurchaseOptions.vue'
 import BillingHistory from '@/components/billing/BillingHistory.vue'
 import { Badge } from '~/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useRouter, useRoute } from 'vue-router'
 
 const props = defineProps({
   group: {
@@ -471,10 +656,16 @@ const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhos
 
 // Password change dialog state
 const showPasswordChange = ref(false)
-const currentPassword = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 const newPassword = ref('')
 const confirmPassword = ref('')
-const passwordHasBeenSet = ref(false)
+
+// Current password view state
+const showCurrentPassword = ref(false)
+const currentGroupPassword = ref('')
+const showPasswordLoading = ref(false)
+const showCurrentPasswordAsPlaintext = ref(false)
 
 const passwordMismatch = computed(() => {
   return newPassword.value && confirmPassword.value &&
@@ -493,6 +684,14 @@ const formData = ref({
 
 const originalFormData = ref({})
 
+// Permissions data
+const permissionsData = ref({
+  allowNonAdminCreateVotes: false,
+  allowNonAdminCreatePosts: true
+})
+
+const originalPermissionsData = ref({})
+
 const isFullUrl = (url) => {
   return url && (url.startsWith('http://') || url.startsWith('https://'))
 }
@@ -509,9 +708,18 @@ const initializeFormData = () => {
       documents: [],
       requires_admin_approval: true
     };
+    
+    // Initialize permissions data with default values
+    permissionsData.value = {
+      allowNonAdminCreateVotes: false,
+      allowNonAdminCreatePosts: true
+    };
+    
     originalFormData.value = {};
+    originalPermissionsData.value = {};
     selectedFile.value = null;
-    passwordHasBeenSet.value = false;
+    showPassword.value = false;
+    showConfirmPassword.value = false;
     return;
   }
 
@@ -533,15 +741,44 @@ const initializeFormData = () => {
         ? props.group.requires_admin_approval
         : true
   }
+  
+  // Initialize permissions data from group permissions or defaults
+  permissionsData.value = {
+    allowNonAdminCreateVotes: props.group.permissions?.allowNonAdminCreateVotes ?? false,
+    allowNonAdminCreatePosts: props.group.permissions?.allowNonAdminCreatePosts ?? true
+  }
 
   originalFormData.value = cloneDeep(formData.value)
+  originalPermissionsData.value = cloneDeep(permissionsData.value)
   selectedFile.value = null
-  passwordHasBeenSet.value = false
+  showPassword.value = false
+  showConfirmPassword.value = false
 
   console.log('Form data initialized:', formData.value);
+  console.log('Permissions data initialized:', permissionsData.value);
 }
 
 onMounted(() => {
+  console.log('SettingsTab - isCurrentUserAdmin:', props.isCurrentUserAdmin)
+  
+  // Check URL for settings_subtab parameter 
+  if (route.query.settings_subtab) {
+    console.log('Settings subtab specified in URL:', route.query.settings_subtab)
+    
+    if (route.query.settings_subtab === 'billing') {
+      settingsSubtab.value = 'billing'
+      console.log('Setting active subtab to billing')
+    } else if (['group-settings', 'permissions', 'security'].includes(route.query.settings_subtab)) {
+      settingsSubtab.value = route.query.settings_subtab
+    }
+  }
+  
+  // Check for refresh_subscription parameter
+  if (route.query.refresh_subscription === 'true') {
+    console.log('Subscription refresh requested, fetching latest group data')
+    fetchGroup()
+  }
+  
   initializeFormData();
   setupAutoRefresh();
 });
@@ -734,6 +971,34 @@ const toggleDocumentRequirementUpdate = (newValue) => {
   console.log('Document requirement toggled locally:', newValue);
 }
 
+// Method to save individual field
+const saveField = async (fieldName) => {
+  if (!props.isCurrentUserAdmin || !props.group || !props.group.id) return;
+  
+  try {
+    console.log(`Saving ${fieldName} field: ${formData.value[fieldName]}`);
+    
+    // Create a minimal update payload with just the changed field
+    const updateData = {
+      [fieldName]: formData.value[fieldName]
+    };
+    
+    // API call to update just this field
+    await axios.put(`/groups/${props.group.id}`, updateData);
+    
+    // Update original data to match current value for this field
+    originalFormData.value[fieldName] = formData.value[fieldName];
+    
+    console.log(`Field ${fieldName} saved successfully`);
+  } catch (error) {
+    console.error(`Failed to save ${fieldName}:`, error);
+    alert(`Failed to save ${fieldName}: ${error.response?.data?.error || error.message}`);
+    
+    // Revert to original value on error
+    formData.value[fieldName] = originalFormData.value[fieldName];
+  }
+};
+
 const handleSubmit = async () => {
   try {
     if (!props.isCurrentUserAdmin) return;
@@ -751,7 +1016,7 @@ const handleSubmit = async () => {
       return;
     }
 
-    if (formData.value.requires_password && !props.group.requires_password && !passwordHasBeenSet.value) {
+    if (formData.value.requires_password && !props.group.requires_password) {
       alert('Please set a password for the group before saving changes.');
       showPasswordChange.value = true;
       return;
@@ -814,6 +1079,11 @@ const formModified = computed(() => {
   return selectedFile.value !== null || JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value);
 })
 
+// Check if permissions have been modified
+const permissionsModified = computed(() => {
+  return JSON.stringify(permissionsData.value) !== JSON.stringify(originalPermissionsData.value);
+})
+
 const changePassword = async () => {
   if (!props.isCurrentUserAdmin) return;
 
@@ -823,11 +1093,6 @@ const changePassword = async () => {
   }
 
   const isChangingExistingPassword = props.group.requires_password;
-
-  if (isChangingExistingPassword && !currentPassword.value) {
-    alert('Please enter the current group password')
-    return
-  }
 
   if (!newPassword.value) {
     alert('Please enter a new password')
@@ -843,17 +1108,16 @@ const changePassword = async () => {
     if (!isChangingExistingPassword) {
       await emergencyChangeGroupPassword(props.group.id, newPassword.value);
     } else {
-      await changeGroupPassword(props.group.id, currentPassword.value, newPassword.value)
+      await changeGroupPassword(props.group.id, newPassword.value)
     }
 
-    currentPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
     showPasswordChange.value = false
+    showPassword.value = false
+    showConfirmPassword.value = false
 
     alert('Group password ' + (isChangingExistingPassword ? 'changed' : 'set') + ' successfully')
-
-    passwordHasBeenSet.value = true
 
     if (props.fetchGroup) {
       props.fetchGroup();
@@ -1079,6 +1343,90 @@ onBeforeUnmount(() => {
     refreshInterval.value = null;
   }
 });
+
+// Handler for permissions save button
+const handleSavePermissions = async () => {
+  if (!props.isCurrentUserAdmin) return;
+  
+  try {
+    console.log('Saving permissions data:', permissionsData.value);
+    
+    // API request to update permissions
+    const response = await axios.put(`/groups/${props.group.id}/permissions`, {
+      permissions: permissionsData.value
+    });
+    
+    // Update original data to match current data
+    originalPermissionsData.value = cloneDeep(permissionsData.value);
+    
+    // Show success message
+    alert('Group permissions updated successfully');
+    
+    // Emit event to refresh group data
+    if (props.fetchGroup) {
+      await props.fetchGroup();
+    }
+    
+  } catch (error) {
+    console.error('Failed to update permissions:', error);
+    alert('Failed to update permissions: ' + (error.response?.data?.error || 'Unknown error'));
+  }
+};
+
+// Handler for permissions reset button
+const handleResetPermissions = () => {
+  // Reset permissions to original values
+  permissionsData.value = cloneDeep(originalPermissionsData.value);
+};
+
+// New function to save permission setting
+const savePermissionSetting = async (setting) => {
+  try {
+    console.log(`Auto-saving permission setting: ${setting} with value: ${permissionsData.value[setting]}`);
+    
+    // Update the original data to match the current setting
+    originalPermissionsData.value[setting] = permissionsData.value[setting];
+    
+    // API request to update permission
+    await axios.put(`/groups/${props.group.id}/permissions`, {
+      permissions: permissionsData.value
+    });
+    
+    console.log('Permission updated successfully');
+    
+    // Refresh group data if fetchGroup is available
+    if (props.fetchGroup) {
+      await props.fetchGroup();
+    }
+  } catch (error) {
+    console.error('Failed to update permission:', error);
+    // Revert the change if there was an error
+    permissionsData.value[setting] = !permissionsData.value[setting];
+    alert('Failed to update permission: ' + (error.response?.data?.error || 'Unknown error'));
+  }
+};
+
+const fetchCurrentPassword = async () => {
+  if (!props.isCurrentUserAdmin) return;
+  
+  try {
+    showPasswordLoading.value = true;
+    const response = await axios.get(`/api/groups/${props.group.id}/password`);
+    currentGroupPassword.value = response.data.password;
+    showCurrentPassword.value = true;
+  } catch (error) {
+    console.error('Failed to fetch current password:', error);
+    alert('Failed to fetch current password: ' + (error.response?.data?.error || error.message));
+  } finally {
+    showPasswordLoading.value = false;
+  }
+};
+
+// Add ref for settings subtab selection
+const settingsSubtab = ref('group-settings') // default
+
+// Set up route
+const route = useRoute()
 </script>
 
 <style scoped>

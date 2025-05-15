@@ -1,8 +1,13 @@
 <!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/groups/GroupCard.vue -->
 <template>
   <div 
-    class="relative flex items-center p-4 border rounded-lg hover:bg-accent/5 transition-colors"
-    :class="{ 'cursor-pointer': clickable }"
+    class="relative flex items-center p-4 border rounded-lg transition-all duration-200"
+    :class="{ 
+      'cursor-pointer': clickable,
+      'hover:bg-gray-50': !isActive, 
+      'hover:bg-gray-100': isActive,
+      'bg-gray-50': isActive
+    }"
     @click="clickable ? $emit('click') : null"
   >
     <!-- Group Avatar -->
@@ -14,18 +19,19 @@
         v-else
         :src="groupPictureUrl" 
         alt="Group Picture"
-        class="w-12 h-12 rounded-full object-cover border"
+        class="w-12 h-12 rounded-full object-cover border transition-all"
+        :class="{ 'ring-1 ring-gray-400 ring-offset-1': isActive }"
       />
     </div>
     
     <!-- Group Info -->
     <div class="flex-grow min-w-0 pr-4">
       <div class="flex items-center space-x-2">
-        <h3 class="font-medium">{{ group.name }}</h3>
+        <h3 class="font-medium" :class="{ 'text-gray-800 font-semibold': isActive }">{{ group.name }}</h3>
         <!-- Private Badge (Inline) -->
         <span 
           v-if="showPrivateBadge && group.is_private" 
-          class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded"
+          class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded"
         >
           Private
         </span>
@@ -33,8 +39,8 @@
       <p class="text-sm text-muted-foreground truncate">{{ group.description || 'No description' }}</p>
     </div>
     
-    <!-- Top Right Actions Slot -->
-    <div class="absolute top-2 right-2 flex items-center space-x-2">
+    <!-- Top Right Actions Slot - Modified to work as notification badges -->
+    <div class="absolute top-2 right-2 flex items-center space-x-2 z-10">
       <slot name="top-right-actions"></slot>
     </div>
     
@@ -67,6 +73,10 @@ const props = defineProps({
   clickable: {
     type: Boolean,
     default: true
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -86,3 +96,11 @@ const groupPictureUrl = computed(() => {
   return `${apiBaseUrl}${props.group.picture}`
 })
 </script> 
+
+<style scoped>
+/* Smooth transition for all changes */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+</style> 

@@ -422,22 +422,17 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
 }
 
 // Function to change group password
-export const changeGroupPassword = async (groupId, currentPassword, newPassword) => {
-  if (!groupId) throw new Error('Group ID is required')
-
+export const changeGroupPassword = async (groupId, newPassword) => {
   try {
-    // This function doesn't involve user authentication directly,
-    // so we'll continue to use the existing API
+    console.log('Changing group password for group:', groupId)
+    
     const response = await axios.put(`/groups/${groupId}/password`, {
-      current_password: currentPassword,
       new_password: newPassword
     })
     
     return response.data
   } catch (error) {
     console.error('Failed to change group password:', error)
-    console.error('Error response:', error.response?.data)
-    console.error('Error status:', error.response?.status)
     throw error
   }
 }

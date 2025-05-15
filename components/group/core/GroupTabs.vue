@@ -1,26 +1,31 @@
 <!-- components/group/GroupTabs.vue -->
+<!-- 
+  This component renders the main tabs for a group page.
+  Settings tab is now always visible to all users, but functionality is limited for non-admins.
+  Non-admin users will see disabled/greyed out settings with a notice explaining they are in read-only mode.
+-->
 <template>
   <Tabs :modelValue="props.modelValue" @update:modelValue="handleTabChange" class="w-full">
-    <TabsList class="grid w-full" :style="`grid-template-columns: repeat(${tabCount}, minmax(0, 1fr))`">
-      <TabsTrigger value="votes" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+    <TabsList class="grid w-full border border-border rounded-md p-1 gap-1" :style="`grid-template-columns: repeat(${tabCount}, minmax(0, 1fr))`">
+      <TabsTrigger value="votes" class="flex items-center justify-center border border-transparent data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:border">
         <span class="flex items-center">
           <Vote class="h-4 w-4 mr-2" />
           Votes
         </span>
       </TabsTrigger>
-      <TabsTrigger value="posts" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+      <TabsTrigger value="posts" class="flex items-center justify-center border border-transparent data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:border">
         <span class="flex items-center">
           <Newspaper class="h-4 w-4 mr-2" />
           Posts
         </span>
       </TabsTrigger>
-      <TabsTrigger value="members" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+      <TabsTrigger value="members" class="flex items-center justify-center border border-transparent data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:border">
         <span class="flex items-center">
           <Users class="h-4 w-4 mr-2" />
           Members
         </span>
       </TabsTrigger>
-      <TabsTrigger v-if="isCurrentUserAdmin" value="settings" class="flex items-center justify-center border border-transparent data-[state=active]:border-muted-foreground data-[state=inactive]:border-border">
+      <TabsTrigger value="settings" class="flex items-center justify-center border border-transparent data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:border">
         <span class="flex items-center">
           <Settings class="h-4 w-4 mr-2" />
           Settings
@@ -69,8 +74,8 @@
       />
     </TabsContent>
 
-    <!-- Settings Tab (Only shown to admins) -->
-    <TabsContent v-if="isCurrentUserAdmin" value="settings">
+    <!-- Settings Tab (Shown to all users, but functionality limited for non-admins) -->
+    <TabsContent value="settings">
       <SettingsTab
         :group="group"
         :is-current-user-admin="isCurrentUserAdmin"
@@ -134,7 +139,7 @@ const props = defineProps({
 
 // Calculate the number of tabs dynamically
 const tabCount = computed(() => {
-  return props.isCurrentUserAdmin ? 4 : 3;
+  return 4; // Always show all 4 tabs
 });
 
 // Debug admin status

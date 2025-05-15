@@ -16,39 +16,67 @@
       </p>
     </div>
 
-    <!-- State 2: Ballot Encrypted, Ready to Cast/Spoil -->
+    <!-- State 2: Ballot Encrypted, Ready to Cast/Spoil - SIMPLIFIED -->
     <div v-else-if="encryptedBallotData" class="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
         <div class="flex items-center justify-center space-x-2">
             <LucideIcon name="ShieldCheck" class="h-8 w-8 text-blue-600" />
-             <h4 class="text-lg font-medium text-blue-800">Ballot Encrypted</h4>
+            <h4 class="text-lg font-medium text-blue-800">Ballot Encrypted</h4>
         </div>
-        <p class="text-sm text-center text-muted-foreground">Your selection has been securely encrypted. You can now choose to cast or spoil your ballot.</p>
-        <p class="text-sm text-muted-foreground">Your unique ballot tracking hash is:</p>
-        <div class="flex items-center justify-center space-x-2">
-            <code class="flex-grow text-sm font-mono bg-gray-100 p-2 rounded break-all text-left">{{ encryptedBallotData?.tracker_hash || 'Generating...' }}</code>
-            <Button variant="ghost" size="icon" @click="copyToClipboard(encryptedBallotData?.tracker_hash, 'copyBtnEncrypted')" :disabled="!encryptedBallotData?.tracker_hash">
-                 <LucideIcon :name="copyStatus.copyBtnEncrypted === 'copied' ? 'Check' : 'Copy'" size="4" class="h-4 w-4" />
-            </Button>
-         </div>
-        <p class="text-xs text-muted-foreground pt-2">Keep this hash safe. You can use it later to verify your ballot.</p>
-        <div class="flex justify-center space-x-4 pt-4">
-            <Button
-                variant="outline"
-                @click="handleSpoil"
-                :disabled="isSubmitting"
-            >
-                 <LucideIcon v-if="isSubmitting && actionType === 'spoil'" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
-                <LucideIcon v-else name="Trash2" size="4" class="h-4 w-4 mr-2" />
-                Spoil Ballot
-            </Button>
+        <p class="text-sm text-center text-muted-foreground">Your selection has been securely encrypted.</p>
+        
+        <div class="flex flex-col items-center space-y-3 pt-4">
             <Button
                 @click="handleCast"
                 :disabled="isSubmitting"
             >
                 <LucideIcon v-if="isSubmitting && actionType === 'cast'" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
-                 <LucideIcon v-else name="Send" size="4" class="h-4 w-4 mr-2" />
+                <LucideIcon v-else name="Send" size="4" class="h-4 w-4 mr-2" />
                 Cast Ballot
             </Button>
+            
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline">
+                        <LucideIcon name="InfoIcon" size="4" class="h-4 w-4 mr-2" />
+                        Understand ElectionGuard Voting Security
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent class="w-80">
+                    <div class="space-y-3">
+                        <h5 class="font-medium">ElectionGuard End-to-End Verifiable Voting</h5>
+                        <p class="text-xs text-muted-foreground">Your ballot is secured using ElectionGuard cryptography</p>
+                        
+                        <div class="space-y-2">
+                            <p class="text-sm text-muted-foreground">Your unique ballot tracking hash is:</p>
+                            <div class="flex items-center space-x-2">
+                                <code class="flex-grow text-xs font-mono bg-gray-100 p-2 rounded break-all text-left">{{ encryptedBallotData?.tracker_hash || 'Generating...' }}</code>
+                                <Button variant="ghost" size="icon" @click="copyToClipboard(encryptedBallotData?.tracker_hash, 'copyBtnEncrypted')" :disabled="!encryptedBallotData?.tracker_hash">
+                                    <LucideIcon :name="copyStatus.copyBtnEncrypted === 'copied' ? 'Check' : 'Copy'" size="4" class="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <p class="text-xs text-muted-foreground">Keep this hash safe. You can use it later to verify your ballot.</p>
+                        </div>
+                        
+                        <div class="text-xs text-muted-foreground space-y-1">
+                            <p>You can choose to:</p>
+                            <p><strong>Cast</strong> - Submit your encrypted ballot to be counted</p>
+                            <p><strong>Spoil</strong> - Cancel this ballot and vote again</p>
+                        </div>
+                        
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="handleSpoil"
+                            :disabled="isSubmitting"
+                            class="w-full"
+                        >
+                            <LucideIcon v-if="isSubmitting && actionType === 'spoil'" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
+                            <LucideIcon v-else name="Trash2" size="4" class="h-4 w-4 mr-2" />
+                            Spoil Ballot
+                        </Button>
+                    </div>
+                </PopoverContent>
+            </Popover>
         </div>
     </div>
 
@@ -121,6 +149,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const props = defineProps({
   vote: {

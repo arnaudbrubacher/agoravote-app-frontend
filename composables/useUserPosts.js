@@ -75,8 +75,11 @@ export function useUserPosts(userId = null) {
       const updateData = {
         title: post.title,
         content: post.content,
-        isPublic: post.isPublic
+        isPublic: post.isPublic,
+        file_url: post.file_url
       };
+      
+      console.log('Sending update data to backend:', updateData);
       
       // Call API to update post
       const response = await axios.put(`/posts/${post.id}`, updateData);

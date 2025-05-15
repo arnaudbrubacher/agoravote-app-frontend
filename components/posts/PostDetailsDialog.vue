@@ -1,7 +1,7 @@
 <!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/dashboard/PostDetailsDialog.vue -->
 <template>
   <Dialog :open="true" @update:open="$emit('close')">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="sm:max-w-2xl md:max-w-3xl">
       <DialogHeader>
         <div class="flex items-center justify-between">
           <DialogTitle>{{ post.title }}</DialogTitle>
@@ -69,11 +69,6 @@
                 @change="handleFileChange"
               />
             </div>
-          </div>
-          
-          <div class="flex items-center space-x-2">
-            <Checkbox id="edit-isPublic" v-model:checked="editForm.isPublic" />
-            <Label for="edit-isPublic">Make this post public</Label>
           </div>
           
           <div class="flex justify-end space-x-2 pt-2">
@@ -219,7 +214,6 @@ const filePreview = ref(null)
 const editForm = ref({
   title: props.post.title,
   content: props.post.content,
-  isPublic: props.post.isPublic,
   attachment: null // Will be set in onMounted
 })
 
@@ -409,7 +403,9 @@ async function uploadAttachment() {
       }
     })
     
-    // Return the URL of the uploaded file
+    console.log('File upload response:', response.data)
+    
+    // Return the exact URL string returned by the backend
     return response.data.url
   } catch (error) {
     console.error('Failed to upload file:', error)
@@ -431,8 +427,7 @@ async function handleUpdate() {
     const updatedData = {
       title: editForm.value.title,
       content: editForm.value.content,
-      isPublic: editForm.value.isPublic,
-      file_url: fileUrl // Use file_url instead of attachment to match the database column
+      file_url: fileUrl // Changed back to file_url to match backend's JSON tag
     }
     
     emit('edit', { ...props.post, ...updatedData })
@@ -466,7 +461,6 @@ watch(() => props.post, (newPost) => {
   editForm.value = {
     title: newPost.title,
     content: newPost.content,
-    isPublic: newPost.isPublic,
     attachment: fileUrl.value
   }
 }, { deep: true })
@@ -476,7 +470,6 @@ onMounted(() => {
   editForm.value = {
     title: props.post.title,
     content: props.post.content,
-    isPublic: props.post.isPublic,
     attachment: fileUrl.value
   }
   

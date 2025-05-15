@@ -150,9 +150,10 @@ export function useGroupData(groupId) {
   }
   
   const leaveGroup = async () => {
-    if (!window.confirm('Are you sure you want to leave this group?')) {
-      return
-    }
+    // Remove the window.confirm dialog that's causing the duplicate confirmation
+    // if (!window.confirm('Are you sure you want to leave this group?')) {
+    //   return
+    // }
     
     try {
       console.log('Attempting to leave group with ID:', groupId)

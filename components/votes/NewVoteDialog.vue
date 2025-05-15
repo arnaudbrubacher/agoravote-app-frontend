@@ -17,9 +17,15 @@
             <Input id="title" v-model="formData.title" class="col-span-3" />
           </div>
           <!-- Question Input -->
-          <div class="grid grid-cols-4 items-center gap-4">
-            <Label for="question" class="text-right">Question</Label>
-            <Input id="question" v-model="formData.question" class="col-span-3" />
+          <div class="grid grid-cols-4 items-start gap-4">
+            <Label for="question" class="text-right pt-2">Question</Label>
+            <Textarea 
+              id="question" 
+              v-model="formData.question" 
+              class="col-span-3" 
+              rows="2" 
+              placeholder="Enter your question"
+            />
           </div>
           <!-- Choices Input -->
           <div class="grid grid-cols-4 items-start gap-4">
@@ -32,16 +38,6 @@
                 </Button>
               </div>
               <Button type="button" variant="outline" size="sm" @click="addChoice">Add Choice</Button>
-            </div>
-          </div>
-          <!-- Settings Section -->
-          <div class="grid grid-cols-4 items-center gap-4">
-            <Label class="text-right">Settings</Label>
-            <div class="col-span-3 space-y-2">
-              <div class="flex items-center space-x-2">
-                <Switch id="isSecret" v-model:checked="formData.isSecret" />
-                <Label for="isSecret">Secret Ballot (using ElectionGuard)</Label>
-              </div>
             </div>
           </div>
           <!-- Start Time Input -->

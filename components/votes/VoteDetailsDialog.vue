@@ -5,6 +5,10 @@
         <DialogTitle>{{ vote.title }}</DialogTitle>
         <DialogDescription>
           {{ vote.status || 'Loading...' }} vote · {{ formatDate(vote.start_time) }} - {{ formatDate(vote.end_time) }}
+          <div class="mt-1 flex items-center text-sm">
+            <LucideIcon name="User" size="4" class="h-4 w-4 mr-1" />
+            Created by {{ vote.creator_username || 'Unknown' }}
+          </div>
         </DialogDescription>
       </DialogHeader>
       
@@ -73,7 +77,7 @@
               <LucideIcon v-else name="Trash" size="4" class="h-4 w-4 mr-1" />
               {{ isDeletingVote ? 'Deleting...' : 'Delete' }}
             </Button>
-            <Button v-if="canEndEarly" variant="secondary" size="sm" @click="confirmEndEarly">
+            <Button v-if="canEndEarly" variant="outline" size="sm" @click="confirmEndEarly">
               <LucideIcon name="TimerOff" size="4" class="h-4 w-4 mr-1" />
               End Vote Early
             </Button>

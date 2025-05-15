@@ -1,6 +1,14 @@
 <!-- components/group/tabs/MembersTab.vue -->
 <template>
-  <div class="mt-6 p-6">
+  <div class="p-6">
+    <!-- Non-admin notice -->
+    <div v-if="!isCurrentUserAdmin" class="bg-muted p-4 rounded-lg mb-4 border border-border">
+      <div class="flex items-center">
+        <Info class="h-5 w-5 text-muted-foreground mr-2" />
+        <p class="text-sm text-muted-foreground">You are viewing group members in read-only mode. Only group administrators can modify member settings.</p>
+      </div>
+    </div>
+    
     <!-- Top Level Actions -->
     <div class="flex justify-end items-center mb-6 space-x-2">
        <!-- Add Members Dropdown -->
@@ -36,7 +44,7 @@
        <Button 
          variant="outline" 
          size="sm" 
-         @click="isCurrentUserAdmin ? refreshAllLists() : null"
+         @click.prevent="handleRefreshClick"
          :class="{ 'opacity-50 cursor-not-allowed': !isCurrentUserAdmin }"
          :disabled="!isCurrentUserAdmin || isLoadingPendingMembers || isLoadingInvitedMembers || isLoadingMembers" 
          :title="!isCurrentUserAdmin ? 'Only admins can refresh the lists' : 'Refresh All Lists'"
@@ -131,6 +139,23 @@
       @close="showInviteDialog = false"
       @submit="handleInviteSubmit"
     />
+
+    <!-- Success Alert Dialog -->
+    <AlertDialog :open="showSuccessDialog" @update:open="showSuccessDialog = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Success</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ successMessage }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction @click="showSuccessDialog = false">
+            OK
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
 
@@ -150,6 +175,16 @@ import {
 } from '@/components/ui/dropdown-menu/index.js'
 import { Button } from '@/components/ui/button'
 import LucideIcon from '@/components/LucideIcon.vue'
+import { Info } from 'lucide-vue-next'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog'
 
 const props = defineProps({
   group: {
@@ -169,6 +204,10 @@ const props = defineProps({
     required: true
   }
 })
+
+// Variables for success alert dialog
+const showSuccessDialog = ref(false)
+const successMessage = ref('')
 
 // Compute active members - filter out pending members
 const activeMembers = computed(() => {
@@ -593,9 +632,10 @@ const acceptPendingMember = async (member) => {
     // Refresh the group data to update the members list
     emit('refresh-group')
     
-    // Show success message
+    // Show success message using the alert dialog
     const memberName = member.name || member.user?.name || 'Member'
-    alert(`${memberName} has been accepted to the group`)
+    successMessage.value = `${memberName} has been accepted to the group`
+    showSuccessDialog.value = true
   } catch (error) {
     console.error('Failed to accept pending member:', error)
     alert('Failed to accept member: ' + (error.response?.data?.error || error.message))
@@ -628,7 +668,8 @@ const declinePendingMember = async (member) => {
     
     // Show success message
     const memberName = member.name || member.user?.name || 'Member'
-    alert(`${memberName}'s request to join has been declined`)
+    successMessage.value = `${memberName}'s request to join has been declined`
+    showSuccessDialog.value = true
   } catch (error) {
     console.error('Failed to decline pending member:', error)
     alert('Failed to decline member: ' + (error.response?.data?.error || error.message))
@@ -858,11 +899,40 @@ const handleInviteSubmit = (email) => {
   showInviteDialog.value = false;
 }
 
+// New function to handle refresh click with preventDefault
+const handleRefreshClick = (event) => {
+  if (event) {
+    event.preventDefault();
+  }
+  if (props.isCurrentUserAdmin) {
+    // Only refresh pending and invited members, not the entire group
+    refreshPendingAndInvited();
+  }
+}
+
+// New function to refresh only pending and invited members without triggering group refresh
+const refreshPendingAndInvited = async () => {
+  console.log('MembersTab - Refreshing pending and invited members only...');
+  try {
+    await Promise.all([
+      fetchPendingMembers(),
+      fetchInvitedMembers()
+    ]);
+    // Don't emit refresh-group event which causes the redirect
+  } catch (error) {
+    console.error('Error refreshing members lists:', error);
+  }
+}
+
 // New function to refresh all lists
 const refreshAllLists = () => {
   console.log('MembersTab - Refreshing all lists...');
   fetchPendingMembers();
   fetchInvitedMembers();
-  emit('refresh-group'); // This should trigger the parent to reload active members
+  // Only refresh the group if explicitly requested, with caution
+  const shouldRefreshGroup = false; // Set to true only when really needed
+  if (shouldRefreshGroup) {
+    emit('refresh-group'); // Only emit this when absolutely necessary
+  }
 }
 </script>

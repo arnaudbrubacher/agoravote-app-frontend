@@ -5,10 +5,14 @@
       <div>
         <h3 class="font-semibold">{{ vote.title }}</h3>
         <p class="text-muted-foreground">{{ vote.question }}</p>
-        <div class="mt-2 text-sm">
+        <div class="mt-2 text-sm space-y-1">
           <span class="flex items-center">
             <LucideIcon name="Calendar" size="4" class="h-4 w-4 mr-1" />
             {{ formatDateShort(vote.start_time) }} - {{ formatDateShort(vote.end_time) }}
+          </span>
+          <span class="flex items-center text-muted-foreground">
+            <LucideIcon name="User" size="4" class="h-4 w-4 mr-1" />
+            Created by {{ vote.creator_username || 'Unknown' }}
           </span>
         </div>
       </div>

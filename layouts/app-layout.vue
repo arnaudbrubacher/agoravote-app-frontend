@@ -153,6 +153,39 @@ const loadLayoutData = async () => {
     return;
   }
   console.log('loadLayoutData checking session...');
+  
+  // Check for refresh_subscription parameter in the URL
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refreshSubscription = urlParams.get('refresh_subscription');
+    if (refreshSubscription === 'true') {
+      // Remove the parameter from the URL without refreshing the page
+      const newUrl = window.location.pathname + (urlParams.size > 1 ? 
+        '?' + Array.from(urlParams.entries())
+          .filter(([key]) => key !== 'refresh_subscription')
+          .map(([key, value]) => `${key}=${value}`)
+          .join('&') : '');
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Get the group ID from the path
+      const groupIdMatch = window.location.pathname.match(/\/group\/([^\/]+)/);
+      if (groupIdMatch && groupIdMatch[1]) {
+        const groupId = groupIdMatch[1];
+        console.log(`URL contains refresh_subscription=true for group ${groupId}, handling without page refresh`);
+        
+        // Trigger a targeted refresh for this specific group
+        setTimeout(() => {
+          handleSubscriptionUpdatedEvent({ 
+            detail: { 
+              groupId,
+              status: 'active' // Assume successful payment
+            } 
+          });
+        }, 500);
+      }
+    }
+  }
+  
   let sessionExists = false;
   try {
     sessionExists = await Session.doesSessionExist();
@@ -648,14 +681,20 @@ onMounted(() => {
 
   // Event listener for user leaving a group
    window.addEventListener('user-left-group', handleUserLeftGroupEvent); // Renamed handler slightly
-
+   
+  // Event listener for user data updates (e.g. profile picture changes)
+  window.addEventListener('user-data-updated', handleUserDataUpdatedEvent);
+  
+  // Event listener for subscription updates (from PurchaseOptions.vue)
+  window.addEventListener('subscription-updated', handleSubscriptionUpdatedEvent);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('group-joined-successfully', handleGroupJoinedEvent);
   window.removeEventListener('group-data-updated', handleGroupDataUpdatedEvent);
    window.removeEventListener('user-left-group', handleUserLeftGroupEvent); // Renamed handler slightly
-
+   window.removeEventListener('user-data-updated', handleUserDataUpdatedEvent);
+  window.removeEventListener('subscription-updated', handleSubscriptionUpdatedEvent);
 });
 
 // Handle the group-joined-successfully event (from FindGroupDialog)
@@ -679,5 +718,49 @@ const handleUserLeftGroupEvent = (event) => {
    handleUserLeftGroup(event);
 };
 
+// Handle user data updated event (for profile picture changes)
+const handleUserDataUpdatedEvent = () => {
+  console.log('app-layout: Received user-data-updated event');
+  fetchUserData(); // Refresh the user data including profile picture
+};
+
+// Add this new function to handle subscription updates without a page refresh
+const handleSubscriptionUpdatedEvent = (event) => {
+  console.log('app-layout: Received subscription-updated event', event.detail);
+  
+  if (event.detail?.groupId) {
+    const groupId = event.detail.groupId;
+    
+    // Refresh the specific group data without a full reload
+    const refreshGroupData = async () => {
+      try {
+        console.log(`Refreshing group data for ${groupId} after subscription update`);
+        // Fetch updated group data
+        const response = await axios.get(`/api/groups/${groupId}`);
+        const updatedGroup = response.data;
+        
+        // Update the group in our local state
+        const groupIndex = userGroups.value.findIndex(g => g.id === groupId);
+        if (groupIndex !== -1) {
+          // Update the existing group object
+          const updatedGroups = [...userGroups.value];
+          updatedGroups[groupIndex] = {
+            ...updatedGroups[groupIndex], 
+            ...updatedGroup
+          };
+          userGroups.value = updatedGroups;
+          console.log('Updated local group data after subscription change');
+        }
+        
+        // Dispatch an event to notify other components
+        window.dispatchEvent(new CustomEvent('group-data-updated'));
+      } catch (error) {
+        console.error('Failed to refresh group data after subscription update:', error);
+      }
+    };
+    
+    refreshGroupData();
+  }
+};
 
 </script>

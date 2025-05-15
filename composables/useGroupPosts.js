@@ -113,8 +113,11 @@ export function useGroupPosts(groupId) {
       const updateData = {
         title: post.title,
         content: post.content,
-        isPublic: post.isPublic
+        isPublic: post.isPublic,
+        file_url: post.file_url // Add file_url to the update data
       };
+      
+      console.log('Sending update data to backend:', updateData);
       
       // Call API to update post
       const response = await axios.put(`/posts/${post.id}`, updateData);

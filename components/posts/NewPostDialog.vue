@@ -32,12 +32,6 @@
           />
         </div>
         
-        <!-- Privacy Option -->
-        <div class="flex items-center space-x-2">
-          <Checkbox id="isPublic" v-model:checked="formData.isPublic" />
-          <Label for="isPublic" class="cursor-pointer">Make this post public</Label>
-        </div>
-        
         <!-- File Upload (optional) -->
         <div>
           <Label for="file-label" class="block mb-2">Attachment (Optional)</Label>
@@ -108,7 +102,6 @@ const emit = defineEmits(['close', 'submit'])
 const formData = ref({
   title: '',
   content: '',
-  isPublic: true,
   file: null
 })
 
@@ -128,7 +121,6 @@ async function handleSubmit() {
     const postData = new FormData()
     postData.append('title', formData.value.title)
     postData.append('content', formData.value.content)
-    postData.append('isPublic', formData.value.isPublic)
     
     if (formData.value.file) {
       postData.append('file', formData.value.file)

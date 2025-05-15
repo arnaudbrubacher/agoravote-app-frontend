@@ -257,46 +257,37 @@ async function confirmPayment() {
     const { error, paymentIntent } = await stripe.value.confirmPayment({
       elements: elements.value,
       confirmParams: {
-        // IMPORTANT: setup_future_usage must be set when creating the PaymentIntent on the backend,
-        // not during confirmation. Setting it here will cause an IntegrationError.
-        // The backend sets this with SetupFutureUsage: "off_session" in the PaymentIntent creation.
-        return_url: `${window.location.origin}/group/${props.groupId}?refresh_subscription=true`,
+        // Redirect to the settings page with billing tab selected after successful payment
+        return_url: `${window.location.origin}/group/${props.groupId}?tab=settings&settings_subtab=billing&refresh_subscription=true`,
       },
+      // No redirect parameter - allow full page navigation after payment
     });
 
     if (error) {
       // Handle errors from Stripe.js (e.g., card declined)
       console.error("Stripe confirmPayment error:", error);
-      // Use error.message - more user friendly than error.type
       paymentError.value = error.message || "An unexpected payment error occurred.";
       showAlert('Payment Failed', paymentError.value);
-      // Only reset processing state on actionable error for user
       isProcessingPayment.value = false; 
     } else {
-      // Payment succeeded (or requires further action like 3DS)
+      // This won't execute in most cases since we'll redirect to return_url
+      // But it's needed for cases where redirect doesn't happen
       console.log("PaymentIntent Status:", paymentIntent.status);
+      
       if (paymentIntent.status === 'succeeded') {
         showAlert('Payment Successful!', 'Your subscription has been activated.');
-        // Optionally, redirect or update UI based on success
-        // Reset state after showing success alert
-        // Note: isProcessingPayment remains true until alert is dismissed
-        // Consider resetting state AFTER alert dismissal or navigation.
-        stripeClientSecret.value = null; // Reset to hide payment element
-
+        
+        // Manually redirect to settings page with billing tab
+        window.location.href = `/group/${props.groupId}?tab=settings&settings_subtab=billing&refresh_subscription=true`;
       } else if (paymentIntent.status === 'processing') {
-         // Inform the user the payment is processing
          showAlert('Payment Processing', 'Your payment is processing. We will update your subscription status soon.');
-         // Keep processing state active
       } else if (paymentIntent.status === 'requires_payment_method') {
-         // Likely an issue with the payment method during confirmation
          paymentError.value = "Payment failed. Please try another payment method.";
          showAlert('Payment Failed', paymentError.value);
          isProcessingPayment.value = false; 
       } else if (paymentIntent.status === 'requires_action') {
-        // Redirects for 3D Secure will be handled by Stripe.js automatically
-        // if using payment elements. No explicit handling needed here usually.
-         console.log('Payment requires further action (e.g., 3D Secure).');
-         // Keep processing state active while Stripe handles the redirect/modal
+        console.log('Payment requires further action (e.g., 3D Secure).');
+        // Let Stripe handle the authentication flow
       } else {
         paymentError.value = `Unexpected payment status: ${paymentIntent.status}`;
         showAlert('Payment Status Unknown', paymentError.value);
@@ -304,14 +295,11 @@ async function confirmPayment() {
       }
     }
   } catch (err) {
-    // Catch any unexpected errors during the confirmation process
     console.error("Unexpected error during payment confirmation:", err);
     paymentError.value = "An unexpected error occurred during payment confirmation.";
     showAlert('Error', paymentError.value);
-    isProcessingPayment.value = false; // Reset processing state on unexpected error
+    isProcessingPayment.value = false;
   }
-  // Do NOT reset isProcessingPayment here if payment is successful/processing/requires_action,
-  // only on failure states where the user needs to retry.
 }
 
 async function deleteIncompleteSubscription() {

@@ -28,10 +28,10 @@
     </div>
 
     <!-- Settings Form -->
-    <div v-else-if="userData" class="max-w-2xl mx-auto bg-card p-8 rounded-lg shadow">
+    <div v-else-if="userData" class="max-w-2xl mx-auto p-8">
       <div class="space-y-8">
         <!-- Profile Picture Section -->
-        <div class="flex flex-col items-center border-b pb-8">
+        <div class="flex flex-col items-center pb-8">
           <div class="relative mb-4 group">
             <div v-if="!profilePictureUrl" class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center">
               <User class="h-16 w-16 text-gray-400" />
@@ -59,10 +59,12 @@
           />
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             @click="triggerFileInput"
+            class="flex items-center"
           >
+            <Camera class="h-4 w-4 mr-2" />
             Change Profile Picture
           </Button>
         </div>
@@ -145,7 +147,7 @@
         </div>
 
         <!-- Actions Section -->
-        <div class="border-t pt-8 space-y-4">
+        <div class="pt-8 space-y-4">
            <div class="flex justify-start items-center">
              <Button 
                variant="destructive" 
@@ -300,9 +302,12 @@ const handleProfilePictureUpload = async (event) => {
   if (!file) return
   
   try {
-    await updateProfilePicture(file) // Use composable function directly
+    if (!userData.value?.id) {
+      throw new Error('User data not available.')
+    }
+    await updateProfilePicture(userData.value.id, file) // Pass the user ID
     await fetchCurrentUserProfile() // Refresh data after upload
-     window.dispatchEvent(new CustomEvent('user-data-updated')) // Notify other components
+    window.dispatchEvent(new CustomEvent('user-data-updated')) // Notify other components
     alert('Profile picture updated successfully.')
   } catch (uploadError) {
     console.error('Failed to upload profile picture:', uploadError)

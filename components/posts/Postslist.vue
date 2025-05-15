@@ -23,7 +23,12 @@
     
     <!-- No posts state -->
     <div v-else-if="!posts || posts.length === 0" class="text-center py-8 text-muted-foreground">
-      {{ isCurrentUser ? "You haven't posted anything yet." : "This user hasn't posted anything yet." }}
+      <template v-if="isGroup">
+        This group doesn't have any posts yet.
+      </template>
+      <template v-else>
+        {{ isCurrentUser ? "You haven't posted anything yet." : "This user hasn't posted anything yet." }}
+      </template>
     </div>
     
     <!-- Posts list -->
@@ -54,6 +59,10 @@ const props = defineProps({
     default: false
   },
   isCurrentUser: {
+    type: Boolean,
+    default: false
+  },
+  isGroup: {
     type: Boolean,
     default: false
   },

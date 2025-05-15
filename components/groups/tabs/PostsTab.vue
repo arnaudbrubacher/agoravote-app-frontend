@@ -6,6 +6,7 @@
       :posts="posts"
       :loading="isLoadingPosts"
       :is-current-user="false"
+      :is-group="true"
       :show-create-button="true"
       @create-post="showNewPostDialog = true"
       @open-post="openPostDetails"
