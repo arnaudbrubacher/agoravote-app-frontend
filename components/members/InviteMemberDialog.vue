@@ -19,7 +19,13 @@
             placeholder="member@example.com"
             required
             :disabled="isSubmitting"
+            :class="{'border-red-500 focus:ring-red-500': !!validationError}"
+            @blur="validateEmail"
           />
+          <!-- Validation Error Message -->
+          <p v-if="validationError" class="text-sm text-red-500 mt-1">
+            {{ validationError }}
+          </p>
         </div>
 
         <!-- Actions -->
@@ -27,7 +33,7 @@
           <Button type="button" variant="outline" @click="$emit('close')" :disabled="isSubmitting">
             Cancel
           </Button>
-          <Button type="submit" :disabled="isSubmitting">
+          <Button type="submit" :disabled="isSubmitting || !!validationError">
             {{ isSubmitting ? 'Sending...' : 'Send Invitation' }}
           </Button>
         </div>
@@ -62,7 +68,7 @@ const props = defineProps({
   },
   open: { // <-- Assume parent controls open state
      type: Boolean,
-     required: true
+     default: true
   }
 })
 
@@ -70,36 +76,54 @@ const emit = defineEmits(['close', 'submit'])
 
 const email = ref('')
 const isSubmitting = ref(false)
-const internalErrorMessage = ref(props.errorMessage) // <-- Internal state for error
+const validationError = ref('') // New ref for validation errors
 
-// Watch for external changes to errorMessage prop
-watch(() => props.errorMessage, (newValue) => {
-  internalErrorMessage.value = newValue
-})
+// Email validation function
+const validateEmail = () => {
+  // Reset validation error
+  validationError.value = ''
+  
+  // Validate email if it's not empty
+  if (email.value) {
+    // Simple regex for basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.value)) {
+      validationError.value = 'Please enter a valid email address'
+    }
+  } else {
+    validationError.value = 'Email is required'
+  }
+}
 
-// Watch for dialog opening to clear previous errors and email
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    email.value = '' // Clear email field
-    internalErrorMessage.value = null // Clear any previous error message
-    isSubmitting.value = false // Reset submitting state
+// Watch for email changes to clear validation errors when user is typing
+watch(email, () => {
+  if (validationError.value) {
+    // Clear validation error only if they've started typing
+    // But keep it if the field is completely empty
+    if (email.value) {
+      validationError.value = ''
+    }
   }
 })
 
 async function handleSubmit() {
-  internalErrorMessage.value = null // Clear previous error on new submission attempt
   console.log("[InviteMemberDialog] handleSubmit called. Email:", email.value);
-  if (!email.value || isSubmitting.value) return
+  
+  // Validate the email before submission
+  validateEmail()
+  
+  // Prevent submission if validation fails
+  if (validationError.value || isSubmitting.value) return
+  
   isSubmitting.value = true
   try {
     console.log("[InviteMemberDialog] Emitting submit event with email:", email.value);
     // Emit and let the parent handle the API call and potential errors
-    await emit('submit', email.value)
+    emit('submit', email.value)
     // Parent component will control closing or showing errors based on API result
   } catch (error) {
     // This catch block might not be necessary if all error handling is in parent
     console.error("Local submission error in dialog (should ideally be caught by parent):", error)
-    internalErrorMessage.value = 'An unexpected error occurred.' // Fallback error
   } finally {
     isSubmitting.value = false
   }

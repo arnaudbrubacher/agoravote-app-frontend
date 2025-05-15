@@ -31,10 +31,10 @@
           <span v-if="isCurrentMember(member)" class="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
             You
           </span>
-          <span v-else-if="isPending" class="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
+          <span v-else-if="isPending && !hidePendingBadge" class="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
             Pending
           </span>
-          <span v-else-if="isInvited" class="ml-2 text-xs bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-full">
+          <span v-else-if="isInvited && !hideInvitedBadge" class="ml-2 text-xs bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-full">
             Invited
           </span>
           <span v-if="isPending && !invitationAccepted && !member.isJoinRequest" class="ml-2 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
@@ -227,6 +227,19 @@
       </div>
     </div>
   </div>
+
+  <!-- Reusable Alert Dialog -->
+  <ActionAlertDialog
+    :open="isOpen"
+    :title="title"
+    :message="message"
+    :action-text="actionText"
+    :cancel-text="cancelText"
+    :show-cancel="showCancel"
+    @update:open="isOpen = $event"
+    @action="handleAction"
+    @cancel="handleCancel"
+  />
 </template>
 
 <script setup>
@@ -235,6 +248,8 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
+import { useAlertDialog } from '@/composables/useAlertDialog'
+import ActionAlertDialog from '@/components/shared/ActionAlertDialog.vue'
 // Import Tooltip components
 import {
   Tooltip,
@@ -278,6 +293,14 @@ const props = defineProps({
   invitationAccepted: {
     type: Boolean,
     default: false
+  },
+  hideInvitedBadge: {
+    type: Boolean,
+    default: false
+  },
+  hidePendingBadge: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -302,6 +325,20 @@ const emit = defineEmits([
   'cancel-invite'
 ])
 
+// Initialize the alert dialog system
+const { 
+  isOpen, 
+  title, 
+  message, 
+  actionText, 
+  cancelText, 
+  showCancel, 
+  showAlert, 
+  showConfirm, 
+  handleAction, 
+  handleCancel 
+} = useAlertDialog()
+
 // Try to get app user data from parent components
 const appUserData = inject('appUserData', null)
 
@@ -309,6 +346,35 @@ const appUserData = inject('appUserData', null)
 const memberAvatarUrl = computed(() => {
   console.log(`[MemberRow ${getMemberName(props.member)}] Computing avatar URL. Is current member: ${isCurrentMember(props.member)}`);
   console.log(`[MemberRow ${getMemberName(props.member)}] appUserData available: ${!!appUserData?.value}`);
+  
+  // For invited members, check if they have a profile picture
+  if (props.isInvited) {
+    console.log(`[MemberRow ${getMemberName(props.member)}] Invited member profile data:`, { 
+      avatar: props.member.avatar, 
+      profile_picture: props.member.profile_picture 
+    });
+    
+    // Check if invited member has an avatar or profile picture
+    if (props.member.avatar || props.member.profile_picture) {
+      const avatarUrl = props.member.avatar || props.member.profile_picture;
+      
+      // If the avatar URL is already absolute, use it directly
+      if (avatarUrl && avatarUrl.startsWith('http')) {
+        return avatarUrl;
+      }
+      
+      // Otherwise, prepend the API base URL if the path is valid
+      if (avatarUrl && avatarUrl.length > 0) {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+        return `${baseUrl}/${avatarUrl}`;
+      }
+    }
+    
+    // If no valid avatar/profile picture, return null to show initials
+    return null;
+  }
+  
+  // Continue with existing logic for regular members
   if (appUserData?.value) {
     console.log(`[MemberRow ${getMemberName(props.member)}] appUserData.profile_picture: ${appUserData.value.profile_picture}`);
   }
@@ -378,19 +444,24 @@ const toggleAdminStatus = () => {
   }
 }
 
-// Add a handler for the remove action to log the member data
+// Update handleMemberRemove to use showConfirm instead of emit
 const handleMemberRemove = (member) => {
-  // Confirm before removing
-  // if (!confirm(`Are you sure you want to remove ${member.name} from this group?`)) {
-  //  return
-  // }
   console.log('MemberRow - Remove button clicked for member:', member.name, {
     id: member.id,
     userId: member.userId,
     user_id: member.user_id,
     user: member.user && member.user.id
   });
-  emit('remove', member);
+  
+  // Show the confirmation dialog directly here instead of emitting
+  showConfirm(
+    'Confirm Removal', 
+    `Are you sure you want to remove ${member.name} from this group?`,
+    () => {
+      // When confirmed, emit the remove event
+      emit('remove', member);
+    }
+  );
 }
 
 const getMemberEmail = (member) => {

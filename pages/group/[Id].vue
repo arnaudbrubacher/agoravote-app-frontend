@@ -765,10 +765,22 @@ const refreshGroupData = async () => {
     await fetchGroup()
   } catch (error) {
     console.warn('Error refreshing group data:', error)
-    // Check if this is a 404 error (group no longer exists)
+    
+    // Only redirect for actual 404 errors (confirmed group no longer exists)
     if (error.response && error.response.status === 404) {
       console.log('Group no longer exists, redirecting to profile page')
-      router.push('/profile')
+      
+      // Show alert before redirecting
+      showAlert('Group Not Found', 'This group no longer exists or you no longer have access to it.')
+      
+      // Delay the redirect slightly to allow the alert to be seen
+      setTimeout(() => {
+        router.push('/profile')
+      }, 1500)
+    } else {
+      // For other errors, show an alert but don't redirect
+      console.error('Error refreshing group data but not redirecting:', error.message)
+      showAlert('Error', 'Could not refresh group data. Please try again later.')
     }
     // Don't rethrow the error - we've handled it
   }
@@ -945,16 +957,51 @@ const handleInviteMember = async (email) => {
   console.log(`[pages/group/[Id].vue] handleInviteMember called with email:`, email);
   if (!email) {
     showAlert('Error', 'No email address provided for invitation.');
+    // Dispatch error event for MembersTab to catch
+    window.dispatchEvent(new CustomEvent('invite-member-error', { 
+      detail: { message: 'No email address provided for invitation.' } 
+    }));
     return;
   }
+  
   try {
     // Call the composable function to handle the API call
     console.log(`[pages/group/[Id].vue] Calling inviteMemberByEmail composable...`);
     await inviteMemberByEmail(email);
     console.log(`[pages/group/[Id].vue] inviteMemberByEmail composable finished.`);
-    // ... rest of try block ...
+    
+    // Dispatch success event for MembersTab to catch
+    window.dispatchEvent(new CustomEvent('invite-member-success'));
+    
+    // Refresh data as needed
+    await fetchGroup();
   } catch (error) {
-    // ... catch block ...
+    console.error(`[pages/group/[Id].vue] Error inviting member by email:`, error);
+    
+    // Format error message for easier parsing in MembersTab
+    let errorMessage = 'Failed to send invitation';
+    
+    // Extract specific error messages from different error shapes
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    // Create specific error types for better handling in MembersTab
+    let errorDetail = errorMessage;
+    
+    // Detect common error messages
+    if (errorMessage.includes('already an active member')) {
+      errorDetail = 'This user is already a member of the group.';
+    } else if (errorMessage.includes('an active invitation already exists')) {
+      errorDetail = 'An active invitation already exists for this email address.';
+    }
+    
+    // Dispatch error event with formatted details - send only the clean message text
+    window.dispatchEvent(new CustomEvent('invite-member-error', { 
+      detail: errorDetail
+    }));
   }
 };
 </script>

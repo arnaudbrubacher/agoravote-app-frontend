@@ -233,7 +233,7 @@
         <div v-else></div>
         
         <div class="flex space-x-2">
-          <Button variant="outline" @click="handleCancel">Close</Button>
+          <Button variant="outline" @click="handleDialogCancel">Close</Button>
           <Button 
             v-if="isCurrentUserAdmin" 
             type="button" 
@@ -285,9 +285,24 @@
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  
+  <!-- Reusable Alert Dialog -->
+  <ActionAlertDialog
+    :open="isOpen"
+    :title="title"
+    :message="message"
+    :action-text="actionText"
+    :cancel-text="cancelText"
+    :show-cancel="showCancel"
+    @update:open="isOpen = $event"
+    @action="handleAction"
+    @cancel="handleCancel"
+  />
 </template>
 
 <script setup>
+import { useAlertDialog } from '@/composables/useAlertDialog'
+import ActionAlertDialog from '@/components/shared/ActionAlertDialog.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { Button } from '@/components/ui/button'
@@ -326,6 +341,20 @@ const fileInput = ref(null)
 const previewImage = ref(null)
 const selectedFile = ref(null)
 const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
+
+// Initialize the alert dialog system
+const { 
+  isOpen, 
+  title, 
+  message, 
+  actionText, 
+  cancelText, 
+  showCancel, 
+  showAlert, 
+  showConfirm, 
+  handleAction, 
+  handleCancel 
+} = useAlertDialog()
 
 // Password change dialog state
 const showPasswordChange = ref(false)
@@ -919,7 +948,7 @@ const handleSubmit = async () => {
       // If the user is enabling password requirement but hasn't set a password yet,
       // show the password dialog
       if (formData.value.requires_password && !originalFormData.value.requires_password && !passwordHasBeenSet.value) {
-        alert('Please set a password for the group before saving changes.');
+        showAlert('Action Required', 'Please set a password for the group before saving changes.');
         showPasswordChange.value = true;
         return;
       }
@@ -929,14 +958,14 @@ const handleSubmit = async () => {
     if (formData.value.requires_documents && formData.value.documents.length > 0) {
       const emptyDocs = formData.value.documents.filter(doc => !doc.name.trim())
       if (emptyDocs.length > 0) {
-        alert('Please provide names for all required documents')
+        showAlert('Validation Error', 'Please provide names for all required documents')
         return
       }
     }
     
     // Check if documents are required but none are specified
     if (formData.value.requires_documents && formData.value.documents.length === 0) {
-      alert('If documents are required, you must specify at least one required document type.');
+      showAlert('Validation Error', 'If documents are required, you must specify at least one required document type.');
       return;
     }
     
@@ -1043,7 +1072,7 @@ const resetForm = () => {
 }
 
 // Cancel button handler
-const handleCancel = () => {
+const handleDialogCancel = () => {
   // Check if the user has toggled requires_password to true but hasn't set a password
   if (formData.value.requires_password && !originalFormData.value.requires_password && showPasswordChange.value) {
     // Reset the requires_password toggle
@@ -1080,29 +1109,29 @@ const changePassword = async () => {
   }
 
   if (passwordMismatch.value) {
-    alert('Passwords do not match')
+    showAlert('Validation Error', 'Passwords do not match')
     return
   }
   
-  // Check if the group previously required a password
-  const groupPreviouslyRequiredPassword = props.group.requires_password;
+      // Check if the group previously required a password
+    const groupPreviouslyRequiredPassword = props.group.requires_password;
+    
+    // Only require current password if the group previously required a password
+    if (groupPreviouslyRequiredPassword && !currentPassword.value) {
+      showAlert('Missing Field', 'Please enter your current password')
+      return
+    }
+    
+    if (!newPassword.value) {
+      showAlert('Missing Field', 'Please enter a new password')
+      return
+    }
   
-  // Only require current password if the group previously required a password
-  if (groupPreviouslyRequiredPassword && !currentPassword.value) {
-    alert('Please enter your current password')
-    return
-  }
-  
-  if (!newPassword.value) {
-    alert('Please enter a new password')
-    return
-  }
-  
-  // Simple password validation
-  if (newPassword.value.length < 6) {
-    alert('Password must be at least 6 characters long')
-    return
-  }
+      // Simple password validation
+    if (newPassword.value.length < 6) {
+      showAlert('Validation Error', 'Password must be at least 6 characters long')
+      return
+    }
   
   try {
     console.log('Changing password for group:', props.group.id)
@@ -1127,7 +1156,7 @@ const changePassword = async () => {
     showPasswordChange.value = false
     
     // Show success message
-    alert('Group password changed successfully')
+    showAlert('Success', 'Group password changed successfully')
     
     // Update the original form data to reflect that password has been changed
     // but we don't need to store the actual password
@@ -1152,16 +1181,16 @@ const changePassword = async () => {
       const errorMessage = error.response.data?.error || 'Unknown error'
       
       if (status === 401) {
-        alert('Current password is incorrect')
+        showAlert('Authentication Error', 'Current password is incorrect')
       } else if (status === 400) {
-        alert(`Failed to change password: ${errorMessage}`)
+        showAlert('Error', `Failed to change password: ${errorMessage}`)
       } else if (status === 403) {
-        alert('You do not have permission to change this group\'s password')
+        showAlert('Permission Denied', 'You do not have permission to change this group\'s password')
       } else {
-        alert(`Failed to change password: ${errorMessage}`)
+        showAlert('Error', `Failed to change password: ${errorMessage}`)
       }
     } else {
-      alert('Failed to change password: Network error')
+      showAlert('Connection Error', 'Failed to change password: Network error')
     }
   }
 }

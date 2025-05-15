@@ -10,23 +10,30 @@
     <!-- Pending members list -->
     <div v-else class="space-y-3">
        <MemberRow
-        v-for="(invitation, index) in invitedMembers"
+        v-for="(invitation, index) in processedInvitations"
         :key="invitation.id || index"
-        :member="mapInvitationToMember(invitation)"
+        :member="invitation"
         :is-invited="true"
         :is-current-user-admin="isCurrentUserAdmin"
-        @resend-invite="$emit('resend-invite', invitation)"
-        @cancel-invite="$emit('cancel-invite', invitation)"
+        :hide-invited-badge="true"
+        @resend-invite="$emit('resend-invite', invitation.originalInvitation)"
+        @cancel-invite="$emit('cancel-invite', invitation.originalInvitation)"
       />
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, computed, onMounted, watch } from 'vue';
 import LucideIcon from '@/components/LucideIcon.vue';
 import MemberRow from '~/components/members/MemberRow.vue';
+import { useUserService } from '~/composables/user-service';
 
-defineProps({
+const userService = useUserService();
+const processedInvitations = ref([]);
+const userDataLoading = ref(false);
+
+const props = defineProps({
   invitedMembers: {
     type: Array,
     default: () => []
@@ -47,20 +54,95 @@ defineProps({
 
 defineEmits(['resend-invite', 'cancel-invite']);
 
+// Watch for changes in invitedMembers and process them
+watch(() => props.invitedMembers, async (newInvitations) => {
+  if (newInvitations && newInvitations.length > 0) {
+    await processInvitations(newInvitations);
+  }
+}, { immediate: true });
+
+// Process invitations and fetch user data if possible
+async function processInvitations(invitations) {
+  userDataLoading.value = true;
+  const processed = [];
+  
+  for (const invitation of invitations) {
+    // Start with the basic mapped member
+    const basicMember = mapInvitationToMember(invitation);
+    
+    try {
+      // Try to fetch user data by email
+      const userData = await userService.findUserByEmail(invitation.email);
+      
+      if (userData) {
+        // Override basic data with actual user data
+        processed.push({
+          ...basicMember,
+          id: userData.id || basicMember.id,
+          name: userData.name || basicMember.name,
+          profile_picture: userData.profile_picture || basicMember.profile_picture,
+          avatar: userData.avatar || basicMember.avatar,
+          originalInvitation: invitation // Keep the original invitation for events
+        });
+      } else {
+        // If no user data found, use the basic mapped data
+        processed.push({
+          ...basicMember,
+          originalInvitation: invitation
+        });
+      }
+    } catch (error) {
+      console.error(`Error fetching user data for ${invitation.email}:`, error);
+      // On error, use the basic mapped data
+      processed.push({
+        ...basicMember,
+        originalInvitation: invitation
+      });
+    }
+  }
+  
+  processedInvitations.value = processed;
+  userDataLoading.value = false;
+}
+
+// Helper function to extract a user-friendly name from an email address
+const extractNameFromEmail = (email) => {
+  if (!email) return 'Unknown';
+  
+  // Get the part before @ symbol
+  const username = email.split('@')[0];
+  
+  // Replace underscores and dots with spaces
+  const formatted = username.replace(/[._]/g, ' ');
+  
+  // Capitalize each word
+  return formatted
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 // Helper function to map invitation structure to member structure expected by MemberRow
 const mapInvitationToMember = (invitation) => {
+  // Extract a better display name from the email
+  const displayName = invitation.name || extractNameFromEmail(invitation.email);
+  
   return {
     id: invitation.id, // Use invitation id
-    name: invitation.email, // Display email as name for invited members
+    name: displayName, // Use better formatted name
     email: invitation.email,
-    profile_picture: null, // No avatar for invitations
-    avatar: null,
-    isAdmin: false, // Invitations are not admins
+    profile_picture: invitation.profile_picture || null,
+    avatar: invitation.avatar || null,
+    isAdmin: invitation.isAdmin || false,
     status: 'invited', // Custom status
-    created_at: invitation.created_at, // Pass through relevant dates if needed by MemberRow logic (e.g., for display)
+    created_at: invitation.created_at,
     expires_at: invitation.expires_at,
     // Add any other fields MemberRow might implicitly expect, setting defaults
-    user: { id: invitation.id, email: invitation.email, name: invitation.email }, // Mock user object if needed
+    user: { 
+      id: invitation.id, 
+      email: invitation.email, 
+      name: displayName
+    },
     user_id: invitation.id
   };
 };

@@ -156,6 +156,23 @@
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- Error Alert Dialog -->
+    <AlertDialog :open="showErrorDialog" @update:open="showErrorDialog = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Invitation Error</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ errorMessage }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction @click="showErrorDialog = false">
+            OK
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
 
@@ -208,6 +225,10 @@ const props = defineProps({
 // Variables for success alert dialog
 const showSuccessDialog = ref(false)
 const successMessage = ref('')
+
+// Variables for error alert dialog
+const showErrorDialog = ref(false)
+const errorMessage = ref('')
 
 // Compute active members - filter out pending members
 const activeMembers = computed(() => {
@@ -891,13 +912,112 @@ const handleRefreshPendingMembers = (event) => {
 }
 
 // Handler for the invite dialog submission
-const handleInviteSubmit = (email) => {
+const handleInviteSubmit = async (email) => {
   console.log("[MembersTab] handleInviteSubmit called with email:", email);
   console.log("[MembersTab] Emitting invite-member-by-email event.");
-  emit('invite-member-by-email', email);
-  fetchInvitedMembers();
-  showInviteDialog.value = false;
+  
+  try {
+    // Use try/catch to handle errors from parent components
+    await new Promise((resolve, reject) => {
+      // Listen for a custom event that will be triggered by the parent on error
+      const handleError = (event) => {
+        window.removeEventListener('invite-member-error', handleError);
+        reject(event.detail); // Pass the detail object directly
+      };
+      
+      window.addEventListener('invite-member-error', handleError, { once: true });
+      
+      // Listen for a success event
+      const handleSuccess = () => {
+        window.removeEventListener('invite-member-success', handleSuccess);
+        resolve();
+      };
+      
+      window.addEventListener('invite-member-success', handleSuccess, { once: true });
+      
+      // Emit the event to start the invitation process
+      emit('invite-member-by-email', email);
+      
+      // Set a timeout to fail if no response
+      setTimeout(() => {
+        window.removeEventListener('invite-member-error', handleError);
+        window.removeEventListener('invite-member-success', handleSuccess);
+        resolve(); // Resolve anyway after timeout
+      }, 5000);
+    });
+    
+    fetchInvitedMembers();
+    showInviteDialog.value = false;
+  } catch (error) {
+    console.error("[MembersTab] Error inviting member:", error);
+    
+    // Extract error message, preferring the detail field if available
+    if (error) {
+      if (typeof error === 'string') {
+        errorMessage.value = error;
+      } else if (error.detail) {
+        errorMessage.value = error.detail;
+      } else if (error.message) {
+        errorMessage.value = error.message;
+      } else {
+        errorMessage.value = "Failed to invite member. Please try again later.";
+      }
+    } else {
+      errorMessage.value = "An unknown error occurred.";
+    }
+    
+    // Show error dialog
+    showErrorDialog.value = true;
+  }
 }
+
+// Add a new method to directly handle invitation errors for components that don't use the event system
+const handleInviteError = (error) => {
+  console.error("[MembersTab] Direct invite error:", error);
+  
+  // Extract appropriate error message
+  if (typeof error === 'string') {
+    errorMessage.value = error;
+  } else if (error && error.response && error.response.data) {
+    // API error response
+    if (typeof error.response.data === 'string') {
+      errorMessage.value = error.response.data;
+    } else if (error.response.data.error) {
+      errorMessage.value = error.response.data.error;
+    } else if (error.response.data.detail) {
+      errorMessage.value = error.response.data.detail;
+    } else if (error.response.data.message) {
+      errorMessage.value = error.response.data.message;
+    } else {
+      errorMessage.value = "Failed to invite member.";
+    }
+  } else if (error && typeof error === 'object') {
+    // Direct error object
+    if (error.detail) {
+      errorMessage.value = error.detail;
+    } else if (error.message) {
+      errorMessage.value = error.message;
+    } else {
+      // Try to parse if it's a JSON string
+      try {
+        const parsedError = JSON.parse(error.toString());
+        errorMessage.value = parsedError.detail || parsedError.message || "Failed to invite member.";
+      } catch {
+        errorMessage.value = "An error occurred while inviting the member.";
+      }
+    }
+  } else {
+    errorMessage.value = "An error occurred while inviting the member.";
+  }
+  
+  // Show error dialog
+  showErrorDialog.value = true;
+}
+
+// Export methods for parent components to use
+defineExpose({
+  handleInviteError
+});
 
 // New function to handle refresh click with preventDefault
 const handleRefreshClick = (event) => {

@@ -289,11 +289,26 @@
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
+
+  <!-- Reusable Alert Dialog -->
+  <ActionAlertDialog
+    :open="isOpen"
+    :title="title"
+    :message="message"
+    :action-text="actionText"
+    :cancel-text="cancelText"
+    :show-cancel="showCancel"
+    @update:open="isOpen = $event"
+    @action="handleAction"
+    @cancel="handleCancel"
+  />
 </template>
 
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAlertDialog } from '@/composables/useAlertDialog'
+import ActionAlertDialog from '@/components/shared/ActionAlertDialog.vue'
 import {
   Search,
   Plus,
@@ -392,6 +407,20 @@ const router = useRouter()
 
 // Get the current route to determine the active group
 const route = useRoute()
+
+// Initialize the alert dialog system
+const { 
+  isOpen, 
+  title, 
+  message, 
+  actionText, 
+  cancelText, 
+  showCancel, 
+  showAlert, 
+  showConfirm, 
+  handleAction, 
+  handleCancel 
+} = useAlertDialog()
 
 // Compute the current group ID from the route
 const currentGroupId = computed(() => {
@@ -668,14 +697,19 @@ const acceptPendingGroup = async (group) => {
 
 // Cancel a pending group membership
 const cancelPendingGroup = async (group) => {
-  if (!confirm(`Are you sure you want to cancel your pending membership for ${group.name || 'this group'}?`)) return;
-  try {
-    await axios.post(`/api/groups/${group.id}/decline`);
-    emit('refresh-groups');
-  } catch (error) {
-    console.error('Failed to cancel group membership:', error);
-    alert('Failed to cancel group membership: ' + (error.response?.data?.error || 'Unknown error'));
-  }
+  showConfirm(
+    'Cancel Membership Request',
+    `Are you sure you want to cancel your pending membership for ${group.name || 'this group'}?`,
+    async () => {
+      try {
+        await axios.post(`/api/groups/${group.id}/decline`);
+        emit('refresh-groups');
+      } catch (error) {
+        console.error('Failed to cancel group membership:', error);
+        showAlert('Error', 'Failed to cancel group membership: ' + (error.response?.data?.error || 'Unknown error'));
+      }
+    }
+  );
 }
 
 // Helper function to check if a group is waiting for admin approval
@@ -879,17 +913,22 @@ const acceptEmailInvite = async (invite) => {
 
 // Decline an email invitation
 const declineEmailInvite = async (invite) => {
-  if (!confirm(`Are you sure you want to decline the invitation to join ${invite.group_name}?`)) return;
-  console.log('Declining email invite for group:', invite.group_name, 'Token:', invite.token);
-  try {
-    await axios.post('/member/decline-invitation', { token: invite.token });
-    alert(`Invitation for ${invite.group_name} declined.`);
-    fetchPendingEmailInvites(); // Refresh list
-  } catch (error) {
-    console.error('Failed to decline email invitation:', error);
-    alert('Failed to decline email invitation: ' + (error.response?.data?.error || 'Unknown error'));
-    fetchPendingEmailInvites(); // Refresh list even on error
-  }
+  showConfirm(
+    'Decline Invitation',
+    `Are you sure you want to decline the invitation to join ${invite.group_name}?`,
+    async () => {
+      console.log('Declining email invite for group:', invite.group_name, 'Token:', invite.token);
+      try {
+        await axios.post('/member/decline-invitation', { token: invite.token });
+        showAlert('Success', `Invitation for ${invite.group_name} declined.`);
+        fetchPendingEmailInvites(); // Refresh list
+      } catch (error) {
+        console.error('Failed to decline email invitation:', error);
+        showAlert('Error', 'Failed to decline email invitation: ' + (error.response?.data?.error || 'Unknown error'));
+        fetchPendingEmailInvites(); // Refresh list even on error
+      }
+    }
+  );
 }
 
 // Navigate to settings page

@@ -19,6 +19,7 @@
           :is-current-user-admin="isCurrentUserAdmin"
           :has-documents="hasDocuments(member)"
           :invitation-accepted="member.invitation_accepted === true"
+          :hide-pending-badge="true"
           @review-documents="reviewDocuments(member)"
           @accept="confirmApprovalDialog(member)"
           @decline="confirmDeclineDialog(member)"
@@ -312,7 +313,8 @@ const processMemberApproval = async () => {
     emit('refresh', { 
       action: 'approve', 
       member: memberToApprove.value,
-      message: `${memberToApprove.value.user?.name || memberToApprove.value.name || 'Member'} has been approved`
+      message: `${memberToApprove.value.user?.name || memberToApprove.value.name || 'Member'} has been approved`,
+      preventRedirect: true // Add this flag to prevent redirection
     });
     
     // Clear the member to approve

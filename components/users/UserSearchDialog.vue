@@ -1,4 +1,4 @@
-<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/UserSearchDialog.vue -->
+<!-- filepath: /Users/arnaudbrubacher/Desktop/-AGORA/CODE/agoravote-app-frontend/components/users/UserSearchDialog.vue -->
 <template>
   <Dialog :open="true" @update:open="$emit('close')">
     <DialogContent class="sm:max-w-md">
@@ -38,7 +38,10 @@
         <div class="mt-4">
           <div v-if="searchResults.length > 0" class="space-y-2 max-h-60 overflow-y-auto">
             <div v-for="user in searchResults" :key="user.id"
-              class="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50 cursor-pointer"
+              :class="[
+                'flex items-center justify-between p-3 border rounded-md cursor-pointer',
+                user.status ? 'opacity-60 bg-muted' : 'hover:bg-muted/50'
+              ]"
               @click="selectUser(user)">
               <div class="flex items-center space-x-3">
                 <!-- User Avatar -->
@@ -58,6 +61,9 @@
                 <div>
                   <div class="font-medium">{{ user.name || user.email.split('@')[0] }}</div>
                   <div class="text-sm text-muted-foreground">{{ user.email }}</div>
+                  <div v-if="user.status" class="text-xs text-muted-foreground mt-1">
+                    Status: {{ formatStatus(user.status) }}
+                  </div>
                 </div>
               </div>
               
@@ -65,10 +71,12 @@
               <Button 
                 variant="outline" 
                 size="sm"
+                :disabled="!!user.status"
                 @click="addUser(user)"
               >
-                <LucideIcon name="Plus" size="4" class="h-4 w-4 mr-1" />
-                Add
+                <LucideIcon v-if="!user.status" name="Plus" size="4" class="h-4 w-4 mr-1" />
+                <LucideIcon v-else name="Check" size="4" class="h-4 w-4 mr-1" />
+                {{ user.status ? 'Added' : 'Add' }}
               </Button>
             </div>
           </div>
@@ -178,7 +186,7 @@ const searchUsers = async () => {
     const response = await axios.get(`/users/search`, {
       params: { 
         q: searchQuery.value.trim(),
-        excludeGroupId: props.groupId // Exclude users already in this group
+        groupId: props.groupId // Send groupId to check membership status instead of excluding
       }
     })
     
@@ -187,7 +195,8 @@ const searchUsers = async () => {
       id: user.id,
       name: user.name || user.username || '',
       email: user.email,
-      avatar: user.avatar || user.profile_picture
+      avatar: user.avatar || user.profile_picture,
+      status: user.status || null // Include membership status if available
     }))
   } catch (err) {
     console.error('Error searching users:', err)
@@ -195,6 +204,17 @@ const searchUsers = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// Format status for display
+const formatStatus = (status) => {
+  const statusMap = {
+    'pending': 'Invitation Pending',
+    'active': 'Active Member',
+    'invited': 'Invited',
+    'admin': 'Admin'
+  }
+  return statusMap[status] || status
 }
 
 // Helper to show AlertDialog
@@ -246,6 +266,11 @@ const selectUser = (user) => {
 
 // Add user to group
 const addUser = async (user) => {
+  // Skip if user already has a status (already invited/member)
+  if (user.status) {
+    return;
+  }
+  
   console.log(`[UserSearchDialog] addUser entered for user: ${user.email}`);
   try {
     isLoading.value = true
@@ -262,25 +287,23 @@ const addUser = async (user) => {
     showAlert('Invitation Sent', `An invitation has been sent to ${user.email}.`);
     console.log(`[UserSearchDialog] State after calling showAlert: isAlertOpen = ${isAlertOpen.value}`);
 
-    // Emit success event with user data
-    emit('user-added', {
+    // Update user status in the search results
+    const updatedUser = {
       ...user,
       status: 'pending', // Mark as pending
       ...response.data // Merge with any additional data returned from API
-    })
+    }
     
-    // Remove added user from results
-    searchResults.value = searchResults.value.filter(u => u.id !== user.id)
-    
-    // Don't close immediately, let user see the success alert
-    // Close is handled by the alert dialog action or manually
-    // setTimeout(() => {
-    //   emit('close')
-    // }, 500)
+    // Update the user in search results
+    const userIndex = searchResults.value.findIndex(u => u.id === user.id)
+    if (userIndex !== -1) {
+      searchResults.value[userIndex] = updatedUser
+    }
+
+    // Emit success event with user data
+    emit('user-added', updatedUser)
   } catch (err) {
     console.error('Failed to invite user to group:', err)
-    // alert('Failed to send invitation: ' + (err.response?.data?.error || err.message)) // Remove old alert
-    // Show error alert
     console.log(`[UserSearchDialog] Calling showAlert for error...`);
     showAlert('Invitation Failed', `Failed to send invitation: ${err.response?.data?.error || err.message}`);
     console.log(`[UserSearchDialog] State after calling showAlert in error: isAlertOpen = ${isAlertOpen.value}`);

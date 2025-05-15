@@ -25,8 +25,11 @@
                   <NuxtLink to="/auth/request-password-reset" class="text-gray-700 hover:underline">Forgot Password?</NuxtLink>
                 </div>
               </div>
-              <div v-if="loginError" class="text-sm text-red-500 mb-2">
-                {{ loginError }}
+              <div v-if="loginError" class="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600 mb-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {{ getFriendlyErrorMessage(loginError) }}
               </div>
               <Button type="submit" class="w-full" :disabled="isLoadingLogin">
                 <span v-if="isLoadingLogin">Logging in...</span>
@@ -109,6 +112,28 @@ const signupError = ref('')
 const loginError = ref('')
 const isLoadingLogin = ref(false)
 const isLoadingSignup = ref(false)
+
+// Function to convert technical error messages to user-friendly ones
+const getFriendlyErrorMessage = (error) => {
+  if (!error) return '';
+  
+  // Check for specific error codes
+  if (error.includes('WRONG_CREDENTIALS_ERROR')) {
+    return 'Incorrect email or password. Please try again or reset your password.';
+  }
+  
+  // Handle other common errors
+  if (error.includes('Failed to fetch') || error.includes('Network Error')) {
+    return 'Unable to connect to the server. Please check your internet connection and try again.';
+  }
+  
+  if (error.includes('Unauthorized') || error.includes('401')) {
+    return 'Your session has expired. Please log in again.';
+  }
+  
+  // Return a more generic error for anything else
+  return 'Unable to sign in. Please check your information and try again.';
+}
 
 // Add these helper functions
 const getLocalStorage = (key, defaultValue = null) => {

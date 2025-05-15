@@ -145,6 +145,19 @@
       </div>
     </div>
   </div>
+
+  <!-- Reusable Alert Dialog -->
+  <ActionAlertDialog
+    :open="isOpen"
+    :title="title"
+    :message="message"
+    :action-text="actionText"
+    :cancel-text="cancelText"
+    :show-cancel="showCancel"
+    @update:open="isOpen = $event"
+    @action="handleAction"
+    @cancel="handleCancel"
+  />
 </template>
 
 <script setup>
@@ -154,6 +167,8 @@ import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
 import axios from '~/src/utils/axios'
+import { useAlertDialog } from '@/composables/useAlertDialog'
+import ActionAlertDialog from '@/components/shared/ActionAlertDialog.vue'
 
 const props = defineProps({
   group: {
@@ -292,6 +307,20 @@ const documentFiles = ref([])
 const documentErrors = ref([])
 const isDragging = ref([])
 const uploadedDocuments = ref([])
+
+// Initialize the alert dialog system
+const { 
+  isOpen, 
+  title, 
+  message, 
+  actionText, 
+  cancelText, 
+  showCancel, 
+  showAlert, 
+  showConfirm, 
+  handleAction, 
+  handleCancel 
+} = useAlertDialog()
 
 // Computed property to check if the form is valid
 const isFormValid = computed(() => {
@@ -569,7 +598,7 @@ const handleSubmit = async () => {
           isSubmitting.value = false;
           return;
         } else if (acceptError.response?.status === 403 && acceptError.response?.data?.error?.includes('already an active member')) {
-          alert(`You are already an active member of ${props.group.name}.`);
+          showAlert('Already a Member', `You are already an active member of ${props.group.name}.`);
           emit('close');
           window.dispatchEvent(new CustomEvent('group-data-updated'))
           return;
@@ -585,7 +614,7 @@ const handleSubmit = async () => {
         console.log(`GroupAdmissionForm - /groups/:id/join call successful. Status: ${finalStatus}`);
       } catch (joinError) {
         if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
-          alert(`You are already an active member of ${props.group.name}.`);
+          showAlert('Already a Member', `You are already an active member of ${props.group.name}.`);
           emit('close');
           window.dispatchEvent(new CustomEvent('group-data-updated'))
           return;
@@ -613,7 +642,7 @@ const handleSubmit = async () => {
       console.warn(`Unexpected final status received: ${finalStatus}`)
     }
 
-    alert(successMessage)
+    showAlert('Success', successMessage)
     emit('close') // Close the form first
     emit('submit', { status: finalStatus, handledMessage: true }) // Notify parent about the outcome
 
@@ -623,7 +652,7 @@ const handleSubmit = async () => {
     const errorMessage = error.message || error.response?.data?.error || 'Failed to submit form'
     // Avoid alerting specific password error again if already set in UI
     if (!passwordError.value) {
-       alert(errorMessage)
+       showAlert('Error', errorMessage)
     }
   } finally {
     isSubmitting.value = false

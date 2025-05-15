@@ -308,5 +308,7 @@ const filteredMembers = computed(() => {
 
 const handleMemberRemove = async (member) => {
   await removeMemberApi(member)
+  // Refresh the members list after removal
+  emit('refresh-members')
 }
 </script> 
