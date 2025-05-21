@@ -21,6 +21,13 @@ export default defineNuxtConfig({
     componentDir: './components/ui'  // Directory for ShadCN components
   },
 
+  // Add runtimeConfig to expose environment variables
+  runtimeConfig: {
+    public: {
+      signupAccessKey: process.env.NUXT_PUBLIC_SIGNUP_ACCESS_KEY || ''
+    }
+  },
+
   app: {
     layoutTransition: {
       name: 'layout',       // Name of the layout transition

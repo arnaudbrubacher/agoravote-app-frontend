@@ -6,6 +6,10 @@
     "./**/*"
   ],
   "exclude": [
-    "pages"
+    "pages",
+    "components/groups/FindGroupDialog.vue",
+    "components/groups/NewGroupDialog.vue",
+    "components/users/UserSettingsDialog.vue",
+    "components/users/UserSettingsSheet.vue"
   ]
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-8 p-4">
+  <div class="space-y-8">
     <!-- Non-admin notice -->
     <div v-if="!isCurrentUserAdmin" class="bg-muted p-4 rounded-lg mb-4 border border-border">
       <div class="flex items-center">

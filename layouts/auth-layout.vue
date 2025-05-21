@@ -1,11 +1,7 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col">
-    <header class="border-b">
-      <div class="container flex h-16 items-center px-4">
-        <div class="flex w-full items-center justify-center">
-          <h1 class="text-xl font-bold">Agora Vote</h1>
-        </div>
-      </div>
+    <header class="border-b h-16 flex items-center justify-center px-4">
+      <h1 class="text-xl font-bold">Agora Vote</h1>
     </header>
     
     <main class="container mx-auto py-12 px-4 flex-grow flex flex-col items-center justify-center">

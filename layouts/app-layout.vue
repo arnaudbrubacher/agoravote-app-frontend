@@ -6,8 +6,6 @@
       :isAuthenticated="isAuthenticated"
       :userData="userData"
       :profilePictureUrl="profilePictureUrl"
-      @find-group="showFindGroupDialog = true"
-      @create-group="showCreateGroupDialog = true"
       @refresh-groups="fetchUserGroups"
       @join-group="joinGroup"
       @review-documents="handleReviewDocuments"
@@ -15,62 +13,37 @@
       @process-group-admission="handleProcessGroupAdmission"
       @close-sidebar="closeSidebar"
     />
-    <!-- Wrapper for main content and dialogs -->
-    <div class="min-h-screen bg-background flex flex-col container mx-auto">
-      <main class="min-h-screen bg-background py-6 px-4 relative flex-grow transition-all duration-300 ease-in-out group-data-[state=expanded]:ml-[var(--sidebar-width)]">
-        <!-- Centering Container INSIDE main -->
-        <div class="container mx-auto h-full">
-          <!-- Sidebar Trigger moved here -->
-          <div class="absolute top-2 left-2 z-20"> <!-- Adjusted position -->
-            <CustomSidebarTrigger />
-          </div>
-          <slot />
-        </div>
+
+    <!-- Main content area, positioned absolutely -->
+    <div class="absolute inset-0 min-h-screen bg-background overflow-y-auto">
+      <div class="fixed top-4 left-4 z-50">
+        <CustomSidebarTrigger />
+      </div>
+      <main class="w-full max-w-4xl mx-auto pt-20 px-4 min-h-screen">
+        <!-- Increased pt to 20 (5rem) to ensure content is below trigger -->
+        <slot />
       </main>
-      <!-- Dialogs -->
-      <FindGroupDialog
-        v-model:open="showFindGroupDialog"
-        :userGroups="userGroups"
-        @view-group="navigateToGroup"
-        @join-group="joinGroup"
-      />
-
-      <!-- Group Admission Form -->
-      <GroupAdmissionForm
-        v-if="showAdmissionForm && selectedGroup"
-        :group="selectedGroup"
-        :error="admissionError"
-        :review-mode="isReviewMode"
-        :invitationToken="admissionInvitationToken"
-        @close="closeAdmissionForm"
-        @submit="handleAdmissionSubmit"
-      />
-
-      <!-- Create Group Dialog -->
-      <NewGroupDialog
-        v-if="showCreateGroupDialog"
-        @close="showCreateGroupDialog = false"
-        @group-created="handleGroupCreated"
-      />
-
-      <!-- User Settings Dialog -->
-      <UserSettingsDialog
-        v-model:open="showUserSettingsDialog"
-        :userData="userData || {}"
-        @refresh-user-data="fetchUserData"
-      />
-
-      <!-- Global Alert Dialog -->
-      <GlobalAlertDialog />
-
-      <!-- App Alert Dialog for Global Errors -->
-      <AppAlertDialog
-        :open="!!globalError"
-        :message="globalError || 'An unexpected error occurred.'"
-        title="Error"
-        @close="globalError = null"
-      />
     </div>
+
+    <!-- Dialogs: Ensure they are correctly layered if they are not global modals -->
+    <GroupAdmissionForm
+      v-if="showAdmissionForm && selectedGroup"
+      :group="selectedGroup"
+      :error="admissionError"
+      :review-mode="isReviewMode"
+      :invitationToken="admissionInvitationToken"
+      @close="closeAdmissionForm"
+      @submit="handleAdmissionSubmit"
+    />
+
+    <GlobalAlertDialog />
+
+    <AppAlertDialog
+      :open="!!globalError"
+      :message="globalError || 'An unexpected error occurred.'"
+      title="Error"
+      @close="globalError = null"
+    />
   </SidebarProvider>
 </template>
 
@@ -83,10 +56,7 @@ import axios from '~/src/utils/axios'
 import AppSidebar from '@/components/dashboard/AppSidebar.vue'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import CustomSidebarTrigger from '@/components/common/CustomSidebarTrigger.vue'
-import FindGroupDialog from '@/components/groups/FindGroupDialog.vue'
 import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
-import NewGroupDialog from '@/components/groups/NewGroupDialog.vue'
-import UserSettingsDialog from '@/components/users/UserSettingsDialog.vue'
 import GlobalAlertDialog from '@/components/common/GlobalAlertDialog.vue'
 import AppAlertDialog from '@/components/common/AppAlertDialog.vue'
 import Session from 'supertokens-web-js/recipe/session'
@@ -132,8 +102,6 @@ const isOnProfilePage = computed(() => {
 })
 
 // Dialog states
-const showFindGroupDialog = ref(false)
-const showCreateGroupDialog = ref(false)
 const showAdmissionForm = ref(false)
 const selectedGroup = ref(null)
 const admissionError = ref('')
@@ -363,17 +331,6 @@ const navigateToGroup = (groupId) => {
   lastUsedGroupId.value = groupId
   setLocalStorage('lastUsedGroupId', groupId)
   router.push(`/group/${groupId}`)
-}
-
-// Handle group created event from NewGroupDialog
-const handleGroupCreated = async (newGroup) => {
-  showCreateGroupDialog.value = false
-  await fetchUserGroups() // Refresh list in sidebar
-  if (newGroup && newGroup.id) {
-    lastUsedGroupId.value = newGroup.id
-    setLocalState('lastUsedGroupId', newGroup.id)
-    router.push(`/group/${newGroup.id}`) // Navigate
-  }
 }
 
 // Join a group (triggered by FindGroupDialog or AppSidebar's accept action)

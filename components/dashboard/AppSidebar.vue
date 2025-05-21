@@ -1,10 +1,13 @@
 <template>
-  <Sidebar>
-    <SidebarHeader class="p-2 border-b">
+  <Sidebar class="bg-background shadow-lg">
+    <SidebarHeader class="pt-20 px-4 pb-2">
     
        <div
          v-if="props.isAuthenticated"
-         class="flex items-center cursor-pointer p-2 rounded-md hover:bg-gray-100 border border-gray-300 bg-gray-100"
+         class="w-full flex items-center cursor-pointer px-3 py-2 rounded-md border bg-gray-100"
+         :class="route.path === '/profile'
+                  ? 'border-gray-600 bg-gray-100 shadow border-l-2'
+                  : 'hover:bg-gray-200 border-gray-300'"
          @click="() => router.push('/profile')"
        >
          <div class="flex-shrink-0 mr-3">
@@ -20,15 +23,25 @@
          </div>
          <span class="text-sm font-medium truncate">{{ props.userData?.name || 'User' }}</span>
        </div>
-       <div v-if="props.isAuthenticated" class="mt-2 space-y-1 px-2">
-          <Button variant="outline" size="sm" class="w-full justify-start border-gray-200" @click="goToSettings">
-            <Settings class="mr-2 h-4 w-4" />
-            Settings
-          </Button>
-          <Button variant="outline" size="sm" class="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50 border-gray-200" @click="showLogoutDialog = true">
-            <LogOut class="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+       <div v-if="props.isAuthenticated" class="mt-2">
+          <div class="flex space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              class="flex-1 justify-start"
+              :class="route.path === '/usersettings'
+                       ? 'border-gray-600 bg-gray-100 shadow text-gray-800 border-l-2'
+                       : 'border-gray-200'"
+              @click="goToSettings"
+            >
+              <Settings class="mr-2 h-4 w-4" />
+              Settings
+            </Button>
+            <Button variant="outline" size="sm" class="flex-1 justify-start text-red-600 hover:text-red-600 hover:bg-red-50 border-gray-200" @click="showLogoutDialog = true">
+              <LogOut class="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
        <div v-else class="p-2">
           <Button variant="outline" size="sm" class="w-full border-gray-300" @click="() => router.push('/auth')">
@@ -43,13 +56,25 @@
         <SidebarGroupContent class="space-y-1">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton @click="$emit('find-group')" class="w-full justify-start border border-gray-300">
+              <SidebarMenuButton
+                @click="router.push('/find-group')"
+                class="w-full justify-start border"
+                :class="route.path === '/find-group'
+                         ? 'border-gray-600 bg-gray-100 shadow text-gray-800 border-l-2'
+                         : 'border-gray-300'"
+              >
                 <Search class="h-4 w-4 mr-2" />
                 <span>Find Group</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton @click="$emit('create-group')" class="w-full justify-start border border-gray-300">
+              <SidebarMenuButton
+                @click="router.push('/create-group')"
+                class="w-full justify-start border"
+                :class="route.path === '/create-group'
+                         ? 'border-gray-600 bg-gray-100 shadow text-gray-800 border-l-2'
+                         : 'border-gray-300'"
+              >
                 <Plus class="h-4 w-4 mr-2" />
                 <span>Create Group</span>
               </SidebarMenuButton>
@@ -253,16 +278,6 @@
        </Collapsible>
 
     </SidebarContent>
-    <SidebarFooter class="p-4 border-t space-y-2">
-       <!-- Close Sidebar Button -->
-       <Button variant="ghost" class="w-full justify-start" @click="$emit('close-sidebar')">
-         <PanelLeftClose class="mr-2 h-4 w-4" />
-         Close Sidebar
-       </Button>
-       <div class="text-xs text-center text-muted-foreground">
-         AgoraVote v0.1.0
-       </div>
-    </SidebarFooter>
   </Sidebar>
 
   <!-- Member Document Manager Dialog (Remains the same) -->

@@ -1,8 +1,8 @@
 <template>
-  <div>
+  <div class="flex flex-col items-center">
     <!-- Header -->
-    <header class="border-b border-border sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div class="container flex h-16 items-center px-4">
+    <header class="border-b border-border sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full">
+      <div class="container mx-auto flex h-16 items-center px-4">
         <h1 class="text-xl font-bold text-primary">Agora Vote</h1>
         <nav class="ml-auto">
           <ul class="flex items-center gap-6">
@@ -16,8 +16,8 @@
     </header>
 
     <!-- Hero Section -->
-    <section class="py-20 md:py-28">
-      <div class="container px-4 md:px-6">
+    <section class="py-20 md:py-28 w-full">
+      <div class="container mx-auto px-4 md:px-6">
         <div class="grid gap-6 items-center">
           <div class="space-y-4 max-w-3xl mx-auto text-center">
             <h1 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
@@ -37,8 +37,8 @@
     </section>
 
     <!-- Features Section -->
-    <section class="py-16 bg-muted/50">
-      <div class="container px-4 md:px-6">
+    <section class="py-16 bg-muted/50 w-full">
+      <div class="container mx-auto px-4 md:px-6">
         <div class="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-3">
           <div class="flex flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
             <div class="rounded-full bg-primary/10 p-4">
@@ -72,8 +72,8 @@
     </section>
 
     <!-- Testimonial -->
-    <section class="py-16">
-      <div class="container px-4 md:px-6">
+    <section class="py-16 w-full">
+      <div class="container mx-auto px-4 md:px-6">
         <div class="mx-auto max-w-3xl text-center">
           <blockquote class="text-xl md:text-2xl italic text-foreground">
             "The vote went very well and we really appreciated the support before, during and after the vote."
@@ -87,8 +87,8 @@
     </section>
 
     <!-- How It Works -->
-    <section id="how-it-works-section" class="py-16 bg-muted/50">
-      <div class="container px-4 md:px-6">
+    <section id="how-it-works-section" class="py-16 bg-muted/50 w-full">
+      <div class="container mx-auto px-4 md:px-6">
         <div class="flex flex-col items-center justify-center space-y-4 text-center">
           <div class="space-y-2">
             <h2 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">How It Works</h2>
@@ -121,8 +121,8 @@
     </section>
 
     <!-- Security Section -->
-    <section id="security-section" class="py-16">
-      <div class="container px-4 md:px-6">
+    <section id="security-section" class="py-16 w-full">
+      <div class="container mx-auto px-4 md:px-6">
         <div class="flex flex-col items-center justify-center space-y-4 text-center">
           <div class="space-y-2">
             <h2 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Security</h2>
@@ -146,8 +146,8 @@
     </section>
 
     <!-- Mission & Vision -->
-    <section class="py-16 bg-muted/50">
-      <div class="container px-4 md:px-6">
+    <section class="py-16 bg-muted/50 w-full">
+      <div class="container mx-auto px-4 md:px-6">
         <div class="mx-auto max-w-5xl">
           <div class="grid gap-8 md:grid-cols-2">
             <div class="rounded-xl border bg-card p-6 shadow-sm">
@@ -168,8 +168,8 @@
     </section>
 
     <!-- Contact Section -->
-    <section id="contact-section" class="py-16">
-      <div class="container px-4 md:px-6">
+    <section id="contact-section" class="py-16 w-full">
+      <div class="container mx-auto px-4 md:px-6">
         <div class="flex flex-col items-center justify-center space-y-4 text-center">
           <div class="space-y-2">
             <h2 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Contact</h2>

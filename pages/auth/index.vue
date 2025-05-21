@@ -45,7 +45,23 @@
             <CardTitle>Signup</CardTitle>
           </CardHeader>
           <CardContent>
-            <form @submit.prevent="handleSignup" class="space-y-4">
+            <!-- Signup Access Code Section -->
+            <div v-if="!showSignupForm" class="space-y-4">
+              <div class="space-y-2">
+                <Label for="signup-access-code">Access Code</Label>
+                <Input id="signup-access-code" v-model="signupAccessCodeInput" type="password" placeholder="Enter signup access code" />
+              </div>
+              <Button @click="checkSignupAccessCode" class="w-full">Submit Access Code</Button>
+              <div v-if="signupAccessError" class="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600 flex items-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {{ signupAccessError }}
+              </div>
+            </div>
+
+            <!-- Original Signup Form - Conditionally Rendered -->
+            <form v-if="showSignupForm" @submit.prevent="handleSignup" class="space-y-4">
               <div class="space-y-2">
                 <Label for="name">Name</Label>
                 <Input id="name" v-model="signupName" />
@@ -98,8 +114,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import axios from '~/src/utils/axios'
+import { useRuntimeConfig } from '#app'
 
 const router = useRouter()
+const config = useRuntimeConfig()
 const activeTab = ref('login')
 const loginEmail = ref('')
 const loginPassword = ref('')
@@ -112,6 +130,11 @@ const signupError = ref('')
 const loginError = ref('')
 const isLoadingLogin = ref(false)
 const isLoadingSignup = ref(false)
+
+// New refs for signup access control
+const signupAccessCodeInput = ref('')
+const showSignupForm = ref(false) 
+const signupAccessError = ref('')
 
 // Function to convert technical error messages to user-friendly ones
 const getFriendlyErrorMessage = (error) => {
@@ -134,6 +157,24 @@ const getFriendlyErrorMessage = (error) => {
   // Return a more generic error for anything else
   return 'Unable to sign in. Please check your information and try again.';
 }
+
+// New function to check signup access code
+const checkSignupAccessCode = () => {
+  const correctAccessCode = config.public.signupAccessKey;
+  if (!correctAccessCode) {
+    signupAccessError.value = 'Signup access key is not configured. Please contact an administrator.';
+    console.error('NUXT_PUBLIC_SIGNUP_ACCESS_KEY is not set in runtimeConfig.public');
+    showSignupForm.value = false; // Ensure form remains hidden
+    return;
+  }
+  if (signupAccessCodeInput.value === correctAccessCode) {
+    showSignupForm.value = true;
+    signupAccessError.value = '';
+  } else {
+    signupAccessError.value = 'Incorrect access code. Please try again.';
+    showSignupForm.value = false; // Ensure form remains hidden
+  }
+};
 
 // Add these helper functions
 const getLocalStorage = (key, defaultValue = null) => {

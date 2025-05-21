@@ -6,7 +6,7 @@
 -->
 <template>
   <Tabs :modelValue="props.modelValue" @update:modelValue="handleTabChange" class="w-full">
-    <TabsList class="grid w-full border border-border rounded-md p-1 gap-1" :style="`grid-template-columns: repeat(${tabCount}, minmax(0, 1fr))`">
+    <TabsList class="grid w-full rounded-md p-1 gap-1" :style="`grid-template-columns: repeat(${tabCount}, minmax(0, 1fr))`">
       <TabsTrigger value="votes" class="flex items-center justify-center border border-transparent data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:border">
         <span class="flex items-center">
           <Vote class="h-4 w-4 mr-2" />
