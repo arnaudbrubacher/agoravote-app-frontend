@@ -107,15 +107,15 @@ definePageMeta({
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login, signup, isEmailVerified } from '~/src/utils/auth'
+import { login as loginUser, signup as signupUser } from '~/src/utils/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import axios from '~/src/utils/axios'
-import { useRuntimeConfig } from '#app'
+import { useRuntimeConfig, useNuxtApp } from '#app'
 
+const { $axiosInstance } = useNuxtApp()
 const router = useRouter()
 const config = useRuntimeConfig()
 const activeTab = ref('login')
@@ -193,7 +193,7 @@ const setLocalStorage = (key, value) => {
 // Check if user has any groups
 const checkUserGroups = async () => {
   try {
-    const response = await axios.get('/user/groups')
+    const response = await $axiosInstance.get('/user/groups')
     return response.data && response.data.length > 0
   } catch (error) {
     console.error('Failed to fetch user groups:', error)
@@ -213,68 +213,46 @@ const handlePostAuthNavigation = async (isNewUser = false) => {
 }
 
 const handleLogin = async () => {
-  loginError.value = ''
   isLoadingLogin.value = true
+  loginError.value = ''
   try {
-    await login(loginEmail.value, loginPassword.value)
-    
-    // Check if email is verified
-    const verificationResponse = await isEmailVerified()
-    console.log('Login - Email verification status:', verificationResponse)
-    
-    if (!verificationResponse.isVerified) {
-      // Redirect to email verification page if email is not verified
-      router.push({
-        path: '/verify-email',
-        query: { email: loginEmail.value }
-      })
-    } else {
-      // Email is verified, proceed with normal post-auth navigation
-      await handlePostAuthNavigation(false)
-    }
+    await loginUser(loginEmail.value, loginPassword.value)
+    await handlePostAuthNavigation()
   } catch (error) {
-    console.error('Login failed:', error)
-    loginError.value = error.message || 'Login failed. Please try again.'
+    console.error('Login failed in component:', error)
+    loginError.value = getFriendlyErrorMessage(error.message || 'Login failed')
   } finally {
     isLoadingLogin.value = false
   }
 }
 
 const handleSignup = async () => {
-  signupError.value = ''
   if (signupPassword.value !== signupPasswordConfirm.value) {
     passwordError.value = true
+    signupError.value = 'Passwords do not match.'
     return
   }
   passwordError.value = false
   isLoadingSignup.value = true
+  signupError.value = ''
   try {
-    const signupResult = await signup(signupName.value, signupEmail.value, signupPassword.value)
-
-    if (signupResult.status === 'OK') {
-      console.log('Signup successful, redirecting to email verification page.')
-      
-      // Redirect to the verification page with email parameter
-      router.push({
-        path: '/check-email',
-        query: { email: signupEmail.value }
-      })
+    const signupResult = await signupUser($axiosInstance, signupName.value, signupEmail.value, signupPassword.value)
+    
+    if (signupResult && signupResult.status === 'OK') {
+      if (signupResult.isEmailVerified) {
+        console.log('Signup successful and email verified, proceeding to post-auth navigation.');
+        await handlePostAuthNavigation(true)
+      } else {
+        console.log('Signup successful, email not verified. Redirecting to check-email page.');
+        router.push({ path: '/auth/check-email', query: { email: signupEmail.value } });
+      }
     } else {
-      // Should not happen if signup function throws errors, but handle defensively
-      signupError.value = 'Signup failed with status: ' + signupResult.status
+      signupError.value = getFriendlyErrorMessage(signupResult?.error || 'Signup failed with an unexpected status.')
     }
+
   } catch (error) {
     console.error('Signup failed in component:', error)
-    
-    // Handle specific errors
-    if (error.message && error.message.includes('already exists')) {
-      signupError.value = error.message
-      // Switch to login tab when email already exists
-      activeTab.value = 'login'
-      loginEmail.value = signupEmail.value
-    } else {
-      signupError.value = error.message || 'Signup failed. Please try again.'
-    }
+    signupError.value = getFriendlyErrorMessage(error.message || 'Signup failed');
   } finally {
     isLoadingSignup.value = false
   }

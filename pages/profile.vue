@@ -105,9 +105,16 @@ import axios from 'axios'
 import Session from 'supertokens-web-js/recipe/session'
 
 const router = useRouter()
+const { $axiosInstance } = useNuxtApp()
 const fileInput = ref(null)
 const showNewPostDialog = ref(false)
 const selectedPost = ref(null)
+
+// Debug: Check if axios instance is available
+console.log('[Profile Page] $axiosInstance availability check:', !!$axiosInstance)
+if (!$axiosInstance) {
+  console.error('[Profile Page] $axiosInstance is undefined! This will cause errors in composables.')
+}
 
 // Use composables
 const { 
@@ -195,7 +202,8 @@ const profilePictureUrl = computed(() => {
   }
   
   // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   return `${baseUrl}/${userData.value.profile_picture}`
 })
 

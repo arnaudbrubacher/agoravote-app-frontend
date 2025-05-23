@@ -183,7 +183,7 @@ import PendingMembersList from '~/components/members/PendingMembersList.vue'
 import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'
 import InviteMemberDialog from '~/components/members/InviteMemberDialog.vue'
 import InvitedMembersList from '~/components/members/InvitedMembersList.vue'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -202,6 +202,8 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog'
+
+const { $axiosInstance } = useNuxtApp()
 
 const props = defineProps({
   group: {
@@ -399,7 +401,9 @@ const promoteMember = async (member) => {
     console.log('Token being used (first 20 chars):', token ? token.substring(0, 20) + '...' : 'No token found');
     
     // Debug: Make a direct fetch call to see the raw response
-    const response = await fetch(`http://localhost:8080/groups/${props.group.id}/members/${memberId}/role`, {
+    const config = useRuntimeConfig()
+    const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
+    const response = await fetch(`${baseUrl}/groups/${props.group.id}/members/${memberId}/role`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -443,7 +447,9 @@ const demoteMember = async (member) => {
     console.log('Token being used (first 20 chars):', token ? token.substring(0, 20) + '...' : 'No token found');
     
     // Debug: Make a direct fetch call to see the raw response
-    const response = await fetch(`http://localhost:8080/groups/${props.group.id}/members/${memberId}/role`, {
+    const config = useRuntimeConfig()
+    const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
+    const response = await fetch(`${baseUrl}/groups/${props.group.id}/members/${memberId}/role`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -497,7 +503,7 @@ const fetchPendingMembers = async () => {
   isLoadingPendingMembers.value = true
   try {
     // Call API to get pending members
-    const response = await axios.get(`/groups/${props.group.id}/pending-members`)
+    const response = await $axiosInstance.get(`/api/groups/${props.group.id}/pending-members`)
     console.log('[MembersTab] Raw API response for pending members:', JSON.stringify(response.data, null, 2)); // Log raw data
     
     // --- NORMALIZATION START ---
@@ -560,7 +566,7 @@ const fetchInvitedMembers = async () => {
   isLoadingInvitedMembers.value = true
   try {
     // Assumes backend endpoint GET /groups/{groupId}/invitations exists
-    const response = await axios.get(`/groups/${props.group.id}/invitations`)
+    const response = await $axiosInstance.get(`/api/groups/${props.group.id}/invitations`)
     console.log('[MembersTab] Raw API response for invited members:', response.data);
     // Filter for invitations that are not used and not expired (if backend doesn't handle this)
     invitedMembers.value = (response.data || []).filter(invite =>
@@ -589,7 +595,7 @@ const resendInvite = async (invitation) => {
     console.log('Resending invite:', invitation);
     try {
         // Assumes backend endpoint POST /groups/{groupId}/invitations/{invitationId}/resend exists
-        await axios.post(`/groups/${props.group.id}/invitations/${invitation.id}/resend`);
+        await $axiosInstance.post(`/api/groups/${props.group.id}/invitations/${invitation.id}/resend`);
         alert(`Invitation resent to ${invitation.email}`);
         // No need to refetch, invite stays in the list, maybe update timestamp if backend provides it
     } catch (error) {
@@ -610,7 +616,7 @@ const cancelInvite = async (invitation) => {
     console.log('Canceling invite:', invitation);
     try {
         // Assumes backend endpoint DELETE /groups/{groupId}/invitations/{invitationId} exists
-        await axios.delete(`/groups/${props.group.id}/invitations/${invitation.id}`);
+        await $axiosInstance.delete(`/api/groups/${props.group.id}/invitations/${invitation.id}`);
         alert(`Invitation for ${invitation.email} cancelled.`);
         // Refetch invited members to update the list
         fetchInvitedMembers();
@@ -642,7 +648,7 @@ const acceptPendingMember = async (member) => {
     }
     
     // Call API to accept the pending member
-    await axios.post(`/groups/${props.group.id}/members/${memberId}/approve`)
+    await $axiosInstance.post(`/api/groups/${props.group.id}/pending-members/${memberId}/approve`)
     
     // Remove the member from the pending list
     pendingMembers.value = pendingMembers.value.filter(m => {
@@ -679,7 +685,7 @@ const declinePendingMember = async (member) => {
     }
     
     // Call API to decline the pending member
-    await axios.post(`/groups/${props.group.id}/members/${memberId}/decline`)
+    await $axiosInstance.post(`/api/groups/${props.group.id}/pending-members/${memberId}/decline`)
     
     // Remove the member from the pending list
     pendingMembers.value = pendingMembers.value.filter(m => {
@@ -764,15 +770,15 @@ const handleReviewDocuments = async (member) => {
       // Use different API endpoints based on whether the member is pending or active
       let endpoint = ''
       if (isPending) {
-        endpoint = `/groups/${props.group.id}/pending-members/${memberId}/documents`
-      } else {
-        endpoint = `/groups/${props.group.id}/members/${memberId}/documents`
+              endpoint = `/api/groups/${props.group.id}/pending-members/${memberId}/documents`
+    } else {
+      endpoint = `/api/groups/${props.group.id}/members/${memberId}/documents`
       }
       
       console.log(`MembersTab - Fetching documents from endpoint: ${endpoint}`)
       
       // Fetch documents from the API
-      const response = await axios.get(endpoint)
+      const response = await $axiosInstance.get(endpoint)
       console.log('MembersTab - API response:', response.data)
       
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
@@ -864,10 +870,10 @@ const fetchDocumentsForActiveMembers = async () => {
       console.log(`Checking documents for member ${member.name || member.user?.name || 'Unknown'} with ID ${memberId}`);
       
       // Use the API endpoint for active members
-      const endpoint = `/groups/${props.group.id}/members/${memberId}/documents`;
+      const endpoint = `/api/groups/${props.group.id}/members/${memberId}/documents`;
       
       // Fetch documents from the API
-      const response = await axios.get(endpoint);
+      const response = await $axiosInstance.get(endpoint);
       console.log(`Document API response for ${member.name || member.user?.name || 'Unknown'}:`, response.data);
       
       // If documents are found, update the member object

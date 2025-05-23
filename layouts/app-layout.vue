@@ -52,7 +52,6 @@ import { ref, computed, onMounted, provide, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import axios from '~/src/utils/axios'
 import AppSidebar from '@/components/dashboard/AppSidebar.vue'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import CustomSidebarTrigger from '@/components/common/CustomSidebarTrigger.vue'
@@ -60,6 +59,9 @@ import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue'
 import GlobalAlertDialog from '@/components/common/GlobalAlertDialog.vue'
 import AppAlertDialog from '@/components/common/AppAlertDialog.vue'
 import Session from 'supertokens-web-js/recipe/session'
+import { useNuxtApp } from '#app'
+
+const { $axiosInstance } = useNuxtApp()
 
 const router = useRouter()
 const route = useRoute()
@@ -231,7 +233,7 @@ const clearAuthDataAndRedirect = () => {
 const fetchUserData = async () => {
   try {
     console.log('Attempting to fetch /users/me');
-    const response = await axios.get('/users/me');
+    const response = await $axiosInstance.get('/users/me');
     userData.value = response.data;
     console.log('User data fetched successfully:', userData.value);
   } catch (error) {
@@ -250,7 +252,7 @@ const fetchUserGroups = async () => {
   try {
     isLoadingGroups.value = true;
     console.log('Fetching user groups from /api/groups/user-groups...'); // Updated log
-    const response = await axios.get('/api/groups/user-groups'); // Corrected path
+    const response = await $axiosInstance.get('/api/groups/user-groups'); // Corrected path
     console.log('Raw API response for user groups:', response.data);
 
     if (Array.isArray(response.data)) {
@@ -317,7 +319,8 @@ const profilePictureUrl = computed(() => {
   if (userData.value.profile_picture.startsWith('http')) {
     return userData.value.profile_picture
   }
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   return `${baseUrl}/${userData.value.profile_picture}`
 })
 
@@ -353,7 +356,7 @@ const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false
        try {
           // We might need an invitation token if this is triggered by an email invite flow later
           const fetchUrl = `/groups/${groupId}${admissionInvitationToken.value ? '?invitation_token='+admissionInvitationToken.value : ''}`;
-          const response = await axios.get(fetchUrl);
+          const response = await $axiosInstance.get(fetchUrl);
           group = response.data;
           console.log(`Fetched group details for ${groupId}:`, group);
        } catch (fetchError) {
@@ -410,7 +413,7 @@ const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false
 
     // If no special requirements and NOT an invitation acceptance flow (handled by AppSidebar), proceed with direct join request
      console.log('No special requirements/invitation, sending direct join request...'); // Added log
-    const response = await axios.post(`/groups/${groupId}/join`);
+    const response = await $axiosInstance.post(`/groups/${groupId}/join`);
     console.log('Join response:', response.data);
     const status = response.data?.status || 'pending';
     await fetchUserGroups(); // Refresh sidebar
@@ -430,86 +433,53 @@ const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false
 
 
 // Handle admission form submission
-const handleAdmissionSubmit = async (admissionData) => {
+const handleAdmissionSubmit = async (formData) => {
+  admissionError.value = ''
   try {
-    if (!selectedGroup.value) {
-      console.error('No group selected for admission');
-      return;
-    }
-
-    if (admissionData.handledMessage) {
-      console.log('Message already handled by the form component, skipping additional API calls');
-      closeAdmissionForm(); // Use helper
-      fetchUserGroups(); // Refresh sidebar
-      return;
-    }
-
-    // Use the isInvitation flag stored when the form was opened
-    const isInvitation = selectedGroup.value.isInvitation === true;
-    console.log('Sending admission data:', JSON.stringify(admissionData));
-    console.log('Group ID:', selectedGroup.value.id);
-    console.log('Is invitation:', isInvitation);
-     // Add invitation token if available (for email invites)
-     if (admissionInvitationToken.value) {
-       admissionData.invitation_token = admissionInvitationToken.value;
-     }
-
-
-    if (!admissionData || Object.keys(admissionData).length === 0) {
-      console.error('No admission data provided');
-      alert('Please provide the required information');
-      return;
-    }
-
     let response;
-    // Use different endpoints based on whether it's an invitation or join request
-    if (isInvitation) {
-       // Invitation acceptance (might include password/docs)
-       // Use the token-based endpoint if available, otherwise the standard accept
-       if (admissionInvitationToken.value) {
-         console.log('Submitting via /member/accept-invitation with token');
-         response = await axios.post('/member/accept-invitation', admissionData); // Send token within data
-       } else {
-          console.log('Submitting via /groups/:id/accept');
-          response = await axios.post(`/groups/${selectedGroup.value.id}/accept`, admissionData);
-       }
+    // If it's review mode, it means an admin is approving/rejecting an existing request.
+    // This logic seems to be handled by GroupCard.vue or GroupTabs.vue now for admins.
+    // This form is likely for a user submitting their *own* application or accepting an invite.
 
-      if (response.data && response.data.status === 'pending') {
-        alert('Your submission is pending review. You will be notified upon approval.');
-        window.dispatchEvent(new CustomEvent('group-data-updated')); // Notify sidebar
-      } else {
-        alert(`You have successfully accepted the invitation to join ${selectedGroup.value.name || 'the group'}`);
-      }
+    if (formData.invitationToken) {
+      // Accept invitation
+      console.log('Accepting invitation with token:', formData.invitationToken, 'for group:', selectedGroup.value.id);
+      response = await $axiosInstance.post(`/api/groups/${selectedGroup.value.id}/invitations/accept`, {
+        token: formData.invitationToken,
+      }, {
+        headers: {
+        }
+      });
+      console.log('Invitation accepted response:', response.data);
     } else {
-      // Regular join request (with password/docs)
-       console.log('Submitting via /groups/:id/join');
-      response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
-      if (response.data && response.data.status === 'pending') {
-        alert('Your join request is pending review. You will be notified upon approval.');
-        window.dispatchEvent(new CustomEvent('group-data-updated')); // Notify sidebar
-      } else {
-        // This case (immediate approval on join with requirements) might be less common
-        alert(`You have successfully joined ${selectedGroup.value.name || 'the group'}`);
+      // Apply to join group (potentially with document)
+      console.log('Applying to join group:', selectedGroup.value.id, 'with form data:', formData);
+      const dataToSend = new FormData();
+      dataToSend.append('message', formData.message || ''); // Ensure message is always sent, even if empty
+      if (formData.document) {
+        dataToSend.append('document', formData.document);
       }
+      // No need to append groupId to FormData body if it's in the URL
+      
+      response = await $axiosInstance.post(`/groups/${selectedGroup.value.id}/apply`, dataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      console.log('Group application response:', response.data);
     }
 
-    console.log('Server response:', response.data);
-    closeAdmissionForm(); // Use helper
-    fetchUserGroups(); // Refresh sidebar
-     // Navigate if immediately approved (check response for groupId or success status)
-     const navigateGroupId = response.data?.groupId || (response.data?.status === 'approved' ? selectedGroup.value.id : null);
-     if (navigateGroupId) {
-        navigateToGroup(navigateGroupId);
-     }
+    // Handle successful submission
+    closeAdmissionForm()
+    await fetchUserGroups() // Refresh group list to reflect new status
+
+    // Optionally, show a success message to the user (e.g., using a toast or alert)
+    // For example, if using a composable for alerts:
+    // showSuccessAlert('Application submitted successfully!' or 'Invitation accepted!');
 
   } catch (error) {
-    console.error('Failed to submit admission form:', error);
-    console.error('Error response:', error.response?.data);
-    const errorMsg = error.response?.data?.error || 'Unknown error';
-    admissionError.value = errorMsg; // Show error in the form if possible
-    if (!errorMsg.toLowerCase().includes('password')) { // Avoid duplicate alerts for password
-       alert(`Submission failed: ${errorMsg}`);
-    }
+    console.error('Error submitting admission form:', error.response?.data || error.message);
+    admissionError.value = error.response?.data?.error || 'Failed to submit application. Please try again.';
   }
 }
 
@@ -521,7 +491,7 @@ const handleReviewDocuments = async (groupId) => {
     // Fetch fresh group details to ensure we have the latest membership status and doc requirements
     let group;
      try {
-        const response = await axios.get(`/groups/${groupId}`);
+        const response = await $axiosInstance.get(`/groups/${groupId}`);
         group = response.data;
      } catch (fetchError) {
         console.error(`Failed to fetch group ${groupId} for document review:`, fetchError);
@@ -693,7 +663,7 @@ const handleSubscriptionUpdatedEvent = (event) => {
       try {
         console.log(`Refreshing group data for ${groupId} after subscription update`);
         // Fetch updated group data
-        const response = await axios.get(`/api/groups/${groupId}`);
+        const response = await $axiosInstance.get(`/api/groups/${groupId}`);
         const updatedGroup = response.data;
         
         // Update the group in our local state

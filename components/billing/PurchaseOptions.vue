@@ -89,7 +89,7 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue';
 import { loadStripe } from '@stripe/stripe-js';
-import axios from '~/src/utils/axios'; 
+import { useNuxtApp } from '#app';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -109,6 +109,8 @@ const props = defineProps({
     required: true
   }
 });
+
+const { $axiosInstance } = useNuxtApp();
 
 // --- State ---
 // selectedOption defaults to 'monthly' since it's the only option
@@ -185,7 +187,7 @@ async function fetchPriceDetails() {
   monthlyPriceDetails.value = null;
   try {
     console.log('Fetching price details from /api/payments/prices...');
-    const response = await axios.get('/api/payments/prices');
+    const response = await $axiosInstance.get('/api/payments/prices');
     const prices = response.data;
     console.log('Received price details:', prices);
 
@@ -219,7 +221,7 @@ async function initiatePayment() {
   try {
     console.log(`Initiating payment for group ${props.groupId} with price ${priceId}`);
     
-    const response = await axios.post('/api/payments/prepare-purchase', {
+    const response = await $axiosInstance.post('/api/payments/prepare-purchase', {
       priceId: priceId,
       groupId: props.groupId 
     });
@@ -257,43 +259,39 @@ async function confirmPayment() {
     const { error, paymentIntent } = await stripe.value.confirmPayment({
       elements: elements.value,
       confirmParams: {
-        // Redirect to the settings page with billing tab selected after successful payment
-        return_url: `${window.location.origin}/group/${props.groupId}?tab=settings&settings_subtab=billing&refresh_subscription=true`,
+        return_url: `${window.location.origin}/group/${props.groupId}?payment_success=true&option=${selectedOption.value}`,
       },
-      // No redirect parameter - allow full page navigation after payment
+      redirect: 'if_required' 
     });
 
     if (error) {
-      // Handle errors from Stripe.js (e.g., card declined)
-      console.error("Stripe confirmPayment error:", error);
-      paymentError.value = error.message || "An unexpected payment error occurred.";
-      showAlert('Payment Failed', paymentError.value);
-      isProcessingPayment.value = false; 
-    } else {
-      // This won't execute in most cases since we'll redirect to return_url
-      // But it's needed for cases where redirect doesn't happen
-      console.log("PaymentIntent Status:", paymentIntent.status);
+      paymentError.value = error.message;
+      showAlert('Payment Failed', error.message);
+      isProcessingPayment.value = false;
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      console.log('Payment Succeeded:', paymentIntent);
+      showAlert('Payment Successful', 'Your purchase was successful! Your group features will be updated shortly.');
+      // You might want to redirect or refresh data here
+      // e.g., router.push(`/group/${props.groupId}?payment_confirmed=true`);
+      // Or emit an event to parent to refresh group data
+      // emit('payment-successful');
       
-      if (paymentIntent.status === 'succeeded') {
-        showAlert('Payment Successful!', 'Your subscription has been activated.');
-        
-        // Manually redirect to settings page with billing tab
-        window.location.href = `/group/${props.groupId}?tab=settings&settings_subtab=billing&refresh_subscription=true`;
-      } else if (paymentIntent.status === 'processing') {
-         showAlert('Payment Processing', 'Your payment is processing. We will update your subscription status soon.');
-      } else if (paymentIntent.status === 'requires_payment_method') {
-         paymentError.value = "Payment failed. Please try another payment method.";
-         showAlert('Payment Failed', paymentError.value);
-         isProcessingPayment.value = false; 
-      } else if (paymentIntent.status === 'requires_action') {
-        console.log('Payment requires further action (e.g., 3D Secure).');
-        // Let Stripe handle the authentication flow
-      } else {
-        paymentError.value = `Unexpected payment status: ${paymentIntent.status}`;
-        showAlert('Payment Status Unknown', paymentError.value);
-        isProcessingPayment.value = false; 
-      }
+       // Reset payment UI
+      stripeClientSecret.value = null;
+      
+      // Adding a small delay then reloading to see updated subscription status
+      setTimeout(() => {
+        window.location.href = `/group/${props.groupId}?refresh_subscription=true&settings_subtab=billing`;
+      }, 2000); // 2 second delay
+
+    } else if (paymentIntent && paymentIntent.status === 'processing') {
+      showAlert('Payment Processing', 'Your payment is processing. We will update you when it is complete.');
+    } else if (paymentIntent) {
+       showAlert('Payment Status', `Payment status: ${paymentIntent.status}. Please check your payment provider or contact support if issues persist.`);
+    } else {
+      showAlert('Payment Error', 'An unexpected issue occurred with the payment.');
     }
+    isProcessingPayment.value = false;
   } catch (err) {
     console.error("Unexpected error during payment confirmation:", err);
     paymentError.value = "An unexpected error occurred during payment confirmation.";
@@ -308,25 +306,20 @@ async function deleteIncompleteSubscription() {
   isDeletingSubscription.value = true;
   
   try {
-    // Send a PUT request to update the group with null subscription fields
-    const response = await axios.put(`/api/groups/${props.groupId}`, {
-      stripe_customer_id: null,
-      stripe_subscription_id: null,
-      subscription_status: null,
-      subscription_price_id: null,
-      subscription_current_period_end: null
-    });
+    // Make an API call to your backend to clear the subscription fields for the group
+    await $axiosInstance.put(`/api/groups/${props.groupId}/clear-subscription`);
     
-    console.log("Subscription deleted successfully:", response.data);
-    showAlert('Subscription Deleted', 'The incomplete subscription has been deleted successfully.');
+    showAlert('Subscription Cleared', 'The incomplete subscription has been cleared. You can try purchasing again.');
     
-    // Reset the payment flow state
+    // Reset local state
     stripeClientSecret.value = null;
-    elements.value = null;
-    
+    paymentError.value = null;
+    // Reload the page or relevant component part to reflect changes
+    window.location.reload(); 
+
   } catch (err) {
-    console.error("Error deleting subscription:", err);
-    showAlert('Error', `Failed to delete subscription: ${err.response?.data?.error || err.message}`);
+    console.error("Error clearing incomplete subscription:", err);
+    showAlert('Error', `Failed to clear subscription: ${err.response?.data?.error || err.message}`);
   } finally {
     isDeletingSubscription.value = false;
   }

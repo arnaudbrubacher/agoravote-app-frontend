@@ -1,7 +1,8 @@
 import { ref } from 'vue';
-import axios from '~/src/utils/axios';
+// import axios from '~/src/utils/axios'; // REMOVE THIS
 
-export function useUserService() {
+// Modify function signature to accept axiosInstance
+export function useUserService(axiosInstance) {
   const loading = ref(false);
   const error = ref(null);
   
@@ -16,12 +17,19 @@ export function useUserService() {
       return null;
     }
     
+    // Ensure axiosInstance is provided
+    if (!axiosInstance) {
+      console.error('axiosInstance is required for useUserService');
+      error.value = 'Configuration error: API instance not provided.';
+      return null;
+    }
+
     loading.value = true;
     error.value = null;
     
     try {
-      // Call the API endpoint to find user by email
-      const response = await axios.get(`/users/lookup`, {
+      // Call the API endpoint to find user by email using the provided axiosInstance
+      const response = await axiosInstance.get(`/users/lookup`, {
         params: { email }
       });
       

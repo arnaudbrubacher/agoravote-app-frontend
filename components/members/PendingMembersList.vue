@@ -101,7 +101,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
 import LucideIcon from '@/components/LucideIcon.vue'
 import MemberRow from '~/components/members/MemberRow.vue'
 import ReviewDocumentsDialog from '~/components/members/ReviewDocumentsDialog.vue'
@@ -143,6 +143,8 @@ const props = defineProps({
 const emit = defineEmits([
   'refresh'
 ])
+
+const { $axiosInstance } = useNuxtApp()
 
 const pendingMembersLocal = ref([])
 const loadingLocal = ref(false)
@@ -188,7 +190,8 @@ const fetchPendingMembers = async () => {
   loadingLocal.value = true
   
   try {
-    const response = await axios.get(`/groups/${props.groupId}/pending-members`)
+    const { $axiosInstance } = useNuxtApp()
+    const response = await $axiosInstance.get(`/api/groups/${props.groupId}/pending-members`)
     console.log('[PendingMembersList] Raw API response for pending members:', JSON.stringify(response.data, null, 2)); // Log raw data
     
     // Create a new array with normalized members
@@ -301,7 +304,8 @@ const processMemberApproval = async () => {
     console.log(`Approving member with ID: ${memberId}`);
     
     // Call API to approve the member
-    await axios.post(`/groups/${props.groupId}/members/${memberId}/approve`);
+    const { $axiosInstance } = useNuxtApp()
+    await $axiosInstance.put(`/api/groups/${props.groupId}/members/${memberId}/approve`);
     
     // Remove the member from the local list
     pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {
@@ -369,7 +373,8 @@ const processMemberDecline = async () => {
     console.log(`Declining member with ID: ${memberId}`);
     
     // Call API to decline the member
-    await axios.post(`/groups/${props.groupId}/members/${memberId}/decline`);
+    const { $axiosInstance } = useNuxtApp()
+    await $axiosInstance.delete(`/api/groups/${props.groupId}/members/${memberId}`);
     
     // Remove the member from the local list
     pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {
@@ -447,7 +452,8 @@ const processDocumentsApproval = async () => {
                      selectedMember.value.id;
     
     // Call API to approve the member with documents
-    await axios.post(`/groups/${props.groupId}/members/${memberId}/approve-documents`);
+    const { $axiosInstance } = useNuxtApp()
+    await $axiosInstance.put(`/api/groups/${props.groupId}/members/${memberId}/approve`, { documents_approved: true });
     
     // Remove the member from the local list
     pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {

@@ -117,7 +117,7 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, watch } from 'vue'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
 import {
   Dialog,
   DialogContent,
@@ -147,6 +147,9 @@ const props = defineProps({
 
 // Emit events
 const emit = defineEmits(['close', 'user-added'])
+
+// ADD THIS
+const { $axiosInstance } = useNuxtApp()
 
 // State
 const searchQuery = ref('')
@@ -183,10 +186,10 @@ const searchUsers = async () => {
   }
   
   try {
-    const response = await axios.get(`/users/search`, {
+    const response = await $axiosInstance.get(`/users/search`, {
       params: { 
         q: searchQuery.value.trim(),
-        groupId: props.groupId // Send groupId to check membership status instead of excluding
+        groupId: props.groupId
       }
     })
     
@@ -254,61 +257,39 @@ const getAvatarUrl = (user) => {
   }
   
   // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   return `${baseUrl}/${avatarPath}`
 }
 
 // Select user
 const selectUser = (user) => {
-  console.log(`[UserSearchDialog] selectUser called for: ${user.email}`);
-  // You can add additional functionality here if needed
+  if (user.status) {
+    showAlert('User Status', `This user is already: ${formatStatus(user.status)}.`);
+    return;
+  }
+  addUser(user);
 }
 
 // Add user to group
 const addUser = async (user) => {
-  // Skip if user already has a status (already invited/member)
   if (user.status) {
+    console.log('User already has a status in the group, not re-adding.');
     return;
   }
-  
-  console.log(`[UserSearchDialog] addUser entered for user: ${user.email}`);
+
   try {
-    isLoading.value = true
-    
-    // Send invitation request to create a pending membership
-    console.log(`[UserSearchDialog] Sending invitation POST to /groups/${props.groupId}/invite`);
-    const response = await axios.post(`/groups/${props.groupId}/invite`, {
-      email: user.email
-    })
-    console.log(`[UserSearchDialog] Invitation POST successful. Response status: ${response.status}`);
-    
-    // Show success alert
-    console.log(`[UserSearchDialog] Calling showAlert for success...`);
-    showAlert('Invitation Sent', `An invitation has been sent to ${user.email}.`);
-    console.log(`[UserSearchDialog] State after calling showAlert: isAlertOpen = ${isAlertOpen.value}`);
-
-    // Update user status in the search results
-    const updatedUser = {
-      ...user,
-      status: 'pending', // Mark as pending
-      ...response.data // Merge with any additional data returned from API
+    await $axiosInstance.post(`/groups/${props.groupId}/members`, { userId: user.id })
+    showAlert('Success', `User ${user.name || user.email} has been invited to the group.`)
+    emit('user-added', user)
+    // Update user status locally to reflect they've been added/invited
+    const foundUser = searchResults.value.find(u => u.id === user.id);
+    if (foundUser) {
+      foundUser.status = 'invited'; // Or whatever status the backend sets initially
     }
-    
-    // Update the user in search results
-    const userIndex = searchResults.value.findIndex(u => u.id === user.id)
-    if (userIndex !== -1) {
-      searchResults.value[userIndex] = updatedUser
-    }
-
-    // Emit success event with user data
-    emit('user-added', updatedUser)
   } catch (err) {
-    console.error('Failed to invite user to group:', err)
-    console.log(`[UserSearchDialog] Calling showAlert for error...`);
-    showAlert('Invitation Failed', `Failed to send invitation: ${err.response?.data?.error || err.message}`);
-    console.log(`[UserSearchDialog] State after calling showAlert in error: isAlertOpen = ${isAlertOpen.value}`);
-  } finally {
-    isLoading.value = false
+    console.error('Error adding user to group:', err)
+    showAlert('Error', `Failed to add user: ${err.response?.data?.error || 'Please try again.'}`)
   }
 }
 </script>

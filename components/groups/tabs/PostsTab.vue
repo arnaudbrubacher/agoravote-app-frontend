@@ -39,7 +39,7 @@ import NewPostDialog from '~/components/posts/NewPostDialog.vue'
 import PostDetailsDialog from '~/components/posts/PostDetailsDialog.vue'
 import { useGroupPosts } from '@/composables/useGroupPosts'
 import { getUserIdFromToken } from '~/src/utils/auth'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
 
 const props = defineProps({
   group: {
@@ -51,6 +51,8 @@ const props = defineProps({
     default: () => ({})
   }
 })
+
+const { $axiosInstance } = useNuxtApp()
 
 // Get current user ID from token or from props
 const currentUserId = computed(() => {
@@ -64,7 +66,8 @@ const currentUserId = computed(() => {
   return ''
 })
 
-const { posts, isLoadingPosts, fetchPosts, createNewPost, editPost, deletePost } = useGroupPosts(props.group.id)
+// Pass $axiosInstance to the composable
+const { posts, isLoadingPosts, fetchPosts, createNewPost, editPost, deletePost } = useGroupPosts(props.group.id, $axiosInstance)
 
 const showNewPostDialog = ref(false)
 const selectedPost = ref(null)

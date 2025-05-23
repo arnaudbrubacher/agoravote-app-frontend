@@ -1,9 +1,10 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '~/src/utils/axios'
+// import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
 import { getUserIdFromToken } from '~/src/utils/auth'
 import { jwtDecode } from 'jwt-decode'
 import Session from 'supertokens-web-js/recipe/session'
+import { useNuxtApp } from '#app'
 
 export function useGroupData(groupId) {
   const router = useRouter()
@@ -11,13 +12,22 @@ export function useGroupData(groupId) {
   const group = ref(null)
   const isLoading = ref(false)
   
-
-
-
+  // Helper function to get axios instance
+  const getAxiosInstance = () => {
+    if (process.client) {
+      const { $axiosInstance } = useNuxtApp()
+      if ($axiosInstance) {
+        return $axiosInstance
+      }
+    }
+    throw new Error('Axios instance not available')
+  }
+  
   const fetchGroup = async () => {
     try {
       isLoading.value = true
-      const response = await axios.get(`/api/groups/${groupId}`)
+      const axiosInstance = getAxiosInstance()
+      const response = await axiosInstance.get(`/api/groups/${groupId}`) // USE PASSED INSTANCE
       group.value = response.data
       
       // Add debugging to see what's coming from API
@@ -86,12 +96,10 @@ export function useGroupData(groupId) {
     }
   }
   
-
-
-  
   const updateGroupSettings = async (settings) => {
     try {
-      const response = await axios.put(`/groups/${groupId}`, settings)
+      const axiosInstance = getAxiosInstance()
+      const response = await axiosInstance.put(`/groups/${groupId}`, settings) // USE PASSED INSTANCE
       
       // Update local group data
       Object.assign(group.value, response.data)
@@ -118,7 +126,8 @@ export function useGroupData(groupId) {
       localStorage.setItem('deletedGroupId', currentGroupId)
       
       // Delete the group
-      await axios.delete(`/groups/${groupId}`)
+      const axiosInstance = getAxiosInstance()
+      await axiosInstance.delete(`/groups/${groupId}`) // USE PASSED INSTANCE
       console.log('Group deleted successfully, navigating to profile page.')
       
       // Dispatch an event to update the dashboard sidebar immediately
@@ -159,6 +168,7 @@ export function useGroupData(groupId) {
       console.log('Attempting to leave group with ID:', groupId)
 
       // Get the user ID directly from the Supertokens session
+      const axiosInstance = getAxiosInstance()
       const userId = await Session.getUserId();
 
       if (!userId) {
@@ -170,7 +180,7 @@ export function useGroupData(groupId) {
       
       // Supertokens handles adding the auth header automatically via Axios interceptors.
       // The backend requires the userId in the path for this specific endpoint.
-      await axios.delete(`/groups/${groupId}/members/${userId}`)
+      await axiosInstance.delete(`/groups/${groupId}/members/${userId}`) // USE PASSED INSTANCE
       
       console.log('Successfully left group')
       

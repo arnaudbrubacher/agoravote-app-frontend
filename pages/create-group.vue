@@ -193,7 +193,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '~/src/utils/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -202,12 +201,14 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { cloneDeep } from 'lodash'
 import { useAlert } from '@/composables/useAlert'
+import { useNuxtApp } from '#app'
 
 definePageMeta({
   layout: 'app-layout',
   middleware: ['auth']
 })
 
+const { $axiosInstance } = useNuxtApp()
 const router = useRouter()
 const { alert, confirm } = useAlert()
 
@@ -245,21 +246,21 @@ const triggerFileInput = () => {
 }
 
 const handlePictureUpload = (event) => {
-  const file = event.target.files[0]
+  const file = event.target.files[0];
   if (file) {
     if (file.size > 2 * 1024 * 1024) { // 2MB limit
-      alert('Image too large', 'Please select an image smaller than 2MB.');
+      alert('Image Too Large', 'Please select an image smaller than 2MB.', 'error');
       return;
     }
-    const reader = new FileReader()
+    // Store the file object itself for FormData
+    form.value.pictureFile = file; 
+
+    // Create a preview URL
+    const reader = new FileReader();
     reader.onload = (e) => {
-      form.value.picture = e.target.result // base64 string
-    }
-    reader.onerror = (error) => {
-      console.error('FileReader error:', error);
-      alert('Error', 'Could not read the image file.');
+      form.value.picture = e.target.result; // For preview only
     };
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(file);
   }
 }
 
@@ -275,51 +276,63 @@ const removeDocument = (index) => {
 
 const handleSubmit = async () => {
   if (!isFormValid.value) {
-    alert('Validation Error', 'Please check the form for errors. Group name is required, and passwords must match if enabled.');
+    alert('Form is invalid', 'Please check the fields and try again.', 'error');
     return;
   }
 
-  isSubmitting.value = true
+  isSubmitting.value = true;
+
+  // Create a FormData object to handle file uploads
+  const formData = new FormData();
+  formData.append('name', form.value.name);
+  formData.append('description', form.value.description);
+  formData.append('is_private', form.value.isPrivate);
+  formData.append('requires_password', form.value.requires_password);
+  if (form.value.requires_password) {
+    formData.append('password', form.value.password);
+  }
+  formData.append('requires_documents', form.value.requires_documents);
+  if (form.value.requires_documents && form.value.documents.length > 0) {
+    // Filter out empty document names before sending
+    const validDocuments = form.value.documents
+      .map(doc => ({ name: doc.name.trim() }))
+      .filter(doc => doc.name !== '');
+    formData.append('documents', JSON.stringify(validDocuments));
+  }
+  formData.append('requires_admin_approval', form.value.requires_admin_approval);
+
+  // Append the picture file if it exists (original file object, not base64)
+  if (form.value.pictureFile) { // Assuming pictureFile holds the File object
+    formData.append('picture', form.value.pictureFile);
+  }
+
   try {
-    let requiredDocumentsArray = []
-    if (form.value.requires_documents && form.value.documents.length > 0) {
-      requiredDocumentsArray = form.value.documents.filter(doc => doc.name.trim() !== '').map(doc => doc.name)
-       if (requiredDocumentsArray.length === 0 && form.value.requires_documents) {
-         alert('Validation Error', 'If documents are required, please specify at least one document name.');
-         isSubmitting.value = false;
-         return;
-       }
-    }
-    
-    const groupData = {
-      name: form.value.name.trim(),
-      description: form.value.description.trim(),
-      is_private: form.value.isPrivate,
-      picture: form.value.picture, // send base64 string or null
-      requires_password: form.value.requires_password,
-      password: form.value.requires_password ? form.value.password : '',
-      requires_documents: form.value.requires_documents,
-      required_documents: JSON.stringify(requiredDocumentsArray), // Send as JSON string array
-      requires_admin_approval: form.value.requires_admin_approval
-    }
+    // Use $axiosInstance for the POST request
+    const response = await $axiosInstance.post('/groups', formData, {
+      headers: {
+        // FormData sets Content-Type to multipart/form-data automatically
+        // 'Content-Type': 'multipart/form-data', // Let browser set this with boundary
+      }
+    });
 
-    const response = await axios.post('/groups', groupData)
-    
-    alert('Success', `Group "${response.data.name}" created successfully!`)
-    
-    // Dispatch event so sidebar can refresh
-    window.dispatchEvent(new CustomEvent('group-data-updated'));
+    alert('Group Created', 'Your group has been successfully created.', 'success');
+    // Reset form after successful submission
+    form.value = cloneDeep(initialForm);
+    fileInput.value.value = ''; // Clear file input
 
-    // Navigate to the new group page
-    router.push(`/group/${response.data.id}`)
+    // Redirect to the new group page or another relevant page
+    if (response.data && response.data.id) {
+      router.push(`/group/${response.data.id}`);
+    }
 
   } catch (error) {
-    console.error('Failed to create group:', error)
-    alert('Error Creating Group', error.response?.data?.error || 'An unexpected error occurred.')
+    console.error('Failed to create group:', error.response ? error.response.data : error);
+    const errorMessage = error.response?.data?.error || 'An unexpected error occurred.';
+    alert('Creation Failed', errorMessage, 'error');
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
-}
+};
 
 const handleCancel = async () => {
   const confirmed = await confirm(

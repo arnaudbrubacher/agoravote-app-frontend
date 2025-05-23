@@ -365,7 +365,8 @@ const memberAvatarUrl = computed(() => {
       
       // Otherwise, prepend the API base URL if the path is valid
       if (avatarUrl && avatarUrl.length > 0) {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+        const config = useRuntimeConfig()
+    const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088';
         return `${baseUrl}/${avatarUrl}`;
       }
     }
@@ -390,7 +391,8 @@ const memberAvatarUrl = computed(() => {
     }
     
     // Otherwise, prepend the API base URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    const config = useRuntimeConfig()
+    const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
     const finalUrl = `${baseUrl}/${profilePic}`;
     console.log(`[MemberRow ${getMemberName(props.member)}] Using appUserData (relative): ${finalUrl}`);
     return finalUrl;
@@ -408,7 +410,8 @@ const memberAvatarUrl = computed(() => {
   }
   
   // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   const finalUrl = `${baseUrl}/${avatarUrl}`;
   console.log(`[MemberRow ${getMemberName(props.member)}] Using member prop (relative): ${finalUrl}`);
   return finalUrl;

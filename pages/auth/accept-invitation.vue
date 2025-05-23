@@ -95,18 +95,20 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { login, signup, isEmailVerified, sendVerificationEmail } from '~/src/utils/auth' // Import SuperTokens functions
-import { getUserInfo } from 'supertokens-web-js/recipe/emailpassword'; // <--- IMPORT getUserInfo
+import { getUserInfo } from 'supertokens-web-js/recipe/emailpassword';
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import axios from '~/src/utils/axios' // Use configured axios instance
 import Session from 'supertokens-web-js/recipe/session' // Import Session recipe
+import { useNuxtApp } from '#app'; // IMPORT useNuxtApp
 
 definePageMeta({
   layout: 'auth-layout'
 })
+
+const { $axiosInstance } = useNuxtApp(); // GET AXIOS INSTANCE
 
 const router = useRouter()
 const route = useRoute()
@@ -135,7 +137,7 @@ const acceptInvitation = async (token) => {
   statusMessageType.value = 'info'
   try {
     console.log(`Attempting to accept invitation with token: ${token}`)
-    const response = await axios.post('/member/accept-invitation', { token })
+    const response = await $axiosInstance.post('/member/accept-invitation', { token })
     console.log('Invitation acceptance response:', response.data)
     statusMessage.value = 'Invitation accepted successfully! Redirecting...'
     statusMessageType.value = 'success'
@@ -224,7 +226,7 @@ const handleSignup = async () => {
   passwordError.value = false
   isLoadingSignup.value = true
   try {
-    const signupResult = await signup(signupName.value, signupEmail.value, signupPassword.value)
+    const signupResult = await signup($axiosInstance, signupName.value, signupEmail.value, signupPassword.value)
     console.log('Signup successful on accept page:', signupResult)
 
     // After successful signup, SuperTokens handles the session.
@@ -263,7 +265,7 @@ const fetchInvitationInfo = async (token) => {
   statusMessageType.value = 'info';
   try {
     console.log(`Fetching invitation info for token: ${token}`);
-    const response = await axios.get(`/member/invitation-info?token=${token}`); // Call the new backend endpoint
+    const response = await $axiosInstance.get(`/member/invitation-info?token=${token}`); // Call the new backend endpoint
     console.log('Invitation info response:', response.data);
     invitationEmail.value = response.data.email;
     loginEmail.value = response.data.email; // Pre-fill login email

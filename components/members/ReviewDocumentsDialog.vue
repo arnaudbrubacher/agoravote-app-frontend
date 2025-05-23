@@ -111,7 +111,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
+
+const { $axiosInstance } = useNuxtApp()
 
 const props = defineProps({
   member: {
@@ -146,7 +148,8 @@ const memberAvatarUrl = computed(() => {
   }
   
   // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   return `${baseUrl}/${avatarUrl}`
 })
 
@@ -248,16 +251,16 @@ const fetchDocuments = async () => {
       // Use different API endpoints based on whether the member is pending or active
       let endpoint = '';
       if (props.isPending) {
-        endpoint = `/groups/${groupId}/pending-members/${memberId}/documents`;
-      } else {
-        endpoint = `/groups/${groupId}/members/${memberId}/documents`;
+              endpoint = `/api/groups/${groupId}/members/${memberId}/pending-documents`;
+    } else {
+      endpoint = `/api/groups/${groupId}/members/${memberId}/documents`;
       }
       
-      console.log(`ReviewDocumentsDialog - Fetching documents from endpoint: ${endpoint}`);
+      console.log('ReviewDocumentsDialog - Fetching documents from endpoint:', endpoint)
+      const response = await $axiosInstance.get(endpoint);
       
-      // Fetch documents from the API
-      const response = await axios.get(endpoint);
-      console.log('ReviewDocumentsDialog - API response:', response.data);
+      // Check the response structure
+      console.log('ReviewDocumentsDialog - API Response:', response.data)
       
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         documents.value = response.data;
@@ -347,9 +350,11 @@ const downloadDocument = (doc) => {
   }
   
   // Construct the full URL if it's a relative path
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   const fullUrl = url.startsWith('http') 
     ? url 
-    : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url.startsWith('/') ? url : `/${url}`}`
+    : `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`
   
   console.log('ReviewDocumentsDialog - Downloading document from URL:', fullUrl)
   
@@ -404,9 +409,11 @@ const viewDocument = (doc) => {
   }
   
   // Construct the full URL if it's a relative path
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   const fullUrl = url.startsWith('http') 
     ? url 
-    : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url.startsWith('/') ? url : `/${url}`}`
+    : `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`
   
   console.log('ReviewDocumentsDialog - Opening document URL:', fullUrl)
   

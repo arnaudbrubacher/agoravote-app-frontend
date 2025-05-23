@@ -87,6 +87,7 @@ import { useAlert } from '@/composables/useAlert'
 
 const route = useRoute()
 const router = useRouter()
+const { $axiosInstance } = useNuxtApp()
 const selectedPost = ref(null)
 const currentUserId = ref(localStorage.getItem('userId') || '')
 
@@ -97,13 +98,13 @@ const {
   error, 
   commonGroups,
   fetchUserProfile
-} = useUserProfile()
+} = useUserProfile($axiosInstance)
 
 const {
   posts,
   loading: postsLoading,
   fetchPosts
-} = useUserPosts()
+} = useUserPosts($axiosInstance)
 
 const { alert, confirm } = useAlert()
 
@@ -142,7 +143,8 @@ const profilePictureUrl = computed(() => {
   }
   
   // Otherwise, prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   return `${baseUrl}/${userData.value.profile_picture}`
 })
 

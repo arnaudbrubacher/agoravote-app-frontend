@@ -1,5 +1,6 @@
 import { ref } from 'vue'
-import axios from '~/src/utils/axios'
+// import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
+import { useNuxtApp } from '#app'
 
 export function useGroupVotes(groupId) {
   const votes = ref([])
@@ -7,12 +8,23 @@ export function useGroupVotes(groupId) {
   const isLoadingDetails = ref(false)
   const selectedVote = ref(null)
 
+  // Helper function to get axios instance
+  const getAxiosInstance = () => {
+    if (process.client) {
+      const { $axiosInstance } = useNuxtApp()
+      if ($axiosInstance) {
+        return $axiosInstance
+      }
+    }
+    throw new Error('Axios instance not available')
+  }
+
   // Fetch all votes for the group
   const fetchVotes = async () => {
     try {
       isLoadingVotes.value = true
       // Re-enable the API call
-      const response = await axios.get(`/groups/${groupId}/votes`)
+      const response = await getAxiosInstance().get(`/groups/${groupId}/votes`)
       // Ensure we correctly access the votes array from the response
       // (Backend returns { "votes": [...] })
       votes.value = response.data.votes || []
@@ -35,7 +47,7 @@ export function useGroupVotes(groupId) {
     try {
       isLoadingDetails.value = true;
       console.log(`[useGroupVotes.js] fetchVoteDetails starting for vote ID: ${voteId}`);
-      const response = await axios.get(`/votes/${voteId}`);
+      const response = await getAxiosInstance().get(`/votes/${voteId}`);
       console.log(`[useGroupVotes.js] fetchVoteDetails successful for ${voteId}:`, response.data);
       return response.data; 
     } catch (error) {
@@ -63,7 +75,7 @@ export function useGroupVotes(groupId) {
       }
       
       // Create vote
-      const response = await axios.post(`/groups/${groupId}/votes`, formattedData)
+      const response = await getAxiosInstance().post(`/groups/${groupId}/votes`, formattedData)
       
       // Add new vote to the list or refresh the list
       await fetchVotes()
@@ -105,7 +117,7 @@ export function useGroupVotes(groupId) {
       }
       
       // Call API to submit the vote
-      const response = await axios.post(`/votes/${selectedVote.value.id}/cast`, voteData)
+      const response = await getAxiosInstance().post(`/votes/${selectedVote.value.id}/cast`, voteData)
       
       // Close dialog
       selectedVote.value = null
@@ -129,7 +141,7 @@ export function useGroupVotes(groupId) {
       // }
       
       // Call API to delete the vote
-      await axios.delete(`/votes/${voteId}`)
+      await getAxiosInstance().delete(`/votes/${voteId}`)
       
       // Close the dialog if it was open
       if (selectedVote.value?.id === voteId) {
@@ -160,7 +172,7 @@ export function useGroupVotes(groupId) {
   const endVoteEarly = async (voteId) => {
     try {
       console.log(`[useGroupVotes] Sending request to end vote ${voteId} early.`);
-      const response = await axios.post(`/votes/${voteId}/end`);
+      const response = await getAxiosInstance().post(`/votes/${voteId}/end`);
       console.log(`[useGroupVotes] Vote ${voteId} ended successfully:`, response.data);
       return response.data; // Return data which might include updated vote status/end time
     } catch (err) {
@@ -175,7 +187,7 @@ export function useGroupVotes(groupId) {
     try {
       console.log(`[useGroupVotes] Sending request to tally and decrypt vote ${voteId}.`);
       // The backend endpoint handles both tallying and decryption in one call
-      const response = await axios.post(`/votes/${voteId}/decrypt`); 
+      const response = await getAxiosInstance().post(`/votes/${voteId}/decrypt`);
       console.log(`[useGroupVotes] Vote ${voteId} tallied and decrypted successfully:`, response.data);
       // The response likely contains the plaintext tally results
       return response.data; 

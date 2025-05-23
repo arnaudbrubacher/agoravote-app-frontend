@@ -1,11 +1,22 @@
 import { ref } from 'vue'
-import axios from '~/src/utils/axios'
+// import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
+import { useNuxtApp } from '#app'
 
 export function useGroupPosts(groupId) {
   const posts = ref([])
   const isLoadingPosts = ref(true)
   const selectedPost = ref(null)
 
+  // Helper function to get axios instance
+  const getAxiosInstance = () => {
+    if (process.client) {
+      const { $axiosInstance } = useNuxtApp()
+      if ($axiosInstance) {
+        return $axiosInstance
+      }
+    }
+    throw new Error('Axios instance not available')
+  }
 
   // 1. FETCH POSTS
 
@@ -14,7 +25,8 @@ export function useGroupPosts(groupId) {
   const fetchPosts = async () => {
     try {
       isLoadingPosts.value = true
-      const response = await axios.get(`/groups/${groupId}/posts`)
+      const axiosInstance = getAxiosInstance()
+      const response = await axiosInstance.get(`/groups/${groupId}/posts`)
       posts.value = response.data.posts || response.data // Handle different API response formats
       console.log("Fetched posts:", posts.value)
       return posts.value
@@ -35,16 +47,13 @@ export function useGroupPosts(groupId) {
     try {
       console.log('Creating new post with data:', postData);
       
-      // If we received FormData, use it directly
       let dataToSend = postData;
       
-      // If we received a plain object, convert it to FormData
       if (!(postData instanceof FormData)) {
         dataToSend = new FormData();
         dataToSend.append('title', postData.title);
         dataToSend.append('content', postData.content);
         
-        // Add these fields only if they're not already in the FormData
         if (!postData.has || !postData.has('type')) {
           dataToSend.append('type', 'group');
         }
@@ -61,7 +70,6 @@ export function useGroupPosts(groupId) {
           dataToSend.append('isPublic', postData.isPublic);
         }
       } else {
-        // If it's already FormData, make sure groupId is included
         if (!postData.has('groupId')) {
           dataToSend.append('groupId', groupId);
         }
@@ -73,8 +81,8 @@ export function useGroupPosts(groupId) {
       
       console.log('Sending request to:', `/groups/${groupId}/posts`);
       
-      // Create post
-      const response = await axios.post(`/groups/${groupId}/posts`, dataToSend, {
+      const axiosInstance = getAxiosInstance()
+      const response = await axiosInstance.post(`/groups/${groupId}/posts`, dataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -109,18 +117,17 @@ export function useGroupPosts(groupId) {
     try {
       console.log('Updating post with data:', post);
       
-      // Extract only the fields we want to update
       const updateData = {
         title: post.title,
         content: post.content,
         isPublic: post.isPublic,
-        file_url: post.file_url // Add file_url to the update data
+        file_url: post.file_url
       };
       
       console.log('Sending update data to backend:', updateData);
       
-      // Call API to update post
-      const response = await axios.put(`/posts/${post.id}`, updateData);
+      const axiosInstance = getAxiosInstance()
+      const response = await axiosInstance.put(`/posts/${post.id}`, updateData);
       console.log('Post updated successfully:', response.data);
       
       // Update post in the list
@@ -148,7 +155,8 @@ export function useGroupPosts(groupId) {
       if (!confirm('Are you sure you want to delete this post?')) return
       
       // Call API to delete the post
-      await axios.delete(`/posts/${post.id}`)
+      const axiosInstance = getAxiosInstance()
+      await axiosInstance.delete(`/posts/${post.id}`)
       
       // Remove post from list
       const index = posts.value.findIndex(p => p.id === post.id)

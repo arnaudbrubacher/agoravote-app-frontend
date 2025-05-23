@@ -28,8 +28,11 @@ import { ref, computed, onMounted, watch } from 'vue';
 import LucideIcon from '@/components/LucideIcon.vue';
 import MemberRow from '~/components/members/MemberRow.vue';
 import { useUserService } from '~/composables/user-service';
+import { useNuxtApp } from '#app';
 
-const userService = useUserService();
+const { $axiosInstance } = useNuxtApp();
+
+const userService = useUserService($axiosInstance);
 const processedInvitations = ref([]);
 const userDataLoading = ref(false);
 

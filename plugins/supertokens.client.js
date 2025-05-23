@@ -2,18 +2,27 @@ import SuperTokens from 'supertokens-web-js'
 import Session from 'supertokens-web-js/recipe/session'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
-import axios from '~/src/utils/axios' // Import your configured axios instance
 
 export default defineNuxtPlugin(nuxtApp => {
   // Check if running on client side
   if (process.client) {
-    console.log('[SuperTokens Plugin] Initializing SuperTokens...');
-    
+    // Use useRuntimeConfig() which is the standard Nuxt 3 way within a plugin
+    const runtimeConfig = useRuntimeConfig();
+
+    // Determine the SuperTokens API Domain
+    let supertokensApiDomain = 'http://localhost:8088'; // Default fallback
+    if (runtimeConfig && runtimeConfig.public && runtimeConfig.public.supertokensApiDomain) {
+      supertokensApiDomain = runtimeConfig.public.supertokensApiDomain;
+    } else {
+      console.warn('[SuperTokens Plugin] NUXT_PUBLIC_SUPERTOKENS_API_DOMAIN not found in runtimeConfig, using fallback:', supertokensApiDomain);
+    }
+    console.log('[SuperTokens Plugin] Initializing SuperTokens with apiDomain:', supertokensApiDomain);
+
     SuperTokens.init({
       appInfo: {
         // learn more about this on https://supertokens.com/docs/thirdpartyemailpassword/appinfo
         appName: "AgoraVote",
-        apiDomain: "http://localhost:8080", // Your backend domain
+        apiDomain: supertokensApiDomain, // Use the runtime config
         websiteDomain: window.location.origin, // Your frontend domain
         apiBasePath: "/auth", // Adjust if your API path is different
         websiteBasePath: "/auth" // Adjust if your website path is different

@@ -214,7 +214,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUserProfile } from '@/composables/useUserProfile'
 import { changeUserPassword, deleteUserAccount as authDeleteUserAccount, signOut } from '@/src/utils/auth'
-import axios from '~/src/utils/axios'
 import {
   Dialog,
   DialogContent,
@@ -226,6 +225,7 @@ import {
 import { useAlert } from '@/composables/useAlert'
 import LucideIcon from '@/components/LucideIcon.vue' // Assuming you have this component
 import Session from 'supertokens-web-js/recipe/session'
+import { useNuxtApp } from '#app'
 
 definePageMeta({
   layout: 'app-layout',
@@ -235,17 +235,29 @@ definePageMeta({
 const router = useRouter()
 const fileInput = ref(null)
 const { alert, confirm } = useAlert()
+const { $axiosInstance } = useNuxtApp()
 
-// Use the user profile composable
+// Debug: Check if axios instance is available
+console.log('[UserSettings Page] $axiosInstance availability check:', !!$axiosInstance)
+if (!$axiosInstance) {
+  console.error('[UserSettings Page] $axiosInstance is undefined! This will cause errors in composables.')
+}
+
 const { 
   userData, 
   loading, 
   error, 
   fetchCurrentUserProfile, 
   updateProfilePicture,
-  updateUserProfile, // Added updateUserProfile
-  resendVerificationEmail // Added resendVerificationEmail from composable
-} = useUserProfile()
+  updateUserProfileDetails,
+  resendVerificationEmail,
+  posts, 
+  loadingPosts, 
+  fetchUserPosts,
+  createNewUserPost,
+  editUserPost,
+  deleteUserPost
+} = useUserProfile($axiosInstance) // PASS AXIOS INSTANCE
 
 // Local state for form edits
 const userNameEdit = ref('')
@@ -280,7 +292,8 @@ const profilePictureUrl = computed(() => {
   if (userData.value.profile_picture.startsWith('http')) {
     return userData.value.profile_picture
   }
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   return `${baseUrl}/${userData.value.profile_picture}`
 })
 
@@ -321,14 +334,20 @@ const handleProfilePictureUpload = async (event) => {
 const saveSettings = async () => {
   saveLoading.value = true
   try {
-    if (!userData.value?.id) {
-      throw new Error('User data not available.')
+    if (!userData.value?.id || !userData.value?.email) { // Ensure email is also available for the payload
+      throw new Error('User data (ID or Email) not available.')
     }
 
-    const updatedData = { name: userNameEdit.value };
+    // Construct the payload expected by updateUserProfileDetails
+    const profileData = { 
+      id: userData.value.id,
+      email: userData.value.email, // Pass the existing email
+      name: userNameEdit.value 
+      // Add other fields here if your updateUserProfileDetails and backend expect them
+    };
     
-    // Call updateUserProfile from the composable
-    await updateUserProfile(updatedData);
+    // Call the correctly named function from the composable
+    await updateUserProfileDetails(profileData);
     await fetchCurrentUserProfile(); // Re-fetch to update userData and reset isNameChanged implicitly
     
     window.dispatchEvent(new CustomEvent('user-data-updated')) // Notify other components
@@ -364,7 +383,7 @@ const changePasswordHandler = async () => {
       throw new Error('User ID not available.')
     }
     
-    await changeUserPassword(userData.value.id, currentPassword.value, newPassword.value)
+    await changeUserPassword($axiosInstance, currentPassword.value, newPassword.value) // PASS AXIOS INSTANCE
     
     currentPassword.value = ''
     newPassword.value = ''
@@ -402,7 +421,7 @@ const deleteAccount = async () => {
   deleteLoading.value = true;
   try {
     // Backend delete should handle session invalidation via SuperTokens
-    await authDeleteUserAccount(); 
+    await authDeleteUserAccount($axiosInstance); 
 
     // Frontend sign out as a fallback / cleanup
     await signOut(); 

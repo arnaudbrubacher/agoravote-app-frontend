@@ -147,7 +147,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import LoadingError from '@/components/group/core/LoadingError.vue'
 import GroupTabs from '@/components/group/core/GroupTabs.vue'
 import GroupDialogs from '@/components/group/core/GroupDialogs.vue'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
 import { useToast } from '@/components/ui/toast/use-toast'
 import {
   AlertDialog,
@@ -276,7 +276,7 @@ const {
   selectedVote,
   isLoadingVotes, 
   isLoadingDetails, 
-  fetchVotes, 
+  fetchVotes,
   openVoteDetails,
   createNewVote,
   endVoteEarly,
@@ -536,6 +536,17 @@ const handlePostDeleted = async (postId) => {
 
 // --- NEW Multi-Step Vote Handlers ---
 
+// Helper function to get axios instance
+const getAxiosInstance = () => {
+  if (process.client) {
+    const { $axiosInstance } = useNuxtApp()
+    if ($axiosInstance) {
+      return $axiosInstance
+    }
+  }
+  throw new Error('Axios instance not available')
+}
+
 // Step 1: Handle the 'encrypt-vote' event from BallotForm (via VoteDetailsDialog)
 const handleEncryptVote = async (payload) => {
   console.log(`[pages/group/[id].vue] handleEncryptVote function CALLED with payload:`, payload);
@@ -561,7 +572,7 @@ const handleEncryptVote = async (payload) => {
 
     console.log("Sending encryption payload:", encryptPayload);
     // TODO: Verify backend endpoint and payload structure
-    const response = await axios.post(`/votes/${payload.voteId}/encrypt`, encryptPayload);
+    const response = await getAxiosInstance().post(`/votes/${payload.voteId}/encrypt`, encryptPayload);
     
     console.log("Encryption successful. Response:", response.data);
     if (!response.data?.tracker_hash) {
@@ -632,7 +643,7 @@ const submitBallotAction = async (action, encryptedData, plaintextSelection = nu
         action: action // 'cast' or 'spoil'
     };
     console.log(`Submitting ballot with payload:`, submitPayload);
-    const submitResponse = await axios.post(`/ballots/submit`, submitPayload);
+    const submitResponse = await getAxiosInstance().post(`/ballots/submit`, submitPayload);
     console.log(`Ballot ${action} successful:`, submitResponse.data);
 
     // --- Success --- 
@@ -870,7 +881,8 @@ const groupPictureUrl = computed(() => {
   // If it's a relative path (likely starting with '/uploads/...' from backend),
   // just prepend the base URL.
   // Ensure no double slashes if picturePath starts with '/'.
-  const baseUrl = 'http://localhost:8080'; // Consider making this configurable
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088';
   if (picturePath.startsWith('/')) {
       return `${baseUrl}${picturePath}`;
   } else {

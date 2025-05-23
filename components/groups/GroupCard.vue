@@ -92,7 +92,8 @@ const groupPictureUrl = computed(() => {
   }
   
   // Otherwise, prepend the API base URL
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const config = useRuntimeConfig()
+  const apiBaseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
   return `${apiBaseUrl}${props.group.picture}`
 })
 </script> 

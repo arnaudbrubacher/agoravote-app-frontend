@@ -171,7 +171,9 @@
 import { ref, computed, onMounted } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
+
+const { $axiosInstance } = useNuxtApp()
 
 const props = defineProps({
   group: {
@@ -240,134 +242,82 @@ const fetchCurrentDocument = async () => {
   console.log('Fetching current document for group:', props.group.name);
   
   try {
-    // Check if the group has a membership with document fields
-    if (props.group.membership) {
-      console.log('Group has membership:', props.group.membership);
-      
-      // Check if invitation has been accepted but no document is found
-      if (props.group.membership.invitation_accepted === true) {
-        console.log('Invitation has been accepted, checking for documents');
+    // Ensure we have a group ID and member ID (user ID) to fetch the document
+    // The specific endpoint might vary based on your API design.
+    // This assumes an endpoint like /groups/{groupId}/members/{memberId}/document
+    // or that the document info is part of the group.membership object.
+
+    // If the document URL or ID is directly on the membership object:
+    if (props.group.membership && (props.group.membership.document_url || props.group.membership.document_id)) {
+      // This part might need adjustment based on how you actually get the document details.
+      // For now, let's assume the backend might provide the document details directly 
+      // or we need to fetch it if only an ID is present.
+      // If the full document object is already in group.membership.document, use it.
+      if (props.group.membership.document) {
+         currentDocument.value = props.group.membership.document;
+         console.log('Document found directly in membership object:', currentDocument.value);
+      } else {
+        // Example: Fetch by document ID if available
+        // const documentId = props.group.membership.document_id;
+        // if (documentId) {
+        //   const response = await $axiosInstance.get(`/documents/${documentId}`);
+        //   currentDocument.value = response.data;
+        // } else {
+        //   currentDocument.value = null; // Or handle as needed if no ID
+        // }
+        // For this example, let's assume the backend will provide sufficient info
+        // or we might need a specific endpoint to fetch the member's document for a group.
+        // THIS IS A PLACEHOLDER - replace with your actual logic for fetching document by ID or URL
+        // currentDocument.value = { name: "Placeholder Document", type: "application/pdf", size: 12345, uploaded_at: new Date().toISOString(), url: props.group.membership.document_url };
+         
+        // More realistic: an endpoint to get the member's specific document for this group
+        // This requires knowing the member's ID (often current user's ID in this context if it's their own document manager)
+        // and the group ID.
+        // Let's assume your API provides an endpoint like this.
+        // The actual member ID might come from a user store or another prop.
+        // For simplicity, if your backend links documents to the membership record, you might not need a separate fetch here
+        // if all details are already in `props.group.membership` or a sub-object like `props.group.membership.submitted_document`
+
+        // Attempt to fetch from a specific endpoint if one exists
+        // This is a guess, replace with your actual endpoint
+        // We need the member ID (current user ID if they are managing their own docs)
+        // For this example, let's assume the backend gives us the document within the group.membership itself
+        // or we need a different strategy. Let's assume for now the document details might be directly available
+        // or that `props.group.membership` contains enough to construct `currentDocument.value`
+        if (props.group.membership && props.group.membership.document_details) { // Assuming document_details is an object
+            currentDocument.value = props.group.membership.document_details;
+        } else {
+            // Fallback or if no document is submitted yet for the user in this group
+            // Check a more specific endpoint. This requires the user ID.
+            // For now, let's assume it might be on the group object itself if it's a single required doc. 
+            // This logic is highly dependent on your backend API structure.
+            // Example: fetch the document for the current user in this group
+             try {
+                const response = await $axiosInstance.get(`/groups/${props.group.id}/members/me/document`);
+                currentDocument.value = response.data.document; // Assuming the API returns { document: { ... } }
+             } catch (docError) {
+                if (docError.response && docError.response.status === 404) {
+                    console.log('No document found for user in this group.');
+                    currentDocument.value = null;
+                } else {
+                    console.error('Failed to fetch member document:', docError);
+                    currentDocument.value = null;
+                }
+             }
+        }
+
       }
-      
-      // Check for direct document fields (camelCase, snake_case, PascalCase)
-      const documentUrl = 
-        props.group.membership.DocumentFileURL || 
-        props.group.membership.document_file_url ||
-        props.group.membership.documentFileURL ||
-        props.group.membership.document_url ||
-        props.group.membership.documentUrl;
-      
-      if (documentUrl) {
-        // Create a document object from the direct fields
-        currentDocument.value = {
-          name: props.group.membership.DocumentFileName || 
-                props.group.membership.document_file_name || 
-                props.group.membership.documentFileName || 
-                'Your Document',
-          document_file_url: documentUrl,
-          document_file_name: props.group.membership.DocumentFileName || 
-                             props.group.membership.document_file_name || 
-                             props.group.membership.documentFileName,
-          document_file_type: props.group.membership.DocumentFileType || 
-                             props.group.membership.document_file_type || 
-                             props.group.membership.documentFileType,
-          document_file_size: props.group.membership.DocumentFileSize || 
-                             props.group.membership.document_file_size || 
-                             props.group.membership.documentFileSize,
-          document_uploaded_at: props.group.membership.DocumentUploadedAt || 
-                               props.group.membership.document_uploaded_at || 
-                               props.group.membership.documentUploadedAt
-        };
-        
-        console.log('Found document in membership fields:', currentDocument.value);
-      } 
-      // Check for legacy documents_submitted field
-      else if (props.group.membership.documents_submitted) {
-        let documents = props.group.membership.documents_submitted;
-        console.log('Found documents_submitted:', documents);
-        
-        // If it's a string (JSON), parse it
-        if (typeof documents === 'string') {
-          try {
-            documents = JSON.parse(documents);
-            console.log('Parsed documents_submitted:', documents);
-          } catch (e) {
-            console.error('Error parsing documents_submitted:', e);
-            documents = [];
-          }
-        }
-        
-        // If we have documents, use the first one
-        if (Array.isArray(documents) && documents.length > 0 && documents[0].url) {
-          const doc = documents[0];
-          currentDocument.value = {
-            name: doc.name || 'Your Document',
-            document_file_url: doc.url,
-            document_file_name: doc.filename || doc.name,
-            document_file_type: doc.type,
-            document_file_size: doc.size,
-            document_uploaded_at: doc.uploaded_at
-          };
-          
-          console.log('Found document in documents_submitted:', currentDocument.value);
-        }
-      }
-      // Check for documents field
-      else if (props.group.membership.documents) {
-        let documents = props.group.membership.documents;
-        console.log('Found documents field:', documents);
-        
-        // If it's a string (JSON), parse it
-        if (typeof documents === 'string') {
-          try {
-            documents = JSON.parse(documents);
-            console.log('Parsed documents field:', documents);
-          } catch (e) {
-            console.error('Error parsing documents field:', e);
-            documents = [];
-          }
-        }
-        
-        // If we have documents, use the first one
-        if (Array.isArray(documents) && documents.length > 0 && documents[0].url) {
-          const doc = documents[0];
-          currentDocument.value = {
-            name: doc.name || 'Your Document',
-            document_file_url: doc.url,
-            document_file_name: doc.filename || doc.name,
-            document_file_type: doc.type,
-            document_file_size: doc.size,
-            document_uploaded_at: doc.uploaded_at
-          };
-          
-          console.log('Found document in documents field:', currentDocument.value);
-        }
-      }
-    }
-    
-    // If we still don't have a document, fetch from API
-    if (!currentDocument.value) {
-      console.log('No document found in membership, fetching from API');
-      
-      // Fetch the document from the API
-      const response = await axios.get(`/groups/${props.group.id}/members/documents`);
-      console.log('API response:', response.data);
-      
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        currentDocument.value = response.data[0];
-        console.log('Document fetched from API:', currentDocument.value);
       } else {
         currentDocument.value = null;
-        console.log('No documents returned from API');
-      }
+      console.log('No membership or document URL/ID found on membership object.');
     }
   } catch (error) {
-    console.error('Failed to fetch document:', error);
+    console.error('Failed to fetch current document:', error);
     currentDocument.value = null;
   } finally {
     loading.value = false;
   }
-}
+};
 
 // File handling functions
 const triggerFileInput = () => {
@@ -429,7 +379,7 @@ const removeFile = () => {
   }
 }
 
-// Upload the new document
+// Upload or replace the document
 const uploadDocument = async () => {
   if (!newDocumentFile.value) {
     documentError.value = 'Please select a file to upload.';
@@ -437,40 +387,37 @@ const uploadDocument = async () => {
   }
   
   isSubmitting.value = true;
+  documentError.value = '';
   
-  try {
-    // Create form data
     const formData = new FormData();
-    formData.append('file', newDocumentFile.value);
-    
-    // Upload the document
-    const response = await axios.post(`/groups/${props.group.id}/members/documents`, formData, {
+  formData.append('document', newDocumentFile.value);
+  // You might need to send group_id or member_id depending on your backend API
+  // formData.append('group_id', props.group.id);
+  // If replacing, you might send the ID of the document to be replaced, or backend handles it via user context.
+
+  try {
+    // The endpoint for uploading/replacing a document might be specific.
+    // e.g., /groups/{groupId}/members/{memberId}/document or just /documents if user context is implicit.
+    // This is a placeholder, adjust to your API.
+    // Assuming an endpoint that handles the upload for the current user for this group
+    const response = await $axiosInstance.post(`/groups/${props.group.id}/members/me/document`, formData, { // USE PASSED INSTANCE
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
     
-    // Update the current document
-    currentDocument.value = response.data;
-    
-    // Reset the form
-    newDocumentFile.value = null;
-    
-    // Show success message
-    alert('Document updated successfully!');
-    
-    // Emit event to notify parent component
-    emit('document-updated', response.data);
-    
-    // Close the dialog
-    emit('close');
+    currentDocument.value = response.data.document; // Assuming the backend returns the updated/new document details
+    newDocumentFile.value = null; // Clear the selection
+    if (fileInput.value) fileInput.value.value = ''; // Reset file input
+    emit('document-updated', currentDocument.value);
+    // Optionally, show a success message
   } catch (error) {
-    console.error('Failed to upload document:', error);
+    console.error('Failed to upload document:', error.response?.data || error.message);
     documentError.value = error.response?.data?.error || 'Failed to upload document. Please try again.';
   } finally {
     isSubmitting.value = false;
   }
-}
+};
 
 // Download the document
 const downloadDocument = (doc) => {

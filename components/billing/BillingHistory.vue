@@ -102,7 +102,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
 import { Badge } from '@/components/ui/badge'
 
 const props = defineProps({
@@ -111,6 +111,8 @@ const props = defineProps({
     required: true
   }
 })
+
+const { $axiosInstance } = useNuxtApp()
 
 const isLoading = ref(true)
 const error = ref(null)
@@ -127,7 +129,7 @@ async function fetchBillingHistory() {
   error.value = null
   
   try {
-    const response = await axios.get(`/api/payments/billing-history/${props.groupId}`)
+    const response = await $axiosInstance.get(`/api/payments/billing-history/${props.groupId}`)
     
     subscription.value = response.data.subscription
     invoices.value = response.data.invoices || []

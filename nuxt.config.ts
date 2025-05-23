@@ -2,12 +2,14 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  devtools: { enabled: true },
   modules: [
     '@nuxtjs/tailwindcss',  // Tailwind CSS module for styling
     '@nuxtjs/color-mode',   // Color mode module for dark/light mode
     'shadcn-nuxt',           // ShadCN module for UI components
-    // Removed nuxt-icon as we're using Lucide
+    '@nuxt/icon',
     // '@nuxtjs/axios'
+    // '@nuxtjs/auth-next'
   ],
 
   // Fix for colorMode type error - use proper configuration format
@@ -17,14 +19,18 @@ export default defineNuxtConfig({
   },
 
   shadcn: {
-    prefix: 'Ui',           // Prefix for ShadCN components
-    componentDir: './components/ui'  // Directory for ShadCN components
+    prefix: '',
+    componentDir: './components/ui'
   },
 
   // Add runtimeConfig to expose environment variables
   runtimeConfig: {
     public: {
-      signupAccessKey: process.env.NUXT_PUBLIC_SIGNUP_ACCESS_KEY || ''
+      signupAccessKey: process.env.NUXT_PUBLIC_SIGNUP_ACCESS_KEY || '',
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8088',
+      supertokensApiDomain: process.env.NUXT_PUBLIC_SUPERTOKENS_API_DOMAIN || 'http://localhost:8088',
+      stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+      electionGuardApiBaseUrl: process.env.NUXT_PUBLIC_ELECTIONGUARD_API_BASE_URL || 'http://localhost:8088'
     }
   },
 
@@ -64,11 +70,15 @@ export default defineNuxtConfig({
 
   // Global CSS
   css: [
-    '~/assets/css/tailwind.css'
+    '~/assets/css/tailwind.css',
+    '~/assets/css/main.css'
   ],
 
   // Plugins to run before rendering page
   plugins: [
+    '~/plugins/01.axios.ts',
+    '~/plugins/supertokens.client.js',
+    // '~/plugins/event-bus.js'
   ],
 
   // Auto import components
@@ -106,7 +116,41 @@ export default defineNuxtConfig({
   //   baseURL: 'http://localhost:8080'
   // },
 
+  // Auth module configuration (SuperTokens is handled via plugin)
+  /*
+  auth: {
+    strategies: {
+      local: false, // Disable default local strategy
+      supertokens: {
+        provider: '~/auth/supertokens-provider.js', // Path to your SuperTokens provider
+        token: {
+          global: true,
+        },
+        user: {
+          property: false, // We handle user fetching manually
+        },
+        endpoints: {
+          login: { url: '/auth/signin', method: 'post' },
+          logout: { url: '/auth/signout', method: 'post' },
+          user: false // Disable automatic user fetching, we use custom logic
+        }
+      }
+    },
+    redirect: {
+      login: '/auth',
+      logout: '/auth',
+      callback: false, // SuperTokens handles callbacks
+      home: '/profile'
+    },
+    plugins: ['~/plugins/supertokens.client.js'] // Ensure SuperTokens plugin is registered
+  },
+  */
+
   // Build Configuration
   build: {
-  }
+    transpile: ['jsonwebtoken']
+  },
+
+  // Server-side rendering can be enabled or disabled
+  // ssr: false, // Set to false if you want a pure SPA, true for SSR (default)
 })

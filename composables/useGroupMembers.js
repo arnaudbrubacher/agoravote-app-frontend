@@ -1,6 +1,7 @@
 import { ref } from 'vue'
-import axios from '~/src/utils/axios'
+// import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
 import { useAlertDialog } from '@/composables/useAlertDialog'
+import { useNuxtApp } from '#app'
 
 export function useGroupMembers(groupId, group, fetchGroup) {
   const currentUser = ref(null)
@@ -10,10 +11,21 @@ export function useGroupMembers(groupId, group, fetchGroup) {
   // Initialize alert dialog system
   const { showAlert, showConfirm } = useAlertDialog()
 
+  // Helper function to get axios instance
+  const getAxiosInstance = () => {
+    if (process.client) {
+      const { $axiosInstance } = useNuxtApp()
+      if ($axiosInstance) {
+        return $axiosInstance
+      }
+    }
+    throw new Error('Axios instance not available')
+  }
+
   // Fetch current user information
   const fetchCurrentUser = async () => {
     try {
-      const response = await axios.get('/users/me')
+      const response = await getAxiosInstance().get('/users/me') // USE PASSED INSTANCE
       currentUser.value = response.data
       console.log("Current user:", currentUser.value)
       return currentUser.value
@@ -38,7 +50,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       }
       
       // Call API to add member
-      const response = await axios.post(`/groups/${groupId}/members`, requestData)
+      const response = await getAxiosInstance().post(`/groups/${groupId}/members`, requestData) // USE PASSED INSTANCE
       
       // Show success message
       showAlert('Success', `Member ${memberData.email} added successfully`)
@@ -75,7 +87,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       formData.append('file', file)
 
       // Use the correct endpoint for CSV/XLSX upload
-      const response = await axios.post(`/groups/${groupId}/members/upload-csv`, formData, {
+      const response = await getAxiosInstance().post(`/groups/${groupId}/members/upload-csv`, formData, { // USE PASSED INSTANCE
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -159,7 +171,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
           
           // Call API to remove member using the user ID
           console.log(`useGroupMembers - Making API call to: /groups/${groupId}/members/${userId}`);
-          const response = await axios.delete(`/groups/${groupId}/members/${userId}`);
+          const response = await getAxiosInstance().delete(`/groups/${groupId}/members/${userId}`); // USE PASSED INSTANCE
           console.log('useGroupMembers - API response:', response.data);
           
           // Show success message
@@ -212,10 +224,10 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     }
 
     try {
-      console.log(`[useGroupMembers] Attempting axios.post to /groups/${groupId}/invite`);
+      console.log(`[useGroupMembers] Attempting axiosInstance.post to /groups/${groupId}/invite`);
       // Call API to invite member by email
-      const response = await axios.post(`/groups/${groupId}/invite`, { email });
-      console.log("[useGroupMembers] axios.post successful:", response.data);
+      const response = await getAxiosInstance().post(`/groups/${groupId}/invite`, { email }); // USE PASSED INSTANCE
+      console.log("[useGroupMembers] axiosInstance.post successful:", response.data);
 
       // Show success message (backend currently returns generic success)
       showAlert('Invitation Sent', `Invitation request sent for ${email}. They will receive an email if the address is valid and not already a member.`);
@@ -255,12 +267,10 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       });
       
       // Use the correct URL path with consistent parameter names
-      await axios.put(`/groups/${groupId}/members/${memberId}/role`, { 
-        role: "admin" 
-      });
+      const response = await getAxiosInstance().patch(`/groups/${groupId}/members/${memberId}/promote`); // USE PASSED INSTANCE
       
       // Show success message
-      showAlert('Success', `${member.name} is now an admin`);
+      showAlert('Success', `${member.name} has been promoted to admin.`);
       
       // Refresh group data to update members list
       await fetchGroup();
@@ -284,12 +294,10 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       });
       
       // Use the correct URL path with consistent parameter names
-      await axios.put(`/groups/${groupId}/members/${memberId}/role`, { 
-        role: "member" 
-      });
+      const response = await getAxiosInstance().patch(`/groups/${groupId}/members/${memberId}/demote`); // USE PASSED INSTANCE
       
       // Show success message
-      showAlert('Success', `${member.name} is no longer an admin`);
+      showAlert('Success', `${member.name} has been demoted to member.`);
       
       // Refresh group data to update members list
       await fetchGroup();

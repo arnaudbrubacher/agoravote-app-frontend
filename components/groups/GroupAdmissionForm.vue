@@ -166,9 +166,11 @@ import { ref, watch, onMounted, computed } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
-import axios from '~/src/utils/axios'
 import { useAlertDialog } from '@/composables/useAlertDialog'
 import ActionAlertDialog from '@/components/shared/ActionAlertDialog.vue'
+import { useNuxtApp } from '#app'
+
+const { $axiosInstance } = useNuxtApp()
 
 const props = defineProps({
   group: {
@@ -248,47 +250,17 @@ const documentsRequired = computed(() => {
 // Computed property to get the required documents array
 const requiredDocuments = computed(() => {
   // Get the documents from either camelCase or snake_case property
-  const documents = props.group.requiredDocuments || props.group.required_documents;
-  
-  // If no documents, return empty array
-  if (!documents) return [];
-  
-  let parsedDocs = [];
-  
-  // If it's a string (JSON), parse it
-  if (typeof documents === 'string') {
+  const docs = props.group.requiredDocuments || props.group.required_documents;
+
+  if (typeof docs === 'string') {
     try {
-      parsedDocs = JSON.parse(documents);
+      return JSON.parse(docs);
     } catch (e) {
-      console.error('Error parsing required documents:', e);
+      console.error('Error parsing required documents string:', e);
       return [];
     }
   }
-  // If it's already an array, use it
-  else if (Array.isArray(documents)) {
-    parsedDocs = documents;
-  }
-  // If it's neither, return empty array
-  else {
-    return [];
-  }
-  
-  // Normalize the documents to ensure each has name and description
-  return parsedDocs.map(doc => {
-    // If doc is a string, treat it as the name
-    if (typeof doc === 'string') {
-      return { name: doc, description: '' };
-    }
-    // If doc is an object, ensure it has name and description properties
-    else if (typeof doc === 'object' && doc !== null) {
-      return {
-        name: doc.name || 'Unnamed Document',
-        description: doc.description || ''
-      };
-    }
-    // Default fallback
-    return { name: 'Document', description: '' };
-  });
+  return Array.isArray(docs) ? docs : [];
 })
 
 // Watch for error changes to update the passwordError
@@ -485,7 +457,7 @@ const uploadDocument = async (file, docInfo, index) => {
     // Use the correct document upload endpoint based on the backend routes
     console.log(`GroupAdmissionForm - Uploading to endpoint: /groups/${props.group.id}/members/documents`)
     
-    const response = await axios.post(`/groups/${props.group.id}/members/documents`, formData, {
+    const response = await $axiosInstance.post(`/groups/${props.group.id}/members/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -588,7 +560,7 @@ const handleSubmit = async () => {
     if (needsAcceptEndpoint) {
       console.log(`GroupAdmissionForm - Calling /groups/:id/accept endpoint for group ${props.group.id}`);
       try {
-        finalApiResponse = await axios.post(`/groups/${props.group.id}/accept`, finalPayload);
+        finalApiResponse = await $axiosInstance.post(`/groups/${props.group.id}/accept`, finalPayload);
         finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved');
         console.log(`GroupAdmissionForm - /groups/:id/accept call successful. Status: ${finalStatus}`);
       } catch (acceptError) {
@@ -609,7 +581,7 @@ const handleSubmit = async () => {
     } else {
       console.log(`GroupAdmissionForm - Calling /groups/:id/join endpoint for public group ${props.group.id}`);
       try {
-        finalApiResponse = await axios.post(`/groups/${props.group.id}/join`);
+        finalApiResponse = await $axiosInstance.post(`/groups/${props.group.id}/join`);
         finalStatus = finalApiResponse.data?.status || 'approved';
         console.log(`GroupAdmissionForm - /groups/:id/join call successful. Status: ${finalStatus}`);
       } catch (joinError) {

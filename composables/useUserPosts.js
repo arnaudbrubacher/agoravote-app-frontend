@@ -1,11 +1,22 @@
 import { ref } from 'vue'
-import axios from '~/src/utils/axios'
+// import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
 
 export function useUserPosts(userId = null) {
   const posts = ref([])
   const loading = ref(false)
   const error = ref(null)
   const selectedPost = ref(null)
+
+  // Helper function to get axios instance
+  const getAxiosInstance = () => {
+    if (process.client) {
+      const { $axiosInstance } = useNuxtApp()
+      if ($axiosInstance) {
+        return $axiosInstance
+      }
+    }
+    throw new Error('Axios instance not available')
+  }
 
   // Fetch posts for current user or specified user
   const fetchPosts = async (specificUserId = null) => {
@@ -19,7 +30,7 @@ export function useUserPosts(userId = null) {
         ? '/users/me/posts' 
         : `/users/${targetUserId}/posts`
       
-      const response = await axios.get(endpoint)
+      const response = await getAxiosInstance().get(endpoint)
       posts.value = response.data.posts || response.data || []
       return posts.value
     } catch (err) {
@@ -48,7 +59,7 @@ export function useUserPosts(userId = null) {
         }
       }
       
-      const response = await axios.post(`/users/me/posts`, dataToSend, {
+      const response = await getAxiosInstance().post(`/users/me/posts`, dataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -82,7 +93,7 @@ export function useUserPosts(userId = null) {
       console.log('Sending update data to backend:', updateData);
       
       // Call API to update post
-      const response = await axios.put(`/posts/${post.id}`, updateData);
+      const response = await getAxiosInstance().put(`/posts/${post.id}`, updateData);
       console.log('Post updated successfully:', response.data);
       
       const updatedPost = response.data;
@@ -104,7 +115,7 @@ export function useUserPosts(userId = null) {
   // Delete a post
   const deletePost = async (post) => {
     try {
-      await axios.delete(`/posts/${post.id}`)
+      await getAxiosInstance().delete(`/posts/${post.id}`)
       
       // Remove the post from the list
       posts.value = posts.value.filter(p => p.id !== post.id)

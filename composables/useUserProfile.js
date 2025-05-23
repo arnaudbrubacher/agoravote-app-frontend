@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import axios from '~/src/utils/axios'
+// import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
 import { useRouter } from 'vue-router'
 
 export function useUserProfile() {
@@ -8,6 +8,17 @@ export function useUserProfile() {
   const loading = ref(true)
   const error = ref(null)
   const commonGroups = ref([])
+  
+  // Helper function to get axios instance 
+  const getAxiosInstance = () => {
+    if (process.client) {
+      const { $axiosInstance } = useNuxtApp()
+      if ($axiosInstance) {
+        return $axiosInstance
+      }
+    }
+    throw new Error('Axios instance not available')
+  }
   
   // Safe localStorage functions
   const getLocalStorage = (key, defaultValue = null) => {
@@ -40,7 +51,7 @@ export function useUserProfile() {
       // if (!userId) { ... }
 
       // Directly call the /users/me endpoint
-      const response = await axios.get('/users/me')
+      const response = await getAxiosInstance().get('/users/me')
       console.log('Response from /users/me endpoint:', response.data)
       // Assuming the response data IS the user object directly
       userData.value = response.data 
@@ -74,7 +85,7 @@ export function useUserProfile() {
       
       // Assuming /user/profile/:id is the correct public endpoint
       // Remove the unnecessary fallbacks if they are incorrect
-      const response = await axios.get(`/user/profile/${userId}`)
+      const response = await getAxiosInstance().get(`/user/profile/${userId}`)
       userData.value = response.data.user || response.data // Adjust based on actual response structure
       
       // Check if common groups data is available
@@ -94,38 +105,31 @@ export function useUserProfile() {
     }
   }
   
-  // Function to create a user profile if it doesn't exist
-  const createUserProfile = async (userId, name, email) => {
-    if (!userId || !email) { // Require ID and email for creation
-      console.error('Cannot create profile: Missing userId or email')
-      error.value = 'User ID or email not found for profile creation.'
+  // Function to create/update a user profile
+  const updateUserProfileDetails = async (profileData) => { // RENAMED and potentially adjust params
+    if (!profileData.id || !profileData.email) { // Require ID and email
+      console.error('Cannot update profile: Missing id or email')
+      error.value = 'User ID or email not found for profile update.'
       return null; 
     }
     
-    console.log('Attempting to create/update user profile for ID:', userId)
+    console.log('Attempting to update user profile for ID:', profileData.id)
     
     loading.value = true
     error.value = null
     
     try {
-      // The backend route is POST /users
-      const userDataPayload = {
-        id: userId, // Send the SuperTokens ID
-        name,
-        email,
-        // Add other fields if needed by the backend /users endpoint
-      }
+      // The backend route is POST /users (assuming upsert)
+      // Ensure profileData has all necessary fields expected by backend
+      const response = await getAxiosInstance().post('/users', profileData)
       
-      const response = await axios.post('/users', userDataPayload)
-      
-      console.log('User profile created/updated via POST /users:', response.data)
-      // Assume response.data contains the created/updated user object
+      console.log('User profile updated via POST /users:', response.data)
+      // Assume response.data contains the updated user object
       userData.value = response.data 
       return userData.value
     } catch (err) {
-      console.error('Failed to create/update user profile via POST /users:', err)
-      error.value = err.response?.data?.error || 'Failed to create/update user profile'
-      // Don't set userData.value to null here, might overwrite existing data
+      console.error('Failed to update user profile via POST /users:', err)
+      error.value = err.response?.data?.error || 'Failed to update user profile'
       throw err // Re-throw for caller handling
     } finally {
       loading.value = false
@@ -150,7 +154,7 @@ export function useUserProfile() {
       console.log('Uploading profile picture for user:', userId)
       
       // Upload the file
-      const response = await axios.post(`/users/${userId}/profile-picture`, formData, {
+      const response = await getAxiosInstance().post(`/users/${userId}/profile-picture`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -188,7 +192,7 @@ export function useUserProfile() {
           throw new Error('User ID is required to resend verification email.')
       }
       
-      await axios.post(`/users/${userId}/resend-verification`)
+      await getAxiosInstance().post(`/users/${userId}/resend-verification`)
       return true
     } catch (error) {
       console.error('Failed to resend verification email:', error)
@@ -203,7 +207,7 @@ export function useUserProfile() {
     commonGroups,
     fetchCurrentUserProfile,
     fetchUserProfile,
-    createUserProfile,
+    updateUserProfileDetails, // EXPORT RENAMED FUNCTION
     updateProfilePicture,
     resendVerificationEmail
   }

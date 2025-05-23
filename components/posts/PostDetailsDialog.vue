@@ -190,7 +190,9 @@ import {
   DialogTitle,
   DialogDescription
 } from '@/components/ui/dialog'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
+
+const { $axiosInstance } = useNuxtApp()
 
 const props = defineProps({
   post: {
@@ -233,7 +235,9 @@ const fileUrl = computed(() => {
   if (url && !url.startsWith('http')) {
     // If it doesn't start with a slash, add one
     const normalizedUrl = url.startsWith('/') ? url : `/${url}`
-    return `http://localhost:8080${normalizedUrl}`
+    const config = useRuntimeConfig()
+    const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
+    return `${baseUrl}${normalizedUrl}`
   }
   
   return url
@@ -362,84 +366,65 @@ function triggerFileInput() {
 
 function handleFileChange(event) {
   const file = event.target.files[0]
-  if (!file) return
-  
-  selectedFile.value = file
-  
-  // Create a preview URL for images
-  if (file.type.startsWith('image/')) {
-    filePreview.value = URL.createObjectURL(file)
-  } else {
-    filePreview.value = 'file' // Just a flag to show we have a file
+  if (file) {
+    selectedFile.value = file
+    // Create a preview if it's an image
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        filePreview.value = e.target.result
+      }
+      reader.readAsDataURL(file)
+    } else {
+      filePreview.value = null // Or some generic icon/placeholder for non-images
+    }
+    editForm.value.attachment = file.name // Store file name for display, actual file is in selectedFile
   }
 }
 
 function removeAttachment() {
   selectedFile.value = null
   filePreview.value = null
-  
-  // If we're editing an existing attachment, mark it for removal
-  if (editForm.value.attachment) {
-    editForm.value.attachment = null
-  }
-  
-  // Reset the file input
+  editForm.value.attachment = null
   if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-}
-
-async function uploadAttachment() {
-  if (!selectedFile.value) return null
-  
-  try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-    
-    // Use the correct endpoint for file uploads
-    const response = await axios.post('/posts/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    
-    console.log('File upload response:', response.data)
-    
-    // Return the exact URL string returned by the backend
-    return response.data.url
-  } catch (error) {
-    console.error('Failed to upload file:', error)
-    throw error
+    fileInput.value.value = '' // Reset the file input
   }
 }
 
 async function handleUpdate() {
   isSubmitting.value = true
-  
   try {
-    // Handle file upload if there's a new file
-    let fileUrl = editForm.value.attachment
-    
-    if (selectedFile.value) {
-      fileUrl = await uploadAttachment()
+    const formData = new FormData()
+    formData.append('title', editForm.value.title)
+    formData.append('content', editForm.value.content)
+    // formData.append('is_public', editForm.value.is_public) // If you add public/private toggle
+
+    // Handle file attachment
+    if (selectedFile.value) { // A new file has been selected
+      formData.append('attachment', selectedFile.value)
+    } else if (editForm.value.attachment === null) {
+      // If editForm.attachment is null, it means user wants to remove existing attachment
+      formData.append('remove_attachment', 'true')
     }
-    
-    const updatedData = {
-      title: editForm.value.title,
-      content: editForm.value.content,
-      file_url: fileUrl // Changed back to file_url to match backend's JSON tag
-    }
-    
-    emit('edit', { ...props.post, ...updatedData })
+    // If selectedFile.value is null AND editForm.value.attachment is NOT null, 
+    // it means the user hasn't changed the existing attachment, so we don't append anything for 'attachment' or 'remove_attachment'
+    // The backend should preserve the existing attachment in this case.
+
+    // console.log("Updating post with ID:", props.post.id)
+    // for (let [key, value] of formData.entries()) {
+    //   console.log(`${key}: ${value}`)
+    // }
+
+    const response = await $axiosInstance.put(`/posts/${props.post.id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    emit('edit', response.data.post) // Emit the updated post data
     editMode.value = false
-    
-    // Clean up any object URLs to prevent memory leaks
-    if (filePreview.value && filePreview.value.startsWith('blob:')) {
-      URL.revokeObjectURL(filePreview.value)
-    }
   } catch (error) {
-    console.error('Failed to update post:', error)
-    alert('Failed to update post')
+    console.error('Failed to update post:', error.response?.data || error.message)
+    // TODO: Show user-friendly error message
   } finally {
     isSubmitting.value = false
   }
@@ -454,16 +439,17 @@ const confirmDelete = () => {
 
 // Watch for changes to the post prop
 watch(() => props.post, (newPost) => {
-  console.log('Post changed:', newPost);
-  console.log('New post file_url:', newPost.file_url);
+  console.log('Post changed:', newPost)
+  console.log('New post file_url:', newPost.file_url)
   
   // Update the form when the post changes
-  editForm.value = {
-    title: newPost.title,
-    content: newPost.content,
-    attachment: fileUrl.value
-  }
-}, { deep: true })
+  editForm.value.title = newPost.title
+  editForm.value.content = newPost.content
+  // If the new post has an attachment, set it. Otherwise, clear it.
+  editForm.value.attachment = newPost.file_url || newPost.fileURL || newPost.attachment || null
+  selectedFile.value = null // Reset selected file when post changes
+  filePreview.value = null // Reset file preview
+}, { immediate: true, deep: true })
 
 onMounted(() => {
   // Reset form when post changes
@@ -478,13 +464,13 @@ onMounted(() => {
   filePreview.value = null
 
   // Debug post data
-  console.log('Post data:', props.post);
-  console.log('Post file_url:', props.post.file_url);
-  console.log('Post fileURL:', props.post.fileURL);
-  console.log('Post attachment:', props.post.attachment);
-  console.log('Raw URL from post:', props.post.file_url || props.post.fileURL || props.post.attachment);
-  console.log('Computed fileUrl:', fileUrl.value);
-  console.log('Current User ID:', props.currentUserId);
-  console.log('Post User ID:', props.post.user_id);
+  console.log('Post data:', props.post)
+  console.log('Post file_url:', props.post.file_url)
+  console.log('Post fileURL:', props.post.fileURL)
+  console.log('Post attachment:', props.post.attachment)
+  console.log('Raw URL from post:', props.post.file_url || props.post.fileURL || props.post.attachment)
+  console.log('Computed fileUrl:', fileUrl.value)
+  console.log('Current User ID:', props.currentUserId)
+  console.log('Post User ID:', props.post.user_id)
 })
 </script>

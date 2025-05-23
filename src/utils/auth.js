@@ -1,4 +1,4 @@
-import axios from './axios'
+// import axios from './axios' // REMOVE THIS
 import SuperTokens from 'supertokens-web-js'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import Session from 'supertokens-web-js/recipe/session'
@@ -121,7 +121,8 @@ export const login = async (email, password) => {
   }
 }
 
-export const signup = async (name, email, password) => {
+// MODIFIED SIGNATURE: Added axiosInstance parameter
+export const signup = async (axiosInstance, name, email, password) => {
   // Only run on client-side
   if (typeof window === 'undefined') {
     console.error('Cannot perform signup on server-side')
@@ -190,7 +191,8 @@ export const signup = async (name, email, password) => {
         
         // Update user display name
         try {
-          await axios.post('/users', { 
+          // USE THE PASSED axiosInstance HERE
+          await axiosInstance.post('/users', { 
             id: userId,
             name: name,
             email: email
@@ -215,7 +217,8 @@ export const signup = async (name, email, password) => {
         if (!isVerified) {
           console.log('Sending verification email after signup')
           try {
-            await sendVerificationEmail()
+            // Pass axiosInstance to sendVerificationEmail if it uses it (it will after refactor)
+            await sendVerificationEmail(axiosInstance) 
             console.log('Verification email sent successfully after signup')
           } catch (verificationError) {
             console.error('Failed to send verification email after signup:', verificationError)
@@ -266,7 +269,8 @@ export const getUserIdFromToken = async () => {
   }
 }
 
-export const fetchUserProfile = async () => {
+// MODIFIED SIGNATURE: Added axiosInstance parameter
+export const fetchUserProfile = async (axiosInstance) => {
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -299,7 +303,7 @@ export const fetchUserProfile = async () => {
       const userId = await Session.getUserId()
       setLocalStorage('userId', userId) // Ensure userId is in localStorage
       
-    const response = await axios.get(`/user/profile/${userId}`)
+    const response = await axiosInstance.get(`/user/profile/${userId}`)
     return response.data.user
     } else {
       throw new Error('No active session found')
@@ -310,7 +314,8 @@ export const fetchUserProfile = async () => {
   }
 }
 
-export const deleteUserAccount = async () => {
+// MODIFIED SIGNATURE: Added axiosInstance parameter
+export const deleteUserAccount = async (axiosInstance) => {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -340,7 +345,7 @@ export const deleteUserAccount = async () => {
     
     // Try direct API request with SuperTokens interceptors
     try {
-      const response = await axios.delete(`/user/${userId}`);
+      const response = await axiosInstance.delete(`/user/${userId}`);
       console.log('Account deletion response:', response.data);
       
       // Clean up after successful deletion
@@ -361,7 +366,7 @@ export const deleteUserAccount = async () => {
         console.log('Session refreshed, retrying delete request');
         
         // Retry delete request after refreshing
-        const retryResponse = await axios.delete(`/user/${userId}`);
+        const retryResponse = await axiosInstance.delete(`/user/${userId}`);
         console.log('Retry deletion response:', retryResponse.data);
         
         // Clean up after successful deletion
@@ -387,8 +392,8 @@ export const deleteUserAccount = async () => {
   }
 };
 
-// Function to change user password
-export const changeUserPassword = async (userId, currentPassword, newPassword) => {
+// MODIFIED SIGNATURE: Added axiosInstance parameter
+export const changeUserPassword = async (axiosInstance, userId, currentPassword, newPassword) => {
   // Only run on client-side
   if (typeof window === 'undefined') {
     return null
@@ -404,7 +409,7 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
       // Use SuperTokens to update the password
       // Note: SuperTokens doesn't have a direct method to change password while authenticated
       // So we'll use the backend API for this
-    const response = await axios.put(`/users/${userId}/password`, {
+    const response = await axiosInstance.put(`/users/${userId}/password`, {
       current_password: currentPassword,
       new_password: newPassword
     })
@@ -421,12 +426,12 @@ export const changeUserPassword = async (userId, currentPassword, newPassword) =
   }
 }
 
-// Function to change group password
-export const changeGroupPassword = async (groupId, newPassword) => {
+// MODIFIED SIGNATURE: Added axiosInstance parameter
+export const changeGroupPassword = async (axiosInstance, groupId, newPassword) => {
   try {
     console.log('Changing group password for group:', groupId)
     
-    const response = await axios.put(`/groups/${groupId}/password`, {
+    const response = await axiosInstance.put(`/groups/${groupId}/password`, {
       new_password: newPassword
     })
     
@@ -437,14 +442,14 @@ export const changeGroupPassword = async (groupId, newPassword) => {
   }
 }
 
-// Function to change group password (EMERGENCY VERSION)
-export const emergencyChangeGroupPassword = async (groupId, newPassword) => {
+// MODIFIED SIGNATURE: Added axiosInstance parameter
+export const emergencyChangeGroupPassword = async (axiosInstance, groupId, newPassword) => {
   if (!groupId) throw new Error('Group ID is required')
 
   try {
     // This function doesn't involve user authentication directly,
     // so we'll continue to use the existing API
-    const response = await axios.put(`/groups/${groupId}/emergency-password`, {
+    const response = await axiosInstance.put(`/groups/${groupId}/emergency-password`, {
       new_password: newPassword
     })
     
@@ -541,7 +546,8 @@ export const getAuthHeader = async () => {
   return {};
 };
 
-export const sendVerificationEmail = async () => {
+// MODIFIED SIGNATURE: Added axiosInstance parameter
+export const sendVerificationEmail = async (axiosInstance) => {
   if (typeof window === 'undefined') {
     console.error('Cannot send verification email on server-side')
     return { status: 'ERROR' }
@@ -564,9 +570,7 @@ export const sendVerificationEmail = async () => {
         const headers = await getAuthHeader();
         console.log('Using auth headers:', Object.keys(headers).length > 0 ? 'Authorization header present' : 'No auth headers');
         
-        const axiosInstance = await import('./axios').then(module => module.default)
-        
-        // Try the endpoint that requires authentication
+        // REMOVED dynamic import, use passed axiosInstance
         try {
           // Try the original endpoint first (with authentication)
           await axiosInstance.post(`/users/${userId}/resend-verification`, {}, { headers })

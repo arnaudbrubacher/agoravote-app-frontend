@@ -311,7 +311,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Users, Camera } from 'lucide-vue-next'
-import axios from '~/src/utils/axios'
+import { useNuxtApp } from '#app'
 import { changeGroupPassword, emergencyChangeGroupPassword } from '@/src/utils/auth'
 import {
   Dialog,
@@ -324,6 +324,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cloneDeep } from 'lodash'
+import { useToast } from '@/components/ui/toast/use-toast'
 
 const props = defineProps({
   group: {
@@ -340,7 +341,8 @@ const emit = defineEmits(['close', 'submit', 'delete'])
 const fileInput = ref(null)
 const previewImage = ref(null)
 const selectedFile = ref(null)
-const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
+const config = useRuntimeConfig()
+const apiBaseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
 
 // Initialize the alert dialog system
 const { 

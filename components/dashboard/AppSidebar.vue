@@ -370,13 +370,15 @@ import {
 } from '@/components/ui/alert-dialog'
 import GroupCard from '@/components/groups/GroupCard.vue'
 import MemberDocumentManager from '@/components/members/MemberDocumentManager.vue'
-import axios from '~/src/utils/axios'
 import { signOut } from '@/src/utils/auth'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { useNuxtApp } from '#app'
+
+const { $axiosInstance } = useNuxtApp()
 
 // Props
 const props = defineProps({
@@ -511,12 +513,14 @@ const pendingGroups = computed(() => {
 })
 
 // Function to fetch pending email invitations
-const fetchPendingEmailInvites = async () => {
+const fetchEmailInvites = async () => {
+  if (!props.isAuthenticated) return;
   isLoadingEmailInvites.value = true;
+  console.log('AppSidebar: Fetching email invitations...');
   try {
-    const response = await axios.get('/user/group-invitations');
-    pendingEmailInvites.value = response.data || [];
-    console.log('Fetched pending email invites:', pendingEmailInvites.value);
+    const response = await $axiosInstance.get('/member/invitations');
+    pendingEmailInvites.value = response.data.invitations || [];
+    console.log('AppSidebar: Email invitations fetched:', pendingEmailInvites.value);
   } catch (error) {
     console.error('Failed to fetch pending email invitations:', error);
     pendingEmailInvites.value = [];
@@ -535,7 +539,7 @@ const checkDocumentsForPendingGroups = async () => {
   for (const group of pendingGroups.value) {
     console.log(`Checking documents for group ${group.name} (${group.id})`);
     try {
-      const response = await axios.get(`/api/groups/${group.id}/members/documents`);
+      const response = await $axiosInstance.get(`/api/groups/${group.id}/members/documents`);
       console.log(`API documents response for group ${group.name}:`, response.data);
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         console.log(`Documents found via API call for group ${group.name}`);
@@ -593,7 +597,8 @@ const handleSubscriptionUpdated = (event) => {
 const formatGroupPictureUrl = (url) => {
   if (!url) return '/default-group-icon.png'; // Provide a default icon path
   if (url.startsWith('http') || url.startsWith('/')) return url;
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088';
   return `${baseUrl}/${url}`;
 };
 
@@ -605,7 +610,7 @@ onMounted(() => {
   window.addEventListener('group-data-updated', handleGroupDataUpdated)
   window.addEventListener('user-data-updated', handleUserDataUpdated) // Add listener for user data updates
   window.addEventListener('subscription-updated', handleSubscriptionUpdated) // Add listener for subscription updates
-  fetchPendingEmailInvites();
+  fetchEmailInvites();
   console.log('AppSidebar - All groups:', props.groups)
   console.log('AppSidebar - Active groups:', activeGroups.value)
   emit('refresh-groups'); // Initial refresh
@@ -627,7 +632,7 @@ onBeforeUnmount(() => {
 watch(() => props.groups, (newGroups) => {
   console.log('AppSidebar - Groups updated:', newGroups)
   console.log('AppSidebar - Active groups after update:', activeGroups.value)
-  fetchPendingEmailInvites(); // Refresh invites on group change
+  fetchEmailInvites(); // Refresh invites on group change
   setTimeout(() => {
     checkDocumentsForPendingGroups();
   }, 500);
@@ -639,7 +644,7 @@ const acceptDirectInvite = async (group) => {
     console.log('Accepting direct invitation for group:', group.name);
     // Direct invitations (created by member_search_add.go) use the /api/groups/:id/accept endpoint
     // with no invitation token needed
-    const response = await axios.post(`/api/groups/${group.id}/accept`);
+    const response = await $axiosInstance.post(`/api/groups/${group.id}/accept`);
     console.log('Direct invitation acceptance response:', response.data);
     alert(`Invitation for ${group.name} accepted successfully!`);
     emit('refresh-groups');
@@ -688,7 +693,7 @@ const acceptPendingGroup = async (group) => {
       await acceptDirectInvite(group);
     } else {
       // Standard flow for other types (original behavior) - use the correct API path
-      const response = await axios.post(`/api/groups/${group.id}/accept`);
+      const response = await $axiosInstance.post(`/api/groups/${group.id}/accept`);
       console.log('Acceptance response:', response.data);
       const status = response.data?.status || 'pending';
       if (group.membership) {
@@ -717,7 +722,7 @@ const cancelPendingGroup = async (group) => {
     `Are you sure you want to cancel your pending membership for ${group.name || 'this group'}?`,
     async () => {
       try {
-        await axios.post(`/api/groups/${group.id}/decline`);
+        await $axiosInstance.post(`/api/groups/${group.id}/decline`);
         emit('refresh-groups');
       } catch (error) {
         console.error('Failed to cancel group membership:', error);
@@ -851,10 +856,10 @@ const acceptEmailInvite = async (invite) => {
     try {
       console.log('Using direct acceptance flow for group with ID:', matchingPendingGroup.id);
       // For direct invites, use the endpoint with correct API path
-      await axios.post(`/api/groups/${matchingPendingGroup.id}/accept`);
+      await $axiosInstance.post(`/api/groups/${matchingPendingGroup.id}/accept`);
       console.log('Direct invitation acceptance successful');
       alert(`Invitation for ${matchingPendingGroup.name} accepted successfully!`);
-      fetchPendingEmailInvites();
+      fetchEmailInvites();
       emit('refresh-groups');
       return;
     } catch (directError) {
@@ -877,7 +882,7 @@ const acceptEmailInvite = async (invite) => {
     }
     
     // Standard email invitation flow with token - use the correct API path
-    const response = await axios.get(`/api/groups/${invite.group_id}?invitation_token=${invite.token}`);
+    const response = await $axiosInstance.get(`/api/groups/${invite.group_id}?invitation_token=${invite.token}`);
     const group = response.data;
     console.log('Fetched group details for invitation:', group);
     const requiresPassword = group.requiresPassword === true || group.requires_password === true;
@@ -889,10 +894,10 @@ const acceptEmailInvite = async (invite) => {
     } else {
       console.log('No password/document requirements, calling /member/accept-invitation directly.');
       // Keep member endpoints as they are (no /api prefix)
-      const acceptResponse = await axios.post('/member/accept-invitation', { token: invite.token });
+      const acceptResponse = await $axiosInstance.post('/member/accept-invitation', { token: invite.token });
       console.log('Email invitation acceptance response:', acceptResponse.data);
       alert(`Invitation for ${invite.group_name} accepted successfully!`);
-      fetchPendingEmailInvites();
+      fetchEmailInvites();
       emit('refresh-groups');
       if (acceptResponse.data.groupId) {
          emit('navigate-to-group', acceptResponse.data.groupId);
@@ -909,9 +914,9 @@ const acceptEmailInvite = async (invite) => {
       // One last attempt - try to accept it directly without token
       try {
         // Try direct acceptance with the correct API path
-        await axios.post(`/api/groups/${invite.group_id}/accept`);
+        await $axiosInstance.post(`/api/groups/${invite.group_id}/accept`);
         alert(`Invitation for ${invite.group_name} accepted successfully!`);
-        fetchPendingEmailInvites();
+        fetchEmailInvites();
         emit('refresh-groups');
       } catch (finalError) {
         console.error('All invitation acceptance methods failed:', finalError);
@@ -921,7 +926,7 @@ const acceptEmailInvite = async (invite) => {
       alert('Failed to process invitation: ' + (error.response?.data?.error || error.message || 'Unknown error'));
     }
     
-    fetchPendingEmailInvites();
+    fetchEmailInvites();
     emit('refresh-groups');
   }
 }
@@ -934,13 +939,13 @@ const declineEmailInvite = async (invite) => {
     async () => {
       console.log('Declining email invite for group:', invite.group_name, 'Token:', invite.token);
       try {
-        await axios.post('/member/decline-invitation', { token: invite.token });
+        await $axiosInstance.post('/member/decline-invitation', { token: invite.token });
         showAlert('Success', `Invitation for ${invite.group_name} declined.`);
-        fetchPendingEmailInvites(); // Refresh list
+        fetchEmailInvites(); // Refresh list
       } catch (error) {
         console.error('Failed to decline email invitation:', error);
         showAlert('Error', 'Failed to decline email invitation: ' + (error.response?.data?.error || 'Unknown error'));
-        fetchPendingEmailInvites(); // Refresh list even on error
+        fetchEmailInvites(); // Refresh list even on error
       }
     }
   );

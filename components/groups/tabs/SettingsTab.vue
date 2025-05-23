@@ -615,8 +615,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Users, Camera, Info, KeyRound, Save, Eye } from 'lucide-vue-next'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import axios from '~/src/utils/axios'
-import { changeGroupPassword, emergencyChangeGroupPassword } from '@/src/utils/auth'
+import { useNuxtApp } from '#app'
+import { changeGroupPassword as authUtilChangeGroupPassword, emergencyChangeGroupPassword as authUtilEmergencyChangeGroupPassword } from '@/src/utils/auth'
 import {
   Dialog,
   DialogContent,
@@ -632,6 +632,7 @@ import BillingHistory from '@/components/billing/BillingHistory.vue'
 import { Badge } from '~/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useRouter, useRoute } from 'vue-router'
+import { useToast } from '@/components/ui/toast/use-toast'
 
 const props = defineProps({
   group: {
@@ -650,9 +651,14 @@ const props = defineProps({
 
 const emit = defineEmits(['group-updated', 'group-deleted'])
 
+const { toast } = useToast()
+const { $axiosInstance } = useNuxtApp()
+
 const fileInput = ref(null)
+const previewImage = ref(null)
 const selectedFile = ref(null)
-const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
+const config = useRuntimeConfig()
+const apiBaseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
 
 // Password change dialog state
 const showPasswordChange = ref(false)
@@ -936,7 +942,7 @@ const uploadGroupPicture = async () => {
     const formData = new FormData()
     formData.append('picture', selectedFile.value)
 
-    const response = await axios.post(`/groups/${props.group.id}/picture`, formData, {
+    const response = await $axiosInstance.post(`/groups/${props.group.id}/picture`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -950,7 +956,7 @@ const uploadGroupPicture = async () => {
   }
 }
 
-const savePrivacy = () => {
+const savePrivacy = async () => {
   console.log('Privacy setting updated locally:', formData.value.isPrivate)
 }
 
@@ -984,7 +990,7 @@ const saveField = async (fieldName) => {
     };
     
     // API call to update just this field
-    await axios.put(`/groups/${props.group.id}`, updateData);
+    const response = await $axiosInstance.put(`/groups/${props.group.id}`, updateData);
     
     // Update original data to match current value for this field
     originalFormData.value[fieldName] = formData.value[fieldName];
@@ -1106,9 +1112,9 @@ const changePassword = async () => {
 
   try {
     if (!isChangingExistingPassword) {
-      await emergencyChangeGroupPassword(props.group.id, newPassword.value);
+      await authUtilEmergencyChangeGroupPassword($axiosInstance, props.group.id, newPassword.value);
     } else {
-      await changeGroupPassword(props.group.id, newPassword.value)
+      await authUtilChangeGroupPassword($axiosInstance, props.group.id, currentGroupPassword.value, newPassword.value)
     }
 
     newPassword.value = ''
@@ -1204,7 +1210,7 @@ async function deleteIncompleteSubscription() {
   
   try {
     // Send a PUT request to update the group with null subscription fields
-    const response = await axios.put(`/api/groups/${props.group.id}`, {
+    const response = await $axiosInstance.put(`/api/groups/${props.group.id}`, {
       stripe_customer_id: null,
       stripe_subscription_id: null,
       subscription_status: null, 
@@ -1247,7 +1253,7 @@ async function cancelSubscription() {
   isCancellingSubscription.value = true;
   
   try {
-    const response = await axios.delete(`/api/payments/subscriptions/${props.group.id}`);
+    const response = await $axiosInstance.delete(`/api/payments/subscriptions/${props.group.id}`);
     
     console.log("Subscription canceled successfully:", response.data);
     alert('Your subscription has been canceled successfully. You will have access until the end of your current billing period.');
@@ -1276,7 +1282,7 @@ const redirectToCustomerPortal = async () => {
   isRedirectingToPortal.value = true;
   
   try {
-    const response = await axios.post(`/api/payments/customer-portal/${props.group.id}`);
+    const response = await $axiosInstance.post(`/api/payments/customer-portal/${props.group.id}`);
     
     console.log("Redirecting to customer portal:", response.data);
     window.location.href = response.data.url;
@@ -1352,7 +1358,7 @@ const handleSavePermissions = async () => {
     console.log('Saving permissions data:', permissionsData.value);
     
     // API request to update permissions
-    const response = await axios.put(`/groups/${props.group.id}/permissions`, {
+    const response = await $axiosInstance.put(`/groups/${props.group.id}/permissions`, {
       permissions: permissionsData.value
     });
     
@@ -1388,7 +1394,7 @@ const savePermissionSetting = async (setting) => {
     originalPermissionsData.value[setting] = permissionsData.value[setting];
     
     // API request to update permission
-    await axios.put(`/groups/${props.group.id}/permissions`, {
+    const response = await $axiosInstance.put(`/groups/${props.group.id}/permissions`, {
       permissions: permissionsData.value
     });
     
@@ -1411,7 +1417,7 @@ const fetchCurrentPassword = async () => {
   
   try {
     showPasswordLoading.value = true;
-    const response = await axios.get(`/api/groups/${props.group.id}/password`);
+    const response = await $axiosInstance.get(`/api/groups/${props.group.id}/password`);
     currentGroupPassword.value = response.data.password;
     showCurrentPassword.value = true;
   } catch (error) {

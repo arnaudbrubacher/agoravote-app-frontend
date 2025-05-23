@@ -87,15 +87,16 @@ import { Search, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import GroupCard from '@/components/groups/GroupCard.vue'
-import axios from '~/src/utils/axios'
 import GroupAdmissionForm from '@/components/groups/GroupAdmissionForm.vue' // Assuming this stays a dialog
 import { useAlert } from '@/composables/useAlert'
+import { useNuxtApp } from '#app'
 
 definePageMeta({
   layout: 'app-layout',
   middleware: ['auth']
 })
 
+const { $axiosInstance } = useNuxtApp()
 const router = useRouter()
 const { alert } = useAlert()
 
@@ -119,7 +120,7 @@ const fetchUserGroups = async () => {
   isLoadingUserGroups.value = true;
   try {
     // Assuming an endpoint to get the current user's groups
-    const response = await axios.get('/api/groups/user-groups'); 
+    const response = await $axiosInstance.get('/groups/user-groups'); 
     userGroups.value = response.data || [];
   } catch (error) {
     console.error('Failed to fetch user groups:', error);
@@ -158,7 +159,7 @@ const searchGroups = async () => {
   
   // isSearching is already true from debounceSearch
   try {
-    const response = await axios.get(`/groups/search?query=${encodeURIComponent(searchQuery.value)}&public_only=true`)
+    const response = await $axiosInstance.get(`/groups/search?query=${encodeURIComponent(searchQuery.value)}&public_only=true`)
     searchResults.value = response.data.groups || []
   } catch (error) {
     console.error('Failed to search groups:', error)
@@ -197,7 +198,7 @@ const handleAdmissionSubmit = async (admissionData) => {
       return;
     }
     
-    const response = await axios.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
+    const response = await $axiosInstance.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
     const successMessage = response.data?.message || 'Request processed successfully';
     const status = response.data?.status || 'pending';
     
