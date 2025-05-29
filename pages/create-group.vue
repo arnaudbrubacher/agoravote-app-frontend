@@ -69,8 +69,7 @@
           <div class="flex items-center space-x-3 pt-1">
             <Switch
               id="is-private-toggle"
-              :checked="form.isPrivate"
-              @update:checked="form.isPrivate = $event"
+              v-model="form.isPrivate"
             />
             <Label for="is-private-toggle" class="text-base text-muted-foreground">
               {{ form.isPrivate ? 'Private Group' : 'Public Group' }}
@@ -87,27 +86,28 @@
           <div class="flex items-center space-x-3 pt-1">
             <Switch
               id="requires-password"
-              :checked="form.requires_password"
-              @update:checked="form.requires_password = $event"
+              v-model="form.requires_password"
             />
             <Label for="requires-password" class="text-base text-muted-foreground">
               {{ form.requires_password ? 'Password Required to Join' : 'No Password Required' }}
             </Label>
           </div>
           
-          <div v-if="form.requires_password" class="space-y-3 pt-3">
-            <Input 
-              type="password" 
-              v-model="form.password" 
-              placeholder="Enter password"
-              class="text-base py-3 px-4"
-            />
-            <Input 
-              type="password" 
-              v-model="form.confirmPassword" 
-              placeholder="Confirm password" 
-              class="text-base py-3 px-4"
-            />
+          <div v-if="form.requires_password" class="space-y-2 mt-2">
+            <div class="h-10 flex items-center space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                @click="showPasswordDialog = true"
+                class="flex items-center"
+              >
+                <KeyRound class="h-4 w-4 mr-2"/>
+                Set Password
+              </Button>
+              <span v-if="form.password" class="text-sm text-green-600">✓ Password set</span>
+              <span v-else class="text-sm text-muted-foreground">Password required</span>
+            </div>
           </div>
         </div>
 
@@ -117,8 +117,7 @@
           <div class="flex items-center space-x-3 pt-1">
             <Switch
               id="requires-documents"
-              :checked="form.requires_documents"
-              @update:checked="form.requires_documents = $event"
+              v-model="form.requires_documents"
             />
             <Label for="requires-documents" class="text-base text-muted-foreground">
               {{ form.requires_documents ? 'Documents Required to Join' : 'No Documents Required' }}
@@ -164,8 +163,7 @@
           <div class="flex items-center space-x-3 pt-1">
             <Switch
               id="requires-admin-approval-toggle"
-              :checked="form.requires_admin_approval"
-              @update:checked="form.requires_admin_approval = $event"
+              v-model="form.requires_admin_approval"
             />
             <Label for="requires-admin-approval-toggle" class="text-base text-muted-foreground">
               {{ form.requires_admin_approval ? 'Admin Approval Required' : 'Automatic Approval' }}
@@ -187,6 +185,70 @@
         </Button>
       </div>
     </div>
+
+    <!-- Password Dialog -->
+    <Dialog :open="showPasswordDialog" @update:open="showPasswordDialog = $event">
+      <DialogContent class="w-full max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Set Group Password</DialogTitle>
+          <DialogDescription>
+            Set a password that users will need to enter to join this group.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="grid gap-4 py-4">
+          <div class="space-y-2">
+            <Label for="new-password" class="text-sm font-medium">Password</Label>
+            <div class="relative">
+              <Input 
+                id="new-password" 
+                :type="showPasswordField ? 'text' : 'password'" 
+                v-model="tempPassword" 
+                required 
+                class="pr-10"
+              />
+              <button 
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                @click="showPasswordField = !showPasswordField"
+              >
+                <Eye v-if="!showPasswordField" class="h-5 w-5" />
+                <EyeOff v-else class="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label for="confirm-password" class="text-sm font-medium">Confirm Password</Label>
+            <div class="relative">
+              <Input 
+                id="confirm-password" 
+                :type="showConfirmPasswordField ? 'text' : 'password'" 
+                v-model="tempConfirmPassword" 
+                required 
+                class="pr-10"
+              />
+              <button 
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                @click="showConfirmPasswordField = !showConfirmPasswordField"
+              >
+                <Eye v-if="!showConfirmPasswordField" class="h-5 w-5" />
+                <EyeOff v-else class="h-5 w-5" />
+              </button>
+            </div>
+            <p v-if="passwordMismatch" class="text-xs text-destructive">
+              Passwords do not match
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showPasswordDialog = false">Cancel</Button>
+          <Button type="submit" @click="savePassword" :disabled="!canSavePassword">Set Password</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -196,12 +258,13 @@ import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash, Users, Camera, Loader2 } from 'lucide-vue-next'
+import { Plus, Trash, Users, Camera, Loader2, KeyRound, Eye, EyeOff } from 'lucide-vue-next'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { cloneDeep } from 'lodash'
 import { useAlert } from '@/composables/useAlert'
 import { useNuxtApp } from '#app'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 definePageMeta({
   layout: 'app-layout',
@@ -232,7 +295,7 @@ const form = ref(cloneDeep(initialForm))
 
 const isFormValid = computed(() => {
   if (!form.value.name.trim()) return false;
-  if (form.value.requires_password && (!form.value.password || form.value.password !== form.value.confirmPassword)) {
+  if (form.value.requires_password && !form.value.password) {
     return false;
   }
   if (form.value.requires_documents && form.value.documents.some(doc => !doc.name.trim())) {
@@ -282,16 +345,36 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true;
 
+  // Debug log the form data before creating FormData
+  console.log('Form data before submission:', {
+    name: form.value.name,
+    description: form.value.description,
+    isPrivate: form.value.isPrivate,
+    requires_password: form.value.requires_password,
+    password: form.value.password,
+    requires_documents: form.value.requires_documents,
+    documents: form.value.documents,
+    requires_admin_approval: form.value.requires_admin_approval,
+    pictureFile: form.value.pictureFile
+  });
+
+  // Additional validation to ensure name is not empty
+  if (!form.value.name || form.value.name.trim() === '') {
+    alert('Group Name Required', 'Please enter a group name.', 'error');
+    isSubmitting.value = false;
+    return;
+  }
+
   // Create a FormData object to handle file uploads
   const formData = new FormData();
-  formData.append('name', form.value.name);
-  formData.append('description', form.value.description);
-  formData.append('is_private', form.value.isPrivate);
-  formData.append('requires_password', form.value.requires_password);
+  formData.append('name', form.value.name.trim());
+  formData.append('description', form.value.description.trim());
+  formData.append('is_private', form.value.isPrivate.toString());
+  formData.append('requires_password', form.value.requires_password.toString());
   if (form.value.requires_password) {
     formData.append('password', form.value.password);
   }
-  formData.append('requires_documents', form.value.requires_documents);
+  formData.append('requires_documents', form.value.requires_documents.toString());
   if (form.value.requires_documents && form.value.documents.length > 0) {
     // Filter out empty document names before sending
     const validDocuments = form.value.documents
@@ -299,23 +382,28 @@ const handleSubmit = async () => {
       .filter(doc => doc.name !== '');
     formData.append('documents', JSON.stringify(validDocuments));
   }
-  formData.append('requires_admin_approval', form.value.requires_admin_approval);
+  formData.append('requires_admin_approval', form.value.requires_admin_approval.toString());
 
   // Append the picture file if it exists (original file object, not base64)
   if (form.value.pictureFile) { // Assuming pictureFile holds the File object
     formData.append('picture', form.value.pictureFile);
   }
 
+  // Debug log the FormData content
+  console.log('FormData entries:');
+  for (let [key, value] of formData.entries()) {
+    console.log(`${key}:`, value);
+  }
+
   try {
     // Use $axiosInstance for the POST request
-    const response = await $axiosInstance.post('/groups', formData, {
-      headers: {
-        // FormData sets Content-Type to multipart/form-data automatically
-        // 'Content-Type': 'multipart/form-data', // Let browser set this with boundary
-      }
-    });
+    const response = await $axiosInstance.post('/api/groups', formData);
 
     alert('Group Created', 'Your group has been successfully created.', 'success');
+    
+    // Emit events to refresh the sidebar groups list
+    window.dispatchEvent(new CustomEvent('group-data-updated'));
+    
     // Reset form after successful submission
     form.value = cloneDeep(initialForm);
     fileInput.value.value = ''; // Clear file input
@@ -350,6 +438,9 @@ watch(() => form.value.requires_password, (newValue) => {
   if (!newValue) {
     form.value.password = ''
     form.value.confirmPassword = ''
+    showPasswordDialog.value = false
+    tempPassword.value = ''
+    tempConfirmPassword.value = ''
   }
 })
 
@@ -358,6 +449,35 @@ watch(() => form.value.requires_documents, (newValue) => {
     form.value.documents = []
   }
 })
+
+// Password dialog state
+const showPasswordDialog = ref(false)
+const showPasswordField = ref(false)
+const showConfirmPasswordField = ref(false)
+const tempPassword = ref('')
+const tempConfirmPassword = ref('')
+
+const passwordMismatch = computed(() => {
+  return tempPassword.value && tempConfirmPassword.value &&
+         tempPassword.value !== tempConfirmPassword.value
+})
+
+const canSavePassword = computed(() => {
+  return tempPassword.value && 
+         tempConfirmPassword.value && 
+         tempPassword.value === tempConfirmPassword.value &&
+         tempPassword.value.length >= 6
+})
+
+const savePassword = () => {
+  if (canSavePassword.value) {
+    form.value.password = tempPassword.value
+    form.value.confirmPassword = tempConfirmPassword.value
+    showPasswordDialog.value = false
+    tempPassword.value = ''
+    tempConfirmPassword.value = ''
+  }
+}
 
 </script>
 

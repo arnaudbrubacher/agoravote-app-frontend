@@ -26,7 +26,7 @@ export function useGroupPosts(groupId) {
     try {
       isLoadingPosts.value = true
       const axiosInstance = getAxiosInstance()
-      const response = await axiosInstance.get(`/groups/${groupId}/posts`)
+      const response = await axiosInstance.get(`/api/groups/${groupId}/posts`)
       posts.value = response.data.posts || response.data // Handle different API response formats
       console.log("Fetched posts:", posts.value)
       return posts.value
@@ -79,10 +79,10 @@ export function useGroupPosts(groupId) {
         }
       }
       
-      console.log('Sending request to:', `/groups/${groupId}/posts`);
+      console.log('Sending request to:', `/api/groups/${groupId}/posts`);
       
       const axiosInstance = getAxiosInstance()
-      const response = await axiosInstance.post(`/groups/${groupId}/posts`, dataToSend, {
+      const response = await axiosInstance.post(`/api/groups/${groupId}/posts`, dataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

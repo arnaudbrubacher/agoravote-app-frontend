@@ -20,6 +20,21 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
   })
 
+  // Add request interceptor to handle FormData properly
+  configuredAxios.interceptors.request.use(
+    (config) => {
+      // If the data is FormData, remove the Content-Type header to let the browser set it
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type']
+        console.log('[Axios Request Interceptor] Detected FormData, removed Content-Type header to allow browser to set multipart/form-data with boundary')
+      }
+      return config
+    },
+    (error) => {
+      return Promise.reject(error)
+    }
+  )
+
   // Add your global interceptors here
   configuredAxios.interceptors.response.use(
     (response) => {

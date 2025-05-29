@@ -99,7 +99,7 @@ export function useGroupData(groupId) {
   const updateGroupSettings = async (settings) => {
     try {
       const axiosInstance = getAxiosInstance()
-      const response = await axiosInstance.put(`/groups/${groupId}`, settings) // USE PASSED INSTANCE
+      const response = await axiosInstance.put(`/api/groups/${groupId}`, settings) // USE PASSED INSTANCE
       
       // Update local group data
       Object.assign(group.value, response.data)
@@ -112,9 +112,10 @@ export function useGroupData(groupId) {
   }
   
   const confirmDeleteGroup = async () => {
-    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
-      return
-    }
+    // Remove the window.confirm since the UI component handles confirmation
+    // if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+    //   return
+    // }
     
     try {
       // Store the current group ID before deletion
@@ -127,7 +128,7 @@ export function useGroupData(groupId) {
       
       // Delete the group
       const axiosInstance = getAxiosInstance()
-      await axiosInstance.delete(`/groups/${groupId}`) // USE PASSED INSTANCE
+      await axiosInstance.delete(`/api/groups/${groupId}`) // USE PASSED INSTANCE
       console.log('Group deleted successfully, navigating to profile page.')
       
       // Dispatch an event to update the dashboard sidebar immediately
@@ -180,7 +181,7 @@ export function useGroupData(groupId) {
       
       // Supertokens handles adding the auth header automatically via Axios interceptors.
       // The backend requires the userId in the path for this specific endpoint.
-      await axiosInstance.delete(`/groups/${groupId}/members/${userId}`) // USE PASSED INSTANCE
+      await axiosInstance.delete(`/api/groups/${groupId}/members/${userId}`) // USE PASSED INSTANCE
       
       console.log('Successfully left group')
       

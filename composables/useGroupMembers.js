@@ -50,7 +50,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       }
       
       // Call API to add member
-      const response = await getAxiosInstance().post(`/groups/${groupId}/members`, requestData) // USE PASSED INSTANCE
+      const response = await getAxiosInstance().post(`/api/groups/${groupId}/members`, requestData) // USE PASSED INSTANCE
       
       // Show success message
       showAlert('Success', `Member ${memberData.email} added successfully`)
@@ -87,7 +87,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       formData.append('file', file)
 
       // Use the correct endpoint for CSV/XLSX upload
-      const response = await getAxiosInstance().post(`/groups/${groupId}/members/upload-csv`, formData, { // USE PASSED INSTANCE
+      const response = await getAxiosInstance().post(`/api/groups/${groupId}/members/upload-csv`, formData, { // USE PASSED INSTANCE
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -170,8 +170,8 @@ export function useGroupMembers(groupId, group, fetchGroup) {
           });
           
           // Call API to remove member using the user ID
-          console.log(`useGroupMembers - Making API call to: /groups/${groupId}/members/${userId}`);
-          const response = await getAxiosInstance().delete(`/groups/${groupId}/members/${userId}`); // USE PASSED INSTANCE
+          console.log(`useGroupMembers - Making API call to: /api/groups/${groupId}/members/${userId}`);
+          const response = await getAxiosInstance().delete(`/api/groups/${groupId}/members/${userId}`); // USE PASSED INSTANCE
           console.log('useGroupMembers - API response:', response.data);
           
           // Show success message
@@ -224,9 +224,9 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     }
 
     try {
-      console.log(`[useGroupMembers] Attempting axiosInstance.post to /groups/${groupId}/invite`);
+      console.log(`[useGroupMembers] Attempting axiosInstance.post to /api/groups/${groupId}/invite`);
       // Call API to invite member by email
-      const response = await getAxiosInstance().post(`/groups/${groupId}/invite`, { email }); // USE PASSED INSTANCE
+      const response = await getAxiosInstance().post(`/api/groups/${groupId}/invite`, { email }); // USE PASSED INSTANCE
       console.log("[useGroupMembers] axiosInstance.post successful:", response.data);
 
       // Show success message (backend currently returns generic success)
@@ -267,7 +267,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       });
       
       // Use the correct URL path with consistent parameter names
-      const response = await getAxiosInstance().patch(`/groups/${groupId}/members/${memberId}/promote`); // USE PASSED INSTANCE
+      const response = await getAxiosInstance().patch(`/api/groups/${groupId}/members/${memberId}/promote`); // USE PASSED INSTANCE
       
       // Show success message
       showAlert('Success', `${member.name} has been promoted to admin.`);
@@ -294,7 +294,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       });
       
       // Use the correct URL path with consistent parameter names
-      const response = await getAxiosInstance().patch(`/groups/${groupId}/members/${memberId}/demote`); // USE PASSED INSTANCE
+      const response = await getAxiosInstance().patch(`/api/groups/${groupId}/members/${memberId}/demote`); // USE PASSED INSTANCE
       
       // Show success message
       showAlert('Success', `${member.name} has been demoted to member.`);

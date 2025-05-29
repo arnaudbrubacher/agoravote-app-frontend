@@ -9,7 +9,7 @@
     </div>
     
     <!-- Single card containing all tabs -->
-    <div class="rounded-lg p-4 space-y-4" :class="{ 'opacity-75 pointer-events-none': !isCurrentUserAdmin }">
+    <div class="rounded-lg p-4 space-y-4">
       <Tabs :value="settingsSubtab" @update:value="settingsSubtab = $event" class="w-full">
         <!-- Tabs List with Delete Group Button -->
         <div class="flex items-center mb-4">
@@ -398,8 +398,11 @@
         <!-- Billing Tab -->
         <TabsContent value="billing" class="space-y-8">
           <!-- Non-admin notice specifically for billing -->
-          <div v-if="!isCurrentUserAdmin" class="text-sm text-muted-foreground mb-4">
-            <p>Only group administrators can modify subscription settings.</p>
+          <div v-if="!isCurrentUserAdmin" class="bg-muted p-4 rounded-lg mb-4 border border-border">
+            <div class="flex items-center">
+              <Info class="h-5 w-5 text-muted-foreground mr-2" />
+              <p class="text-sm text-muted-foreground">Only group administrators can modify subscription settings.</p>
+            </div>
           </div>
           
           <!-- Subscription Management Section -->
@@ -435,12 +438,12 @@
                 Your subscription is active. You have full access to all premium features.
                 
                 <!-- Manage Billing Button for managing subscription in Stripe Customer Portal -->
-                <div class="mt-3 flex gap-2" v-if="isCurrentUserAdmin">
+                <div class="mt-3 flex gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     @click="redirectToCustomerPortal"
-                    :disabled="isRedirectingToPortal"
+                    :disabled="isRedirectingToPortal || !isCurrentUserAdmin"
                   >
                     <span v-if="isRedirectingToPortal">Opening Portal...</span>
                     <span v-else>Manage Billing</span>
@@ -450,7 +453,7 @@
                     variant="destructive" 
                     size="sm" 
                     @click="confirmCancelSubscription" 
-                    :disabled="isCancellingSubscription"
+                    :disabled="isCancellingSubscription || !isCurrentUserAdmin"
                   >
                     <span v-if="isCancellingSubscription">Cancelling...</span>
                     <span v-else>Cancel Subscription</span>
@@ -460,10 +463,20 @@
               <div v-else-if="props.group.subscription_status === 'incomplete'" class="text-sm text-gray-600 dark:text-gray-400 mt-2">
                 Your payment is being processed. The subscription will become active shortly.
                 <div class="flex gap-2 mt-2">
-                  <Button variant="outline" size="sm" @click="refreshPage">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    @click="refreshPage"
+                    :disabled="!isCurrentUserAdmin"
+                  >
                     Refresh Status
                   </Button>
-                  <Button variant="destructive" size="sm" @click="deleteIncompleteSubscription" :disabled="isDeletingSubscription">
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    @click="deleteIncompleteSubscription" 
+                    :disabled="isDeletingSubscription || !isCurrentUserAdmin"
+                  >
                     <span v-if="isDeletingSubscription">Deleting...</span>
                     <span v-else>Delete Incomplete Subscription</span>
                   </Button>
@@ -484,7 +497,7 @@
             <!-- Purchase Options -->
             <div v-if="!hasActiveMonthlySubscription && props.group && props.group.id">
               <h4 class="text-md font-medium mb-2">Choose Your Plan</h4>
-              <PurchaseOptions :group-id="props.group.id" />
+              <PurchaseOptions :group-id="props.group.id" :is-current-user-admin="isCurrentUserAdmin" />
             </div>
             
             <div v-if="!props.group || !props.group.id" class="text-sm text-muted-foreground">

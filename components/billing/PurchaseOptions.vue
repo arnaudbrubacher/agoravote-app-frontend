@@ -4,7 +4,7 @@
 
     <!-- Option Selection -->
     <!-- Now only shows the monthly subscription option -->
-    <RadioGroup v-model="selectedOption" :disabled="isLoading || isProcessingPayment || isLoadingPrices">
+    <RadioGroup v-model="selectedOption" :disabled="isLoading || isProcessingPayment || isLoadingPrices || !isCurrentUserAdmin">
       <div class="grid grid-cols-1 gap-4">
         <!-- Monthly Subscription Option -->
         <Label
@@ -41,6 +41,14 @@
     <!-- Error Display -->
     <div v-if="paymentError" class="text-destructive text-sm mt-4">{{ paymentError }}</div>
 
+    <!-- Non-admin notice for purchase options -->
+    <div v-if="!isCurrentUserAdmin" class="bg-muted p-4 rounded-lg mb-4 border border-border">
+      <div class="flex items-center">
+        <Info class="h-5 w-5 text-muted-foreground mr-2" />
+        <p class="text-sm text-muted-foreground">Only group administrators can manage subscriptions.</p>
+      </div>
+    </div>
+
     <!-- Action Button -->
     <div class="flex justify-end pt-4 border-t">
       <div class="flex gap-2">
@@ -50,7 +58,7 @@
           @click="deleteIncompleteSubscription"
           variant="destructive"
           size="sm"
-          :disabled="isDeletingSubscription"
+          :disabled="isDeletingSubscription || !isCurrentUserAdmin"
         >
           <span v-if="isDeletingSubscription">Deleting...</span>
           <span v-else>Delete Incomplete Subscription</span>
@@ -59,7 +67,7 @@
         <!-- Main Action Button -->
         <Button 
           @click="handlePurchaseAction"
-          :disabled="isLoading || isProcessingPayment || !selectedOption || isDeletingSubscription"
+          :disabled="isLoading || isProcessingPayment || !selectedOption || isDeletingSubscription || !isCurrentUserAdmin"
         >
           <span v-if="isLoading">Preparing...</span>
           <span v-else-if="isProcessingPayment">Processing Payment...</span>
@@ -93,6 +101,7 @@ import { useNuxtApp } from '#app';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Info } from 'lucide-vue-next';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,6 +116,10 @@ const props = defineProps({
   groupId: {
     type: [String, Number],
     required: true
+  },
+  isCurrentUserAdmin: {
+    type: Boolean,
+    default: false
   }
 });
 
