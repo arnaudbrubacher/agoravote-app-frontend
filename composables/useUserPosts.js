@@ -27,8 +27,8 @@ export function useUserPosts(userId = null) {
       // Determine which user's posts to fetch
       const targetUserId = specificUserId || userId || 'me'
       const endpoint = targetUserId === 'me' 
-        ? '/users/me/posts' 
-        : `/users/${targetUserId}/posts`
+        ? '/api/users/me/posts' 
+        : `/api/users/${targetUserId}/posts`
       
       const response = await getAxiosInstance().get(endpoint)
       posts.value = response.data.posts || response.data || []
@@ -59,7 +59,7 @@ export function useUserPosts(userId = null) {
         }
       }
       
-      const response = await getAxiosInstance().post(`/users/me/posts`, dataToSend, {
+      const response = await getAxiosInstance().post(`/api/users/me/posts`, dataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -93,7 +93,7 @@ export function useUserPosts(userId = null) {
       console.log('Sending update data to backend:', updateData);
       
       // Call API to update post
-      const response = await getAxiosInstance().put(`/posts/${post.id}`, updateData);
+      const response = await getAxiosInstance().put(`/api/posts/${post.id}`, updateData);
       console.log('Post updated successfully:', response.data);
       
       const updatedPost = response.data;
@@ -115,7 +115,7 @@ export function useUserPosts(userId = null) {
   // Delete a post
   const deletePost = async (post) => {
     try {
-      await getAxiosInstance().delete(`/posts/${post.id}`)
+      await getAxiosInstance().delete(`/api/posts/${post.id}`)
       
       // Remove the post from the list
       posts.value = posts.value.filter(p => p.id !== post.id)

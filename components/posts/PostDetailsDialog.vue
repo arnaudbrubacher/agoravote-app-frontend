@@ -162,10 +162,28 @@
       
       <!-- Bottom Action Buttons -->
       <div v-if="!editMode" class="border-t pt-4 flex justify-between">
-        <Button variant="destructive" size="sm" @click="confirmDelete">
-          <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
-          Delete
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger as-child>
+            <Button variant="destructive" size="sm">
+              <LucideIcon name="Trash" size="4" class="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the post "{{ post.title }}" and remove all its data from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction @click="handleDelete" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete Post
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Button variant="outline" size="sm" @click="editMode = !editMode">
           <LucideIcon name="Pencil" size="4" class="h-4 w-4 mr-1" />
           Edit
@@ -190,6 +208,17 @@ import {
   DialogTitle,
   DialogDescription
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog'
 import { useNuxtApp } from '#app'
 
 const { $axiosInstance } = useNuxtApp()
@@ -394,33 +423,43 @@ function removeAttachment() {
 async function handleUpdate() {
   isSubmitting.value = true
   try {
-    const formData = new FormData()
-    formData.append('title', editForm.value.title)
-    formData.append('content', editForm.value.content)
-    // formData.append('is_public', editForm.value.is_public) // If you add public/private toggle
+    let updatedFileUrl = fileUrl.value // Keep current file URL by default
 
-    // Handle file attachment
-    if (selectedFile.value) { // A new file has been selected
-      formData.append('attachment', selectedFile.value)
+    // Handle file upload first if there's a new file
+    if (selectedFile.value) {
+      // Upload the new file
+      const formData = new FormData()
+      formData.append('file', selectedFile.value)
+
+      const uploadResponse = await $axiosInstance.post(`/api/posts/${props.post.id}/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
+      // Update the file URL with the new uploaded file
+      updatedFileUrl = uploadResponse.data.url
     } else if (editForm.value.attachment === null) {
-      // If editForm.attachment is null, it means user wants to remove existing attachment
-      formData.append('remove_attachment', 'true')
+      // User wants to remove the existing attachment
+      // We'll handle this in the JSON update below
+      updatedFileUrl = ""
     }
-    // If selectedFile.value is null AND editForm.value.attachment is NOT null, 
-    // it means the user hasn't changed the existing attachment, so we don't append anything for 'attachment' or 'remove_attachment'
-    // The backend should preserve the existing attachment in this case.
 
-    // console.log("Updating post with ID:", props.post.id)
-    // for (let [key, value] of formData.entries()) {
-    //   console.log(`${key}: ${value}`)
-    // }
+    // Now send the JSON update for post data
+    const updateData = {
+      title: editForm.value.title,
+      content: editForm.value.content,
+      isPublic: props.post.isPublic || false, // Preserve existing value
+      file_url: updatedFileUrl
+    }
 
-    const response = await $axiosInstance.put(`/posts/${props.post.id}`, formData, {
+    const response = await $axiosInstance.put(`/api/posts/${props.post.id}`, updateData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'application/json'
       }
     })
-    emit('edit', response.data.post) // Emit the updated post data
+    
+    emit('edit', response.data) // Emit the updated post data
     editMode.value = false
   } catch (error) {
     console.error('Failed to update post:', error.response?.data || error.message)
@@ -430,11 +469,8 @@ async function handleUpdate() {
   }
 }
 
-const confirmDelete = () => {
-  // Confirmation is handled by the parent
-  // if (confirm('Are you sure you want to delete this post?')) {
-    emit('delete', props.post) // Emit the full post object
-  // }
+const handleDelete = () => {
+  emit('delete', props.post) // Emit the full post object
 }
 
 // Watch for changes to the post prop

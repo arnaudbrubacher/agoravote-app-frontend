@@ -127,7 +127,7 @@ export function useGroupPosts(groupId) {
       console.log('Sending update data to backend:', updateData);
       
       const axiosInstance = getAxiosInstance()
-      const response = await axiosInstance.put(`/posts/${post.id}`, updateData);
+      const response = await axiosInstance.put(`/api/posts/${post.id}`, updateData);
       console.log('Post updated successfully:', response.data);
       
       // Update post in the list
@@ -156,7 +156,7 @@ export function useGroupPosts(groupId) {
       
       // Call API to delete the post
       const axiosInstance = getAxiosInstance()
-      await axiosInstance.delete(`/posts/${post.id}`)
+      await axiosInstance.delete(`/api/posts/${post.id}`)
       
       // Remove post from list
       const index = posts.value.findIndex(p => p.id === post.id)
