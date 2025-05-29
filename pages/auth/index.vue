@@ -244,7 +244,7 @@ const handleSignup = async () => {
         await handlePostAuthNavigation(true)
       } else {
         console.log('Signup successful, email not verified. Redirecting to check-email page.');
-        router.push({ path: '/auth/check-email', query: { email: signupEmail.value } });
+        router.push({ path: '/check-email', query: { email: signupEmail.value } });
       }
     } else {
       signupError.value = getFriendlyErrorMessage(signupResult?.error || 'Signup failed with an unexpected status.')

@@ -206,12 +206,20 @@ export const signup = async (axiosInstance, name, email, password) => {
         // Check email verification status
         let isVerified = false
         try {
-          isVerified = await EmailVerification.isEmailVerified()
+          const verificationResponse = await EmailVerification.isEmailVerified()
+          console.log('Email verification status:', verificationResponse)
+          
+          // Handle both boolean and object responses
+          if (typeof verificationResponse === 'boolean') {
+            isVerified = verificationResponse
+          } else if (verificationResponse && typeof verificationResponse === 'object') {
+            isVerified = verificationResponse.isVerified === true
+          }
         } catch (error) {
           console.warn('Failed to check email verification status:', error)
         }
         
-        console.log('Email verification status:', isVerified)
+        console.log('Email verification status (boolean):', isVerified)
         
         // ADDED: Explicitly send verification email
         if (!isVerified) {

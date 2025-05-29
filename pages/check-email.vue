@@ -44,6 +44,7 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 import Session from 'supertokens-web-js/recipe/session'
 import { isEmailVerified, sendVerificationEmail } from '~/src/utils/auth'
+import { useNuxtApp } from '#app'
 
 definePageMeta({ layout: false }) // Use a simple layout or no layout
 
@@ -53,6 +54,9 @@ const userEmail = ref('')
 const resending = ref(false)
 const emailSent = ref(false)
 const resendError = ref('')
+
+// Import useNuxtApp to get axiosInstance
+const { $axiosInstance } = useNuxtApp()
 
 onMounted(async () => {
   userEmail.value = route.query.email || 'your email address'
@@ -86,7 +90,7 @@ const resendVerificationEmail = async () => {
   resendError.value = ''
   emailSent.value = false
   try {
-    const response = await sendVerificationEmail()
+    const response = await sendVerificationEmail($axiosInstance)
     if (response.status === "OK") {
       emailSent.value = true
       setTimeout(() => { emailSent.value = false }, 5000) // Reset button after 5 seconds
