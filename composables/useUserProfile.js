@@ -2,15 +2,18 @@ import { ref, computed } from 'vue'
 // import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
 import { useRouter } from 'vue-router'
 
-export function useUserProfile() {
+export function useUserProfile(axiosInstance) {
   const router = useRouter()
   const userData = ref(null)
   const loading = ref(true)
   const error = ref(null)
   const commonGroups = ref([])
   
-  // Helper function to get axios instance 
+  // Helper function to get axios instance - fallback if none provided
   const getAxiosInstance = () => {
+    if (axiosInstance) {
+      return axiosInstance
+    }
     if (process.client) {
       const { $axiosInstance } = useNuxtApp()
       if ($axiosInstance) {

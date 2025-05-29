@@ -383,7 +383,15 @@ const changePasswordHandler = async () => {
       throw new Error('User ID not available.')
     }
     
-    await changeUserPassword($axiosInstance, currentPassword.value, newPassword.value) // PASS AXIOS INSTANCE
+    console.log('=== FRONTEND DEBUG: Password Change Handler ===')
+    console.log('Full userData.value:', userData.value)
+    console.log('userData.value.id:', userData.value.id)
+    console.log('typeof userData.value.id:', typeof userData.value.id)
+    console.log('JSON.stringify(userData.value):', JSON.stringify(userData.value))
+    console.log('About to call changeUserPassword with userId:', userData.value.id)
+    console.log('=== END FRONTEND DEBUG ===')
+    
+    await changeUserPassword($axiosInstance, userData.value.id, currentPassword.value, newPassword.value) // Fixed parameter order and added userId
     
     currentPassword.value = ''
     newPassword.value = ''

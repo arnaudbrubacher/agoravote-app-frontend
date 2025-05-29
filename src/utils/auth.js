@@ -408,11 +408,23 @@ export const changeUserPassword = async (axiosInstance, userId, currentPassword,
   }
   
   try {
+    console.log('DEBUG changeUserPassword called with:')
+    console.log('- userId parameter:', userId)
+    console.log('- typeof userId:', typeof userId)
+    console.log('- userId length:', userId ? userId.length : 'null/undefined')
+    
     // First verify the current password by attempting to sign in
     if (await Session.doesSessionExist()) {
       if (!userId) {
+        console.log('DEBUG: userId is falsy, getting from session...')
         userId = await Session.getUserId()
+        console.log('DEBUG: userId from session:', userId)
+      } else {
+        console.log('DEBUG: Using provided userId:', userId)
       }
+      
+      console.log('DEBUG: Final userId to be used in URL:', userId)
+      console.log('DEBUG: Final URL will be:', `/users/${userId}/password`)
       
       // Use SuperTokens to update the password
       // Note: SuperTokens doesn't have a direct method to change password while authenticated
