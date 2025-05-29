@@ -186,7 +186,7 @@ const searchUsers = async () => {
   }
   
   try {
-    const response = await $axiosInstance.get(`/users/search`, {
+    const response = await $axiosInstance.get(`/api/users/search`, {
       params: { 
         q: searchQuery.value.trim(),
         groupId: props.groupId
@@ -279,7 +279,7 @@ const addUser = async (user) => {
   }
 
   try {
-    await $axiosInstance.post(`/api/groups/${props.groupId}/members`, { userId: user.id })
+    await $axiosInstance.post(`/api/groups/${props.groupId}/members`, { user_id: user.id })
     showAlert('Success', `User ${user.name || user.email} has been invited to the group.`)
     emit('user-added', user)
     // Update user status locally to reflect they've been added/invited

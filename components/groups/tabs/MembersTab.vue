@@ -427,7 +427,8 @@ const promoteMember = async (member) => {
     member.isAdmin = true;
   } catch (error) {
     console.error('Failed to promote member:', error);
-    alert('Failed to promote member: ' + (error.response?.data?.error || error.message));
+    errorMessage.value = 'Failed to promote member: ' + (error.response?.data?.error || error.message);
+    showErrorDialog.value = true;
   }
 }
 
@@ -473,7 +474,8 @@ const demoteMember = async (member) => {
     member.isAdmin = false;
   } catch (error) {
     console.error('Failed to demote member:', error);
-    alert('Failed to demote member: ' + (error.response?.data?.error || error.message));
+    errorMessage.value = 'Failed to demote member: ' + (error.response?.data?.error || error.message);
+    showErrorDialog.value = true;
   }
 }
 
@@ -589,40 +591,50 @@ const fetchInvitedMembers = async () => {
 // Resend invitation
 const resendInvite = async (invitation) => {
     if (!props.isCurrentUserAdmin) {
-        alert('Only admins can resend invitations.');
+        errorMessage.value = 'Only admins can resend invitations.';
+        showErrorDialog.value = true;
         return;
     }
     console.log('Resending invite:', invitation);
     try {
         // Assumes backend endpoint POST /groups/{groupId}/invitations/{invitationId}/resend exists
         await $axiosInstance.post(`/api/groups/${props.group.id}/invitations/${invitation.id}/resend`);
-        alert(`Invitation resent to ${invitation.email}`);
+        
+        // Show success message using ShadCN alert dialog
+        successMessage.value = `Invitation resent to ${invitation.email}`;
+        showSuccessDialog.value = true;
+        
         // No need to refetch, invite stays in the list, maybe update timestamp if backend provides it
     } catch (error) {
         console.error('Failed to resend invite:', error);
-        alert('Failed to resend invite: ' + (error.response?.data?.error || error.message));
+        errorMessage.value = 'Failed to resend invite: ' + (error.response?.data?.error || error.message);
+        showErrorDialog.value = true;
     }
 }
 
 // Cancel invitation
 const cancelInvite = async (invitation) => {
     if (!props.isCurrentUserAdmin) {
-        alert('Only admins can cancel invitations.');
+        errorMessage.value = 'Only admins can cancel invitations.';
+        showErrorDialog.value = true;
         return;
     }
-    if (!confirm(`Are you sure you want to cancel the invitation for ${invitation.email}? This action cannot be undone.`)) {
-        return;
-    }
+    
     console.log('Canceling invite:', invitation);
     try {
         // Assumes backend endpoint DELETE /groups/{groupId}/invitations/{invitationId} exists
         await $axiosInstance.delete(`/api/groups/${props.group.id}/invitations/${invitation.id}`);
-        alert(`Invitation for ${invitation.email} cancelled.`);
+        
+        // Show success message using ShadCN alert dialog
+        successMessage.value = `Invitation for ${invitation.email} cancelled.`;
+        showSuccessDialog.value = true;
+        
         // Refetch invited members to update the list
         fetchInvitedMembers();
     } catch (error) {
         console.error('Failed to cancel invite:', error);
-        alert('Failed to cancel invite: ' + (error.response?.data?.error || error.message));
+        errorMessage.value = 'Failed to cancel invite: ' + (error.response?.data?.error || error.message);
+        showErrorDialog.value = true;
     }
 }
 
@@ -665,7 +677,8 @@ const acceptPendingMember = async (member) => {
     showSuccessDialog.value = true
   } catch (error) {
     console.error('Failed to accept pending member:', error)
-    alert('Failed to accept member: ' + (error.response?.data?.error || error.message))
+    errorMessage.value = 'Failed to accept member: ' + (error.response?.data?.error || error.message);
+    showErrorDialog.value = true;
   }
 }
 
@@ -699,7 +712,8 @@ const declinePendingMember = async (member) => {
     showSuccessDialog.value = true
   } catch (error) {
     console.error('Failed to decline pending member:', error)
-    alert('Failed to decline member: ' + (error.response?.data?.error || error.message))
+    errorMessage.value = 'Failed to decline member: ' + (error.response?.data?.error || error.message);
+    showErrorDialog.value = true;
   }
 }
 

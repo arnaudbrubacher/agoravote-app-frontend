@@ -86,9 +86,9 @@ export function useUserProfile(axiosInstance) {
       loading.value = true
       error.value = null
       
-      // Assuming /user/profile/:id is the correct public endpoint
+      // Assuming /api/user/profile/:id is the correct public endpoint
       // Remove the unnecessary fallbacks if they are incorrect
-      const response = await getAxiosInstance().get(`/user/profile/${userId}`)
+      const response = await getAxiosInstance().get(`/api/user/profile/${userId}`)
       userData.value = response.data.user || response.data // Adjust based on actual response structure
       
       // Check if common groups data is available

@@ -20,15 +20,26 @@ export function useAlertDialog() {
     cancelText: 'Cancel',
   })
 
-  const showAlert = (alertOptions: AlertOptions) => {
+  const showAlert = (title: string, message: string) => {
     options.value = {
-      title: alertOptions.title || 'Alert',
-      message: alertOptions.message,
-      showCancel: alertOptions.showCancel || false,
-      actionText: alertOptions.actionText || 'OK',
-      cancelText: alertOptions.cancelText || 'Cancel',
-      onAction: alertOptions.onAction,
-      onCancel: alertOptions.onCancel,
+      title: title,
+      message: message,
+      showCancel: false,
+      actionText: 'OK',
+      cancelText: 'Cancel',
+    }
+    isOpen.value = true
+  }
+
+  const showConfirm = (title: string, message: string, action: () => void, cancelAction?: () => void) => {
+    options.value = {
+      title: title,
+      message: message,
+      showCancel: true,
+      actionText: 'Confirm',
+      cancelText: 'Cancel',
+      onAction: action,
+      onCancel: cancelAction,
     }
     isOpen.value = true
   }
@@ -55,6 +66,7 @@ export function useAlertDialog() {
     isOpen,
     options,
     showAlert,
+    showConfirm,
     handleAction,
     handleCancel,
     closeAlert

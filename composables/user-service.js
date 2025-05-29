@@ -29,7 +29,7 @@ export function useUserService(axiosInstance) {
     
     try {
       // Call the API endpoint to find user by email using the provided axiosInstance
-      const response = await axiosInstance.get(`/users/lookup`, {
+      const response = await axiosInstance.get(`/api/users/lookup`, {
         params: { email }
       });
       

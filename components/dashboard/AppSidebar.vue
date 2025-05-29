@@ -280,7 +280,7 @@
     </SidebarContent>
   </Sidebar>
 
-  <!-- Member Document Manager Dialog (Remains the same) -->
+  <!-- Member Document Manager Modal -->
   <MemberDocumentManager
     v-if="showDocumentManager && selectedGroup"
     :group="selectedGroup"
@@ -304,26 +304,13 @@
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
-
-  <!-- Reusable Alert Dialog -->
-  <ActionAlertDialog
-    :open="isOpen"
-    :title="title"
-    :message="message"
-    :action-text="actionText"
-    :cancel-text="cancelText"
-    :show-cancel="showCancel"
-    @update:open="isOpen = $event"
-    @action="handleAction"
-    @cancel="handleCancel"
-  />
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAlertDialog } from '@/composables/useAlertDialog'
-import ActionAlertDialog from '@/components/shared/ActionAlertDialog.vue'
+import { useNuxtApp } from '#app'
+import { signOut } from '@/src/utils/auth'
 import {
   Search,
   Plus,
@@ -370,13 +357,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import GroupCard from '@/components/groups/GroupCard.vue'
 import MemberDocumentManager from '@/components/members/MemberDocumentManager.vue'
-import { signOut } from '@/src/utils/auth'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { useNuxtApp } from '#app'
 
 const { $axiosInstance } = useNuxtApp()
 
@@ -425,19 +410,8 @@ const router = useRouter()
 // Get the current route to determine the active group
 const route = useRoute()
 
-// Initialize the alert dialog system
-const { 
-  isOpen, 
-  title, 
-  message, 
-  actionText, 
-  cancelText, 
-  showCancel, 
-  showAlert, 
-  showConfirm, 
-  handleAction, 
-  handleCancel 
-} = useAlertDialog()
+// Use the proper alert dialog injection
+const alertDialog = inject('alertDialog')
 
 // Compute the current group ID from the route
 const currentGroupId = computed(() => {
@@ -514,15 +488,21 @@ const pendingGroups = computed(() => {
 
 // Function to fetch pending email invitations
 const fetchEmailInvites = async () => {
-  if (!props.isAuthenticated) return;
+  console.log('AppSidebar: fetchEmailInvites called. isAuthenticated:', props.isAuthenticated);
+  if (!props.isAuthenticated) {
+    console.log('AppSidebar: User not authenticated, skipping email invites fetch');
+    return;
+  }
   isLoadingEmailInvites.value = true;
   console.log('AppSidebar: Fetching email invitations...');
   try {
-    const response = await $axiosInstance.get('/member/invitations');
-    pendingEmailInvites.value = response.data.invitations || [];
+    const response = await $axiosInstance.get('/api/user/group-invitations');
+    pendingEmailInvites.value = response.data || [];
     console.log('AppSidebar: Email invitations fetched:', pendingEmailInvites.value);
+    console.log('AppSidebar: Number of email invitations:', pendingEmailInvites.value.length);
   } catch (error) {
     console.error('Failed to fetch pending email invitations:', error);
+    console.error('Error details:', error.response?.data || error.message);
     pendingEmailInvites.value = [];
   } finally {
     isLoadingEmailInvites.value = false;
@@ -638,6 +618,15 @@ watch(() => props.groups, (newGroups) => {
   }, 500);
 })
 
+// Watch for authentication status changes
+watch(() => props.isAuthenticated, (newAuthStatus) => {
+  console.log('AppSidebar - Authentication status changed:', newAuthStatus);
+  if (newAuthStatus) {
+    console.log('User authenticated, fetching email invitations...');
+    fetchEmailInvites();
+  }
+})
+
 // Accept a direct (non-email) group invitation
 const acceptDirectInvite = async (group) => {
   try {
@@ -717,19 +706,25 @@ const acceptPendingGroup = async (group) => {
 
 // Cancel a pending group membership
 const cancelPendingGroup = async (group) => {
-  showConfirm(
-    'Cancel Membership Request',
+  const confirmed = await alertDialog.confirm(
     `Are you sure you want to cancel your pending membership for ${group.name || 'this group'}?`,
-    async () => {
-      try {
-        await $axiosInstance.post(`/api/groups/${group.id}/decline`);
-        emit('refresh-groups');
-      } catch (error) {
-        console.error('Failed to cancel group membership:', error);
-        showAlert('Error', 'Failed to cancel group membership: ' + (error.response?.data?.error || 'Unknown error'));
-      }
+    'Cancel Membership Request'
+  )
+  
+  if (confirmed) {
+    try {
+      // API call to cancel the membership - use the correct backend endpoint
+      console.log('Attempting to cancel membership for group:', group.id);
+      await $axiosInstance.post(`/api/groups/${group.id}/decline`);
+      console.log('Successfully cancelled membership for group:', group.id);
+      // Refresh the groups list
+      emit('refresh-groups');
+      await alertDialog.alert('Membership request cancelled successfully.', 'Success')
+    } catch (error) {
+      console.error('Failed to cancel group membership:', error);
+      await alertDialog.alert('Failed to cancel group membership: ' + (error.response?.data?.error || 'Unknown error'), 'Error')
     }
-  );
+  }
 }
 
 // Helper function to check if a group is waiting for admin approval
@@ -892,9 +887,9 @@ const acceptEmailInvite = async (invite) => {
       console.log('Requirements detected, emitting process-group-admission.');
       emit('process-group-admission', { group, invitationToken: invite.token });
     } else {
-      console.log('No password/document requirements, calling /member/accept-invitation directly.');
+      console.log('No password/document requirements, calling /api/member/accept-invitation directly.');
       // Keep member endpoints as they are (no /api prefix)
-      const acceptResponse = await $axiosInstance.post('/member/accept-invitation', { token: invite.token });
+      const acceptResponse = await $axiosInstance.post('/api/member/accept-invitation', { token: invite.token });
       console.log('Email invitation acceptance response:', acceptResponse.data);
       alert(`Invitation for ${invite.group_name} accepted successfully!`);
       fetchEmailInvites();
@@ -933,22 +928,23 @@ const acceptEmailInvite = async (invite) => {
 
 // Decline an email invitation
 const declineEmailInvite = async (invite) => {
-  showConfirm(
-    'Decline Invitation',
+  const confirmed = await alertDialog.confirm(
     `Are you sure you want to decline the invitation to join ${invite.group_name}?`,
-    async () => {
-      console.log('Declining email invite for group:', invite.group_name, 'Token:', invite.token);
-      try {
-        await $axiosInstance.post('/member/decline-invitation', { token: invite.token });
-        showAlert('Success', `Invitation for ${invite.group_name} declined.`);
-        fetchEmailInvites(); // Refresh list
-      } catch (error) {
-        console.error('Failed to decline email invitation:', error);
-        showAlert('Error', 'Failed to decline email invitation: ' + (error.response?.data?.error || 'Unknown error'));
-        fetchEmailInvites(); // Refresh list even on error
-      }
+    'Decline Invitation'
+  )
+  
+  if (confirmed) {
+    console.log('Declining email invite for group:', invite.group_name, 'Token:', invite.token);
+    try {
+      await $axiosInstance.post('/api/member/decline-invitation', { token: invite.token });
+      await alertDialog.alert(`Invitation for ${invite.group_name} declined.`, 'Success')
+      fetchEmailInvites(); // Refresh list
+    } catch (error) {
+      console.error('Failed to decline email invitation:', error);
+      await alertDialog.alert('Failed to decline email invitation: ' + (error.response?.data?.error || 'Unknown error'), 'Error')
+      fetchEmailInvites(); // Refresh list even on error
     }
-  );
+  }
 }
 
 // Navigate to settings page

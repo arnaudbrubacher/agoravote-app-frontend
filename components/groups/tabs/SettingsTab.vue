@@ -1371,7 +1371,7 @@ const handleSavePermissions = async () => {
     console.log('Saving permissions data:', permissionsData.value);
     
     // API request to update permissions
-    const response = await $axiosInstance.put(`/groups/${props.group.id}/permissions`, {
+    const response = await $axiosInstance.put(`/api/groups/${props.group.id}/permissions`, {
       permissions: permissionsData.value
     });
     
@@ -1407,7 +1407,7 @@ const savePermissionSetting = async (setting) => {
     originalPermissionsData.value[setting] = permissionsData.value[setting];
     
     // API request to update permission
-    const response = await $axiosInstance.put(`/groups/${props.group.id}/permissions`, {
+    const response = await $axiosInstance.put(`/api/groups/${props.group.id}/permissions`, {
       permissions: permissionsData.value
     });
     

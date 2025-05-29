@@ -192,7 +192,7 @@ export const signup = async (axiosInstance, name, email, password) => {
         // Update user display name
         try {
           // USE THE PASSED axiosInstance HERE
-          await axiosInstance.post('/users', { 
+          await axiosInstance.post('/api/users', { 
             id: userId,
             name: name,
             email: email
@@ -311,7 +311,7 @@ export const fetchUserProfile = async (axiosInstance) => {
       const userId = await Session.getUserId()
       setLocalStorage('userId', userId) // Ensure userId is in localStorage
       
-    const response = await axiosInstance.get(`/user/profile/${userId}`)
+    const response = await axiosInstance.get(`/api/user/profile/${userId}`)
     return response.data.user
     } else {
       throw new Error('No active session found')
@@ -353,7 +353,7 @@ export const deleteUserAccount = async (axiosInstance) => {
     
     // Try direct API request with SuperTokens interceptors
     try {
-      const response = await axiosInstance.delete(`/user/${userId}`);
+      const response = await axiosInstance.delete(`/api/users/${userId}`);
       console.log('Account deletion response:', response.data);
       
       // Clean up after successful deletion
@@ -374,7 +374,7 @@ export const deleteUserAccount = async (axiosInstance) => {
         console.log('Session refreshed, retrying delete request');
         
         // Retry delete request after refreshing
-        const retryResponse = await axiosInstance.delete(`/user/${userId}`);
+        const retryResponse = await axiosInstance.delete(`/api/users/${userId}`);
         console.log('Retry deletion response:', retryResponse.data);
         
         // Clean up after successful deletion
@@ -424,12 +424,12 @@ export const changeUserPassword = async (axiosInstance, userId, currentPassword,
       }
       
       console.log('DEBUG: Final userId to be used in URL:', userId)
-      console.log('DEBUG: Final URL will be:', `/users/${userId}/password`)
+      console.log('DEBUG: Final URL will be:', `/api/users/${userId}/password`)
       
       // Use SuperTokens to update the password
       // Note: SuperTokens doesn't have a direct method to change password while authenticated
       // So we'll use the backend API for this
-    const response = await axiosInstance.put(`/users/${userId}/password`, {
+    const response = await axiosInstance.put(`/api/users/${userId}/password`, {
       current_password: currentPassword,
       new_password: newPassword
     })
@@ -451,7 +451,7 @@ export const changeGroupPassword = async (axiosInstance, groupId, newPassword) =
   try {
     console.log('Changing group password for group:', groupId)
     
-    const response = await axiosInstance.put(`/groups/${groupId}/password`, {
+    const response = await axiosInstance.put(`/api/groups/${groupId}/password`, {
       new_password: newPassword
     })
     
@@ -469,7 +469,7 @@ export const emergencyChangeGroupPassword = async (axiosInstance, groupId, newPa
   try {
     // This function doesn't involve user authentication directly,
     // so we'll continue to use the existing API
-    const response = await axiosInstance.put(`/groups/${groupId}/emergency-password`, {
+    const response = await axiosInstance.put(`/api/groups/${groupId}/emergency-password`, {
       new_password: newPassword
     })
     
@@ -593,8 +593,8 @@ export const sendVerificationEmail = async (axiosInstance) => {
         // REMOVED dynamic import, use passed axiosInstance
         try {
           // Try the original endpoint first (with authentication)
-          await axiosInstance.post(`/users/${userId}/resend-verification`, {}, { headers })
-          console.log('Successfully sent verification request to /users endpoint')
+          await axiosInstance.post(`/api/users/${userId}/resend-verification`, {}, { headers })
+          console.log('Successfully sent verification request to /api/users endpoint')
         } catch (error1) {
           console.warn('First endpoint failed:', error1.message)
           
@@ -603,10 +603,10 @@ export const sendVerificationEmail = async (axiosInstance) => {
             console.log('Using email for verification request:', userEmail)
             try {
               // Don't include auth headers to prevent 401 -> retry loop
-              await axiosInstance.post(`/auth-verify/${userEmail}`, {}, { 
+              await axiosInstance.post(`/api/auth-verify/${userEmail}`, {}, { 
                 headers: { 'Content-Type': 'application/json' } // Only basic headers, no auth
               })
-          console.log('Successfully sent verification request to /auth-verify endpoint')
+          console.log('Successfully sent verification request to /api/auth-verify endpoint')
             } catch (error2) {
               console.error('Error with fallback verification endpoint:', error2.message)
               // Don't retry automatically - this prevents infinite loops

@@ -137,7 +137,7 @@ const acceptInvitation = async (token) => {
   statusMessageType.value = 'info'
   try {
     console.log(`Attempting to accept invitation with token: ${token}`)
-    const response = await $axiosInstance.post('/member/accept-invitation', { token })
+    const response = await $axiosInstance.post('/api/member/accept-invitation', { token })
     console.log('Invitation acceptance response:', response.data)
     statusMessage.value = 'Invitation accepted successfully! Redirecting...'
     statusMessageType.value = 'success'
