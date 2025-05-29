@@ -279,7 +279,7 @@ const addUser = async (user) => {
   }
 
   try {
-    await $axiosInstance.post(`/groups/${props.groupId}/members`, { userId: user.id })
+    await $axiosInstance.post(`/api/groups/${props.groupId}/members`, { userId: user.id })
     showAlert('Success', `User ${user.name || user.email} has been invited to the group.`)
     emit('user-added', user)
     // Update user status locally to reflect they've been added/invited

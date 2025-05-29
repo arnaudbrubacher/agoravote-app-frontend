@@ -417,7 +417,7 @@ onMounted(async () => {
   // Make a direct API call to fetch the latest group data
   try {
     console.log('Making direct API call to fetch group data');
-    const response = await axios.get(`/groups/${props.group.id}`);
+    const response = await axios.get(`/api/groups/${props.group.id}`);
     console.log('Direct API response:', response.data);
     
     // Update the group data with the direct API response
@@ -542,7 +542,7 @@ const refreshFormData = async () => {
   // Make a direct API call to fetch the latest group data
   try {
     console.log('Making direct API call to fetch group data on refresh');
-    const response = await axios.get(`/groups/${props.group.id}`);
+    const response = await axios.get(`/api/groups/${props.group.id}`);
     console.log('Direct API response on refresh:', response.data);
     
     // Update the group data with the direct API response
@@ -831,7 +831,7 @@ const uploadGroupPicture = async () => {
     const formData = new FormData()
     formData.append('picture', selectedFile.value)
     
-    const response = await axios.post(`/groups/${props.group.id}/picture`, formData, {
+    const response = await axios.post(`/api/groups/${props.group.id}/picture`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -912,7 +912,7 @@ const updateGroupField = async (fieldData) => {
     }
     
     // Make direct API call instead of using emit
-    const response = await axios.put(`/groups/${props.group.id}`, fieldData)
+    const response = await axios.put(`/api/groups/${props.group.id}`, fieldData)
     
     console.log('Response from backend:', response.data)
     
@@ -1017,7 +1017,7 @@ const handleSubmit = async () => {
     
     // Make direct API call instead of using emit
     try {
-      const response = await axios.put(`/groups/${props.group.id}`, dataToSubmit)
+      const response = await axios.put(`/api/groups/${props.group.id}`, dataToSubmit)
       
       console.log('Group update response:', response.data)
       

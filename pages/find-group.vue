@@ -119,8 +119,7 @@ const admissionError = ref('')
 const fetchUserGroups = async () => {
   isLoadingUserGroups.value = true;
   try {
-    // Assuming an endpoint to get the current user's groups
-    const response = await $axiosInstance.get('/groups/user-groups'); 
+    const response = await $axiosInstance.get('/api/groups/user-groups'); 
     userGroups.value = response.data || [];
   } catch (error) {
     console.error('Failed to fetch user groups:', error);
@@ -159,7 +158,7 @@ const searchGroups = async () => {
   
   // isSearching is already true from debounceSearch
   try {
-    const response = await $axiosInstance.get(`/groups/search?query=${encodeURIComponent(searchQuery.value)}&public_only=true`)
+    const response = await $axiosInstance.get(`/api/groups/search?query=${encodeURIComponent(searchQuery.value)}&public_only=true`)
     searchResults.value = response.data.groups || []
   } catch (error) {
     console.error('Failed to search groups:', error)
@@ -198,7 +197,7 @@ const handleAdmissionSubmit = async (admissionData) => {
       return;
     }
     
-    const response = await $axiosInstance.post(`/groups/${selectedGroup.value.id}/join`, admissionData);
+    const response = await $axiosInstance.post(`/api/groups/${selectedGroup.value.id}/join`, admissionData);
     const successMessage = response.data?.message || 'Request processed successfully';
     const status = response.data?.status || 'pending';
     

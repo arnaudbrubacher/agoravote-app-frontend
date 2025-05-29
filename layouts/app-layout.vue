@@ -355,7 +355,7 @@ const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false
        console.log(`Group ${groupId} not found locally, fetching details...`);
        try {
           // We might need an invitation token if this is triggered by an email invite flow later
-          const fetchUrl = `/groups/${groupId}${admissionInvitationToken.value ? '?invitation_token='+admissionInvitationToken.value : ''}`;
+          const fetchUrl = `/api/groups/${groupId}${admissionInvitationToken.value ? '?invitation_token='+admissionInvitationToken.value : ''}`;
           const response = await $axiosInstance.get(fetchUrl);
           group = response.data;
           console.log(`Fetched group details for ${groupId}:`, group);
@@ -413,7 +413,7 @@ const joinGroup = async (groupId, isInvitation = false, isSuccessfulJoin = false
 
     // If no special requirements and NOT an invitation acceptance flow (handled by AppSidebar), proceed with direct join request
      console.log('No special requirements/invitation, sending direct join request...'); // Added log
-    const response = await $axiosInstance.post(`/groups/${groupId}/join`);
+    const response = await $axiosInstance.post(`/api/groups/${groupId}/join`);
     console.log('Join response:', response.data);
     const status = response.data?.status || 'pending';
     await fetchUserGroups(); // Refresh sidebar
@@ -461,7 +461,7 @@ const handleAdmissionSubmit = async (formData) => {
       }
       // No need to append groupId to FormData body if it's in the URL
       
-      response = await $axiosInstance.post(`/groups/${selectedGroup.value.id}/apply`, dataToSend, {
+      response = await $axiosInstance.post(`/api/groups/${selectedGroup.value.id}/apply`, dataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -491,7 +491,7 @@ const handleReviewDocuments = async (groupId) => {
     // Fetch fresh group details to ensure we have the latest membership status and doc requirements
     let group;
      try {
-        const response = await $axiosInstance.get(`/groups/${groupId}`);
+        const response = await $axiosInstance.get(`/api/groups/${groupId}`);
         group = response.data;
      } catch (fetchError) {
         console.error(`Failed to fetch group ${groupId} for document review:`, fetchError);

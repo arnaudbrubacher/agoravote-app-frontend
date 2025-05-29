@@ -235,7 +235,7 @@ const handleSubmit = async () => {
     formData.append('description', form.value.description || '')
     
     // Upload the document
-    const response = await axios.post(`/groups/${props.groupId}/members/documents`, formData, {
+    const response = await axios.post(`/api/groups/${props.groupId}/members/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

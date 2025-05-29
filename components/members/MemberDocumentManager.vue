@@ -293,7 +293,7 @@ const fetchCurrentDocument = async () => {
             // This logic is highly dependent on your backend API structure.
             // Example: fetch the document for the current user in this group
              try {
-                const response = await $axiosInstance.get(`/groups/${props.group.id}/members/me/document`);
+                const response = await $axiosInstance.get(`/api/groups/${props.group.id}/members/me/document`);
                 currentDocument.value = response.data.document; // Assuming the API returns { document: { ... } }
              } catch (docError) {
                 if (docError.response && docError.response.status === 404) {
@@ -400,7 +400,7 @@ const uploadDocument = async () => {
     // e.g., /groups/{groupId}/members/{memberId}/document or just /documents if user context is implicit.
     // This is a placeholder, adjust to your API.
     // Assuming an endpoint that handles the upload for the current user for this group
-    const response = await $axiosInstance.post(`/groups/${props.group.id}/members/me/document`, formData, { // USE PASSED INSTANCE
+    const response = await $axiosInstance.post(`/api/groups/${props.group.id}/members/me/document`, formData, { // USE PASSED INSTANCE
       headers: {
         'Content-Type': 'multipart/form-data'
       }

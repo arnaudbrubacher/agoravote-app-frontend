@@ -455,9 +455,9 @@ const uploadDocument = async (file, docInfo, index) => {
     })
     
     // Use the correct document upload endpoint based on the backend routes
-    console.log(`GroupAdmissionForm - Uploading to endpoint: /groups/${props.group.id}/members/documents`)
+    console.log(`GroupAdmissionForm - Uploading to endpoint: /api/groups/${props.group.id}/members/documents`)
     
-    const response = await $axiosInstance.post(`/groups/${props.group.id}/members/documents`, formData, {
+    const response = await $axiosInstance.post(`/api/groups/${props.group.id}/members/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -555,44 +555,27 @@ const handleSubmit = async () => {
 
     // *** EXISTING LOGIC: Handle non-token joins/acceptances ***
     console.log(`GroupAdmissionForm - Handling non-token join/acceptance for group ${props.group.id}`);
-    const needsAcceptEndpoint = passwordRequired.value || documentsRequired.value || adminApprovalRequired.value;
-
-    if (needsAcceptEndpoint) {
-      console.log(`GroupAdmissionForm - Calling /groups/:id/accept endpoint for group ${props.group.id}`);
-      try {
-        finalApiResponse = await $axiosInstance.post(`/groups/${props.group.id}/accept`, finalPayload);
-        finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved');
-        console.log(`GroupAdmissionForm - /groups/:id/accept call successful. Status: ${finalStatus}`);
-      } catch (acceptError) {
-         if (acceptError.response?.status === 400 && acceptError.response?.data?.error?.includes('password')) {
-          console.error("Incorrect password submitted.", acceptError.response.data.error);
-          passwordError.value = acceptError.response.data.error;
-          isSubmitting.value = false;
-          return;
-        } else if (acceptError.response?.status === 403 && acceptError.response?.data?.error?.includes('already an active member')) {
-          showAlert('Already a Member', `You are already an active member of ${props.group.name}.`);
-          emit('close');
-          window.dispatchEvent(new CustomEvent('group-data-updated'))
-          return;
-        } else {
-          throw acceptError;
-        }
-      }
-    } else {
-      console.log(`GroupAdmissionForm - Calling /groups/:id/join endpoint for public group ${props.group.id}`);
-      try {
-        finalApiResponse = await $axiosInstance.post(`/groups/${props.group.id}/join`);
-        finalStatus = finalApiResponse.data?.status || 'approved';
-        console.log(`GroupAdmissionForm - /groups/:id/join call successful. Status: ${finalStatus}`);
-      } catch (joinError) {
-        if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
-          showAlert('Already a Member', `You are already an active member of ${props.group.name}.`);
-          emit('close');
-          window.dispatchEvent(new CustomEvent('group-data-updated'))
-          return;
-        } else {
-          throw joinError;
-        }
+    
+    // For groups with requirements (password, documents, admin approval), use the join endpoint
+    // The backend join endpoint handles all the logic for requirements
+    console.log(`GroupAdmissionForm - Calling /api/groups/:id/join endpoint for group ${props.group.id}`);
+    try {
+      finalApiResponse = await $axiosInstance.post(`/api/groups/${props.group.id}/join`, finalPayload);
+      finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved');
+      console.log(`GroupAdmissionForm - /api/groups/:id/join call successful. Status: ${finalStatus}`);
+    } catch (joinError) {
+       if (joinError.response?.status === 400 && joinError.response?.data?.error?.includes('password')) {
+        console.error("Incorrect password submitted.", joinError.response.data.error);
+        passwordError.value = joinError.response.data.error;
+        isSubmitting.value = false;
+        return;
+      } else if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
+        showAlert('Already a Member', `You are already an active member of ${props.group.name}.`);
+        emit('close');
+        window.dispatchEvent(new CustomEvent('group-data-updated'))
+        return;
+      } else {
+        throw joinError;
       }
     }
 

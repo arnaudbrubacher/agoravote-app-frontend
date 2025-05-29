@@ -942,7 +942,7 @@ const uploadGroupPicture = async () => {
     const formData = new FormData()
     formData.append('picture', selectedFile.value)
 
-    const response = await $axiosInstance.post(`/groups/${props.group.id}/picture`, formData, {
+    const response = await $axiosInstance.post(`/api/groups/${props.group.id}/picture`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -990,7 +990,7 @@ const saveField = async (fieldName) => {
     };
     
     // API call to update just this field
-    const response = await $axiosInstance.put(`/groups/${props.group.id}`, updateData);
+    const response = await $axiosInstance.put(`/api/groups/${props.group.id}`, updateData);
     
     // Update original data to match current value for this field
     originalFormData.value[fieldName] = formData.value[fieldName];
