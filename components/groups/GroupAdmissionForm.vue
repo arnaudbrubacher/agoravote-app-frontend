@@ -553,29 +553,60 @@ const handleSubmit = async () => {
     let finalApiResponse = null
     let finalStatus = 'unknown' // Keep track of status for non-token flows
 
-    // *** EXISTING LOGIC: Handle non-token joins/acceptances ***
-    console.log(`GroupAdmissionForm - Handling non-token join/acceptance for group ${props.group.id}`);
-    
-    // For groups with requirements (password, documents, admin approval), use the join endpoint
-    // The backend join endpoint handles all the logic for requirements
-    console.log(`GroupAdmissionForm - Calling /api/groups/:id/join endpoint for group ${props.group.id}`);
-    try {
-      finalApiResponse = await $axiosInstance.post(`/api/groups/${props.group.id}/join`, finalPayload);
-      finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved');
-      console.log(`GroupAdmissionForm - /api/groups/:id/join call successful. Status: ${finalStatus}`);
-    } catch (joinError) {
-       if (joinError.response?.status === 400 && joinError.response?.data?.error?.includes('password')) {
-        console.error("Incorrect password submitted.", joinError.response.data.error);
-        passwordError.value = joinError.response.data.error;
-        isSubmitting.value = false;
-        return;
-      } else if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
-        showAlert('Already a Member', `You are already an active member of ${props.group.name}.`);
-        emit('close');
-        window.dispatchEvent(new CustomEvent('group-data-updated'))
-        return;
-      } else {
-        throw joinError;
+    // Check if this is a token-based invitation or a regular group join
+    if (props.invitationToken) {
+      // *** TOKEN-BASED INVITATION: Use accept-invitation endpoint ***
+      console.log(`GroupAdmissionForm - Handling token-based invitation for group ${props.group.id} with token ${props.invitationToken}`);
+      console.log(`GroupAdmissionForm - Calling /api/member/accept-invitation endpoint`);
+      
+      try {
+        // For token-based invitations, we only need to send the token
+        // Documents are already uploaded, password is already validated
+        finalApiResponse = await $axiosInstance.post('/api/member/accept-invitation', { 
+          token: props.invitationToken 
+        });
+        finalStatus = finalApiResponse.data?.status || 'approved';
+        console.log(`GroupAdmissionForm - /api/member/accept-invitation call successful. Status: ${finalStatus}`);
+      } catch (tokenError) {
+        if (tokenError.response?.status === 400 && tokenError.response?.data?.error?.includes('password')) {
+          console.error("Incorrect password submitted.", tokenError.response.data.error);
+          passwordError.value = tokenError.response.data.error;
+          isSubmitting.value = false;
+          return;
+        } else if (tokenError.response?.status === 403) {
+          showAlert('Already a Member', `You are already an active member of ${props.group.name} or this invitation is no longer valid.`);
+          emit('close');
+          window.dispatchEvent(new CustomEvent('group-data-updated'))
+          return;
+        } else {
+          throw tokenError;
+        }
+      }
+    } else {
+      // *** REGULAR GROUP JOIN: Use existing join logic ***
+      console.log(`GroupAdmissionForm - Handling non-token join/acceptance for group ${props.group.id}`);
+      
+      // For groups with requirements (password, documents, admin approval), use the join endpoint
+      // The backend join endpoint handles all the logic for requirements
+      console.log(`GroupAdmissionForm - Calling /api/groups/:id/join endpoint for group ${props.group.id}`);
+      try {
+        finalApiResponse = await $axiosInstance.post(`/api/groups/${props.group.id}/join`, finalPayload);
+        finalStatus = finalApiResponse.data?.status || (adminApprovalRequired.value || documentsRequired.value ? 'pending' : 'approved');
+        console.log(`GroupAdmissionForm - /api/groups/:id/join call successful. Status: ${finalStatus}`);
+      } catch (joinError) {
+         if (joinError.response?.status === 400 && joinError.response?.data?.error?.includes('password')) {
+          console.error("Incorrect password submitted.", joinError.response.data.error);
+          passwordError.value = joinError.response.data.error;
+          isSubmitting.value = false;
+          return;
+        } else if (joinError.response?.status === 403 && joinError.response?.data?.error?.includes('already an active member')) {
+          showAlert('Already a Member', `You are already an active member of ${props.group.name}.`);
+          emit('close');
+          window.dispatchEvent(new CustomEvent('group-data-updated'))
+          return;
+        } else {
+          throw joinError;
+        }
       }
     }
 

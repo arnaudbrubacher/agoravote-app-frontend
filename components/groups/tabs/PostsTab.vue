@@ -8,6 +8,8 @@
       :is-current-user="false"
       :is-group="true"
       :show-create-button="true"
+      :create-button-disabled="!canCreatePosts"
+      :disabled-tooltip-message="postCreationTooltip"
       @create-post="showNewPostDialog = true"
       @open-post="openPostDetails"
     />
@@ -64,6 +66,51 @@ const currentUserId = computed(() => {
     return getUserIdFromToken() || ''
   }
   return ''
+})
+
+// Check if current user is admin of the group
+const isCurrentUserAdmin = computed(() => {
+  if (!props.group?.members || !currentUserId.value) return false
+  
+  const currentMember = props.group.members.find(member => 
+    member.user_id === currentUserId.value || member.id === currentUserId.value
+  )
+  
+  return currentMember?.role === 'admin'
+})
+
+// Check if user can create posts based on permissions
+const canCreatePosts = computed(() => {
+  // If user is admin, they can always create posts
+  if (isCurrentUserAdmin.value) {
+    return true
+  }
+  
+  // If user is not admin, check group permissions
+  const permissions = props.group?.permissions
+  if (!permissions) {
+    // Default to false if no permissions are set
+    return false
+  }
+  
+  // Allow non-admin post creation if permission is enabled
+  return permissions.allowNonAdminCreatePosts === true
+})
+
+// Tooltip message for disabled post creation button
+const postCreationTooltip = computed(() => {
+  if (canCreatePosts.value) return ''
+  
+  if (isCurrentUserAdmin.value) {
+    return 'Post creation is currently disabled'
+  }
+  
+  const permissions = props.group?.permissions
+  if (permissions?.allowNonAdminCreatePosts === false) {
+    return 'Group administrators have disabled post creation for non-admin members'
+  }
+  
+  return 'Only group administrators can create posts in this group'
 })
 
 // Pass $axiosInstance to the composable

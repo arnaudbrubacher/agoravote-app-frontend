@@ -9,7 +9,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
   const memberSearchQuery = ref('')
   
   // Initialize alert dialog system
-  const { showAlert, showConfirm } = useAlertDialog()
+  const { showAlert } = useAlertDialog()
 
   // Helper function to get axios instance
   const getAxiosInstance = () => {
@@ -106,13 +106,27 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       const results = response.data.results || []
       const successCount = results.filter(r => r.success).length
       const failCount = results.length - successCount
-      let message = `File processed. ${successCount} invitations sent successfully.`
-      if (failCount > 0) {
-        message += ` ${failCount} invitations failed. Check console for details.`
-        // Optionally log detailed errors
-        results.filter(r => !r.success).forEach(r => console.warn(`Failed invitation for ${r.email}: ${r.message}`))
+      
+      // Create a detailed success message
+      let title = 'Invitations Sent Successfully!'
+      let message = ''
+      
+      if (successCount > 0) {
+        const successfulEmails = results.filter(r => r.success).map(r => r.email)
+        message = `✅ ${successCount} invitation${successCount === 1 ? '' : 's'} sent successfully:\n\n`
+        message += successfulEmails.map(email => `• ${email}`).join('\n')
+        
+        if (failCount > 0) {
+          message += `\n\n❌ ${failCount} invitation${failCount === 1 ? '' : 's'} failed. Check console for details.`
+          // Log detailed errors
+          results.filter(r => !r.success).forEach(r => console.warn(`Failed invitation for ${r.email}: ${r.message}`))
+        }
+      } else {
+        title = 'No Invitations Sent'
+        message = 'No valid email addresses were processed from the file.'
       }
-      showAlert('Success', message)
+      
+      showAlert(title, message)
 
       return response.data
     } catch (err) {
@@ -147,45 +161,35 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     }))
   }
 
-  // Remove member from group
+  // Remove member from group (no confirmation - handled by parent)
   const handleMemberRemove = async (member) => {
     console.log('useGroupMembers - Member removal function called with:', member);
+    
     try {
-      // Confirm removal
-      console.log('useGroupMembers - Showing confirmation dialog');
+      // Get the correct user ID - prioritize user_id since that's the column name in the database
+      const userId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
       
-      // Replace browser confirm with shadcn alert dialog
-      showConfirm(
-        'Confirm Removal', 
-        `Are you sure you want to remove ${member.name} from this group?`,
-        async () => {
-          // Get the correct user ID - prioritize user_id since that's the column name in the database
-          const userId = member.user_id || member.userId || (member.user && member.user.id) || member.id;
-          
-          console.log('useGroupMembers - Removing member with details:', {
-            member,
-            userId,
-            originalId: member.id,
-            groupId
-          });
-          
-          // Call API to remove member using the user ID
-          console.log(`useGroupMembers - Making API call to: /api/groups/${groupId}/members/${userId}`);
-          const response = await getAxiosInstance().delete(`/api/groups/${groupId}/members/${userId}`); // USE PASSED INSTANCE
-          console.log('useGroupMembers - API response:', response.data);
-          
-          // Show success message
-          showAlert('Success', `${member.name} has been removed from the group`);
-          
-          // Refresh group data to update members list
-          console.log('useGroupMembers - Refreshing group data');
-          await fetchGroup();
-          console.log('useGroupMembers - Group data refreshed');
-        },
-        () => {
-          console.log('useGroupMembers - User cancelled member removal');
-        }
-      );
+      console.log('useGroupMembers - Removing member with details:', {
+        member,
+        userId,
+        originalId: member.id,
+        groupId
+      });
+      
+      // Call API to remove member using the user ID
+      console.log(`useGroupMembers - Making API call to: /api/groups/${groupId}/members/${userId}`);
+      const response = await getAxiosInstance().delete(`/api/groups/${groupId}/members/${userId}`);
+      console.log('useGroupMembers - API response:', response.data);
+      
+      // Show success message
+      showAlert('Success', `${member.name} has been removed from the group`);
+      
+      // Refresh group data to update members list
+      console.log('useGroupMembers - Refreshing group data');
+      await fetchGroup();
+      console.log('useGroupMembers - Group data refreshed');
+      
+      return response.data;
     } catch (err) {
       console.error('useGroupMembers - Failed to remove member:', err);
       console.error('useGroupMembers - Error response:', err.response?.data);

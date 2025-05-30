@@ -1,4 +1,24 @@
-# Stage 1: Build the Nuxt application
+# Stage 1: Development environment
+FROM node:18-alpine AS development
+
+WORKDIR /app
+
+# Copy package.json and lock files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Set development environment
+ENV NODE_ENV=development
+
+# Expose the port Nuxt will listen on
+EXPOSE 3000
+
+# Default command for development (can be overridden in docker-compose)
+CMD ["npm", "run", "dev"]
+
+# Stage 2: Build the Nuxt application
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -23,7 +43,7 @@ RUN npm run build
 # This step is optional but good practice if the runtime needs node_modules
 # RUN npm prune --production
 
-# Stage 2: Serve the Nuxt application using a Node.js server
+# Stage 3: Serve the Nuxt application using a Node.js server
 FROM node:18-alpine
 
 WORKDIR /app

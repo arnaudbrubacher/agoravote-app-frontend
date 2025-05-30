@@ -3,16 +3,37 @@
     <!-- Header with title and optional create button -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">Votes</h3>
-      <Button 
-        v-if="showCreateButton"
-        variant="outline" 
-        size="sm"
-        @click="$emit('create-vote')"
-      >
-        <Plus class="h-4 w-4" />
-        <Vote class="h-4 w-4 mr-1" />
-        New Vote
-      </Button>
+      <div v-if="showCreateButton">
+        <TooltipProvider v-if="createButtonDisabled">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button 
+                variant="outline" 
+                size="sm"
+                :disabled="createButtonDisabled"
+                @click="!createButtonDisabled && $emit('create-vote')"
+              >
+                <Plus class="h-4 w-4" />
+                <Vote class="h-4 w-4 mr-1" />
+                New Vote
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{{ disabledTooltipMessage || 'Only group administrators can create votes in this group' }}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <Button 
+          v-else
+          variant="outline" 
+          size="sm"
+          @click="$emit('create-vote')"
+        >
+          <Plus class="h-4 w-4" />
+          <Vote class="h-4 w-4 mr-1" />
+          New Vote
+        </Button>
+      </div>
     </div>
     
     <!-- Loading state -->
@@ -41,6 +62,12 @@
 <script setup>
 import { Plus, Vote } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import LucideIcon from '@/components/LucideIcon.vue'
 import VoteCard from '~/components/votes/VoteCard.vue'
 
@@ -56,6 +83,14 @@ const props = defineProps({
   showCreateButton: {
     type: Boolean,
     default: false
+  },
+  createButtonDisabled: {
+    type: Boolean,
+    default: false
+  },
+  disabledTooltipMessage: {
+    type: String,
+    default: ''
   }
 })
 

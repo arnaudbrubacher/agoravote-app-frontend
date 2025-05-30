@@ -76,6 +76,19 @@
       @accept="handleAcceptFromReview"
       @decline="handleDeclineFromReview"
     />
+
+    <!-- Reusable Alert Dialog for confirmations and alerts -->
+    <ActionAlertDialog
+      :open="isOpen"
+      :title="options?.title || 'Alert'"
+      :message="options?.message || ''"
+      :action-text="options?.actionText || 'OK'"
+      :cancel-text="options?.cancelText || 'Cancel'"
+      :show-cancel="options?.showCancel || false"
+      @update:open="isOpen = $event"
+      @action="handleAction"
+      @cancel="handleCancel"
+    />
   </div>
 </template>
 
@@ -85,8 +98,10 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import { Button } from '@/components/ui/button'
 import MemberRow from '~/components/members/MemberRow.vue'
 import { useGroupMembers } from '@/composables/useGroupMembers'
+import { useAlertDialog } from '@/composables/useAlertDialog'
 import MemberDocumentManager from '@/components/members/MemberDocumentManager.vue'
 import ReviewDocumentsDialog from '@/components/members/ReviewDocumentsDialog.vue'
+import ActionAlertDialog from '@/components/shared/ActionAlertDialog.vue'
 
 const props = defineProps({
   groupId: {
@@ -136,6 +151,21 @@ const { handleMemberRemove: removeMemberApi } = useGroupMembers(
   computed(() => props.group),
   props.fetchGroup
 )
+
+// Initialize alert dialog for confirmations
+const { 
+  isOpen, 
+  options,
+  title, 
+  message, 
+  actionText, 
+  cancelText, 
+  showCancel,
+  showAlert, 
+  showConfirm, 
+  handleAction, 
+  handleCancel 
+} = useAlertDialog()
 
 const searchQuery = ref('')
 const showMemberDocumentManager = ref(false)
@@ -307,8 +337,27 @@ const filteredMembers = computed(() => {
 })
 
 const handleMemberRemove = async (member) => {
-  await removeMemberApi(member)
-  // Refresh the members list after removal
-  emit('refresh-members')
+  console.log('MembersList - handleMemberRemove called for:', member.name);
+  
+  // Show confirmation dialog using MembersList's useAlertDialog instance
+  showConfirm(
+    'Confirm Removal',
+    `Are you sure you want to remove ${member.name} from this group?`,
+    async () => {
+      // User confirmed - call the API
+      try {
+        await removeMemberApi(member);
+        // Refresh the members list after removal
+        emit('refresh-members');
+      } catch (error) {
+        // Error is already handled by removeMemberApi
+        console.error('MembersList - Failed to remove member:', error);
+      }
+    },
+    () => {
+      // User cancelled
+      console.log('MembersList - User cancelled member removal');
+    }
+  );
 }
 </script> 

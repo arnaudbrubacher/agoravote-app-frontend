@@ -305,7 +305,7 @@ const processMemberApproval = async () => {
     
     // Call API to approve the member
     const { $axiosInstance } = useNuxtApp()
-    await $axiosInstance.put(`/api/groups/${props.groupId}/members/${memberId}/approve`);
+    await $axiosInstance.post(`/api/groups/${props.groupId}/members/${memberId}/approve`);
     
     // Remove the member from the local list
     pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {
@@ -453,7 +453,7 @@ const processDocumentsApproval = async () => {
     
     // Call API to approve the member with documents
     const { $axiosInstance } = useNuxtApp()
-    await $axiosInstance.put(`/api/groups/${props.groupId}/members/${memberId}/approve`, { documents_approved: true });
+    await $axiosInstance.post(`/api/groups/${props.groupId}/members/${memberId}/approve`, { documents_approved: true });
     
     // Remove the member from the local list
     pendingMembersLocal.value = pendingMembersLocal.value.filter(m => {

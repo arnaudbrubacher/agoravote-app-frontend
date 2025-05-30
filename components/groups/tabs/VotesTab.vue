@@ -13,6 +13,8 @@
       :votes="votes"
       :loading="loading"
       :show-create-button="true"
+      :create-button-disabled="!canCreateVotes"
+      :disabled-tooltip-message="voteCreationTooltip"
       @create-vote="$emit('create-vote')"
       @open-vote="$emit('open-vote', $event)"
     />
@@ -24,9 +26,9 @@
 </template>
 
 <script setup>
-// import { Card, CardContent } from '@/components/ui/card'
+import { computed } from 'vue'
 import VotesList from '~/components/votes/Voteslist.vue'
-// Removed imports: NewVoteDialog, VoteDetailsDialog, useGroupVotes, getUserIdFromToken, axios, computed
+import { getUserIdFromToken } from '~/src/utils/auth'
 
 // Receive props from parent
 const props = defineProps({
@@ -38,14 +40,75 @@ const props = defineProps({
     type: Boolean,
     required: true
   },
-  group: { // Keep group prop if needed by VotesList or other elements here
+  group: {
     type: Object,
     required: true
+  },
+  currentUser: {
+    type: Object,
+    default: () => ({})
   }
 })
 
 // Define emits
 const emit = defineEmits(['create-vote', 'open-vote'])
+
+// Get current user ID from token or from props
+const currentUserId = computed(() => {
+  if (props.currentUser?.id) {
+    return props.currentUser.id
+  }
+  
+  if (process.client) {
+    return getUserIdFromToken() || ''
+  }
+  return ''
+})
+
+// Check if current user is admin of the group
+const isCurrentUserAdmin = computed(() => {
+  if (!props.group?.members || !currentUserId.value) return false
+  
+  const currentMember = props.group.members.find(member => 
+    member.user_id === currentUserId.value || member.id === currentUserId.value
+  )
+  
+  return currentMember?.role === 'admin'
+})
+
+// Check if user can create votes based on permissions
+const canCreateVotes = computed(() => {
+  // If user is admin, they can always create votes
+  if (isCurrentUserAdmin.value) {
+    return true
+  }
+  
+  // If user is not admin, check group permissions
+  const permissions = props.group?.permissions
+  if (!permissions) {
+    // Default to false if no permissions are set
+    return false
+  }
+  
+  // Allow non-admin vote creation if permission is enabled
+  return permissions.allowNonAdminCreateVotes === true
+})
+
+// Tooltip message for disabled vote creation button
+const voteCreationTooltip = computed(() => {
+  if (canCreateVotes.value) return ''
+  
+  if (isCurrentUserAdmin.value) {
+    return 'Vote creation is currently disabled'
+  }
+  
+  const permissions = props.group?.permissions
+  if (permissions?.allowNonAdminCreateVotes === false) {
+    return 'Group administrators have disabled vote creation for non-admin members'
+  }
+  
+  return 'Only group administrators can create votes in this group'
+})
 
 // All local state, composable usage, and handlers related to 
 // selectedVote, dialogs, submitting, deleting are removed.

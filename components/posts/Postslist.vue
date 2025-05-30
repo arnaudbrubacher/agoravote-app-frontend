@@ -3,16 +3,37 @@
     <!-- Header with title and optional create button -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">Posts</h3>
-      <Button 
-        v-if="showCreateButton"
-        variant="outline" 
-        size="sm"
-        @click="$emit('create-post')"
-      >
-        <Plus class="h-4 w-4" />
-        <Newspaper class="h-4 w-4 mr-1" />
-        New Post
-      </Button>
+      <div v-if="showCreateButton">
+        <TooltipProvider v-if="createButtonDisabled">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button 
+                variant="outline" 
+                size="sm"
+                :disabled="createButtonDisabled"
+                @click="!createButtonDisabled && $emit('create-post')"
+              >
+                <Plus class="h-4 w-4" />
+                <Newspaper class="h-4 w-4 mr-1" />
+                New Post
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{{ disabledTooltipMessage || 'Only group administrators can create posts in this group' }}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <Button 
+          v-else
+          variant="outline" 
+          size="sm"
+          @click="$emit('create-post')"
+        >
+          <Plus class="h-4 w-4" />
+          <Newspaper class="h-4 w-4 mr-1" />
+          New Post
+        </Button>
+      </div>
     </div>
     
     <!-- Loading state -->
@@ -33,11 +54,12 @@
     
     <!-- Posts list -->
     <div v-else class="space-y-4">
-      <PostCard 
-        v-for="post in posts" 
-        :key="post.id" 
-        :post="post" 
+      <PostCard
+        v-for="post in posts"
+        :key="post.id"
+        :post="post"
         @click="$emit('open-post', post)"
+        @delete="$emit('delete-post', post)"
       />
     </div>
   </div>
@@ -46,6 +68,12 @@
 <script setup>
 import { Plus, Newspaper } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import LucideIcon from '@/components/LucideIcon.vue'
 import PostCard from '~/components/posts/PostCard.vue'
 
@@ -69,6 +97,14 @@ const props = defineProps({
   showCreateButton: {
     type: Boolean,
     default: false
+  },
+  createButtonDisabled: {
+    type: Boolean,
+    default: false
+  },
+  disabledTooltipMessage: {
+    type: String,
+    default: ''
   }
 })
 

@@ -447,7 +447,7 @@ const toggleAdminStatus = () => {
   }
 }
 
-// Update handleMemberRemove to use showConfirm instead of emit
+// Update handleMemberRemove to directly emit without showing confirmation
 const handleMemberRemove = (member) => {
   console.log('MemberRow - Remove button clicked for member:', member.name, {
     id: member.id,
@@ -456,15 +456,8 @@ const handleMemberRemove = (member) => {
     user: member.user && member.user.id
   });
   
-  // Show the confirmation dialog directly here instead of emitting
-  showConfirm(
-    'Confirm Removal', 
-    `Are you sure you want to remove ${member.name} from this group?`,
-    () => {
-      // When confirmed, emit the remove event
-      emit('remove', member);
-    }
-  );
+  // Directly emit the remove event - confirmation will be handled by parent
+  emit('remove', member);
 }
 
 const getMemberEmail = (member) => {

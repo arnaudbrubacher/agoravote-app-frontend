@@ -258,14 +258,13 @@ const handleSignup = async () => {
   }
 }
 
-// --- Fetch Invitation Email (Optional but good UX) ---
 // Function to fetch basic (potentially unverified) info about the token
 const fetchInvitationInfo = async (token) => {
   statusMessage.value = 'Loading invitation details...'; // Show loading state
   statusMessageType.value = 'info';
   try {
     console.log(`Fetching invitation info for token: ${token}`);
-    const response = await $axiosInstance.get(`/member/invitation-info?token=${token}`); // Call the new backend endpoint
+    const response = await $axiosInstance.get(`/api/member/invitation-info?token=${token}`); // Call the new backend endpoint with /api prefix
     console.log('Invitation info response:', response.data);
     invitationEmail.value = response.data.email;
     loginEmail.value = response.data.email; // Pre-fill login email

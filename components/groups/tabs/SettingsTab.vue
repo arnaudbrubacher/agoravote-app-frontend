@@ -214,7 +214,6 @@
                 <Switch
                   id="is-private-toggle"
                   v-model="formData.isPrivate"
-                  @update:modelValue="savePrivacy"
                   :disabled="!isCurrentUserAdmin"
                 />
                 <Label for="is-private-toggle" class="text-sm text-muted-foreground">
@@ -244,7 +243,6 @@
                 <Switch
                   id="requires-admin-approval-toggle"
                   v-model="formData.requires_admin_approval"
-                  @update:modelValue="toggleAdminApprovalRequirement"
                   :disabled="!isCurrentUserAdmin"
                 />
                 <Label for="requires-admin-approval-toggle" class="text-sm text-muted-foreground">
@@ -392,6 +390,26 @@
                 </div>
               </div>
             </div>
+          </div>
+          
+          <!-- Save/Cancel Buttons for Security Settings -->
+          <div v-if="isCurrentUserAdmin" class="flex justify-end space-x-2 pt-6 border-t">
+            <Button
+              variant="outline"
+              @click="handleSecurityCancel"
+              :disabled="!securityModified"
+              class="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel Changes
+            </Button>
+            <Button
+              @click="handleSecuritySave"
+              :disabled="!securityModified"
+              class="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save class="h-4 w-4 mr-2" />
+              Save Security Settings
+            </Button>
           </div>
         </TabsContent>
 
@@ -1103,6 +1121,27 @@ const permissionsModified = computed(() => {
   return JSON.stringify(permissionsData.value) !== JSON.stringify(originalPermissionsData.value);
 })
 
+// Check if security settings have been modified
+const securityModified = computed(() => {
+  const current = {
+    isPrivate: formData.value.isPrivate,
+    requires_admin_approval: formData.value.requires_admin_approval,
+    requires_password: formData.value.requires_password,
+    requires_documents: formData.value.requires_documents,
+    documents: formData.value.documents
+  };
+  
+  const original = {
+    isPrivate: originalFormData.value.isPrivate,
+    requires_admin_approval: originalFormData.value.requires_admin_approval,
+    requires_password: originalFormData.value.requires_password,
+    requires_documents: originalFormData.value.requires_documents,
+    documents: originalFormData.value.documents
+  };
+  
+  return JSON.stringify(current) !== JSON.stringify(original);
+})
+
 const changePassword = async () => {
   if (!props.isCurrentUserAdmin) return;
 
@@ -1446,6 +1485,105 @@ const settingsSubtab = ref('group-settings') // default
 
 // Set up route
 const route = useRoute()
+
+// Handler functions for security settings
+const handleSecuritySave = async () => {
+  if (!props.isCurrentUserAdmin) return;
+  
+  try {
+    console.log('Saving security settings...');
+    
+    // Validate document requirements
+    if (formData.value.requires_documents && formData.value.documents.length > 0) {
+      const emptyDocs = formData.value.documents.filter(doc => !doc.name.trim());
+      if (emptyDocs.length > 0) {
+        toast({
+          title: "Error",
+          description: "Please provide names for all required documents",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    if (formData.value.requires_documents && formData.value.documents.length === 0) {
+      toast({
+        title: "Error", 
+        description: "If documents are required, you must specify at least one required document type.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if password is required but not set
+    if (formData.value.requires_password && !props.group.requires_password) {
+      toast({
+        title: "Error",
+        description: "Please set a password for the group before saving changes.",
+        variant: "destructive"
+      });
+      showPasswordChange.value = true;
+      return;
+    }
+
+    // Prepare security data for API call
+    const requiredDocumentsList = formData.value.requires_documents ? formData.value.documents.map(doc => doc.name.trim()) : [];
+
+    const securityData = {
+      is_private: formData.value.isPrivate,
+      requires_admin_approval: formData.value.requires_admin_approval,
+      requires_password: formData.value.requires_password,
+      requires_documents: formData.value.requires_documents,
+      required_documents: JSON.stringify(requiredDocumentsList)
+    };
+
+    console.log('Submitting security data:', securityData);
+
+    // API call to update security settings
+    const response = await $axiosInstance.put(`/api/groups/${props.group.id}`, securityData);
+
+    // Update original data to match current data
+    originalFormData.value.isPrivate = formData.value.isPrivate;
+    originalFormData.value.requires_admin_approval = formData.value.requires_admin_approval;
+    originalFormData.value.requires_password = formData.value.requires_password;
+    originalFormData.value.requires_documents = formData.value.requires_documents;
+    originalFormData.value.documents = cloneDeep(formData.value.documents);
+
+    toast({
+      title: "Success",
+      description: "Security settings saved successfully",
+    });
+
+    // Emit event to refresh group data
+    if (props.fetchGroup) {
+      await props.fetchGroup();
+    }
+
+  } catch (error) {
+    console.error('Failed to save security settings:', error);
+    toast({
+      title: "Error",
+      description: 'Failed to save security settings: ' + (error.response?.data?.error || 'Unknown error'),
+      variant: "destructive"
+    });
+  }
+};
+
+const handleSecurityCancel = () => {
+  // Reset security settings to original values
+  formData.value.isPrivate = originalFormData.value.isPrivate;
+  formData.value.requires_admin_approval = originalFormData.value.requires_admin_approval;
+  formData.value.requires_password = originalFormData.value.requires_password;
+  formData.value.requires_documents = originalFormData.value.requires_documents;
+  formData.value.documents = cloneDeep(originalFormData.value.documents);
+  
+  console.log('Security settings reset to original values');
+  
+  toast({
+    title: "Changes Cancelled",
+    description: "Security settings have been reset to their original values",
+  });
+};
 </script>
 
 <style scoped>
