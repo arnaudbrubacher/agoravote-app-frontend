@@ -470,7 +470,7 @@ const handleVoteCreated = async (voteData) => {
   error.value = null;
   try {
     await createNewVote(voteData); 
-    showAlert('Success', 'Vote created successfully');
+    showAlert('Vote created', 'Vote created successfully.');
     showNewVoteDialog.value = false;
   } catch (err) {
     console.error("Error creating vote:", err);
@@ -572,7 +572,7 @@ const handleEncryptVote = async (payload) => {
 
     console.log("Sending encryption payload:", encryptPayload);
     // TODO: Verify backend endpoint and payload structure
-    const response = await getAxiosInstance().post(`/votes/${payload.voteId}/encrypt`, encryptPayload);
+    const response = await getAxiosInstance().post(`/api/votes/${payload.voteId}/encrypt`, encryptPayload);
     
     console.log("Encryption successful. Response:", response.data);
     if (!response.data?.tracker_hash) {
@@ -643,7 +643,7 @@ const submitBallotAction = async (action, encryptedData, plaintextSelection = nu
         action: action // 'cast' or 'spoil'
     };
     console.log(`Submitting ballot with payload:`, submitPayload);
-    const submitResponse = await getAxiosInstance().post(`/ballots/submit`, submitPayload);
+    const submitResponse = await getAxiosInstance().post(`/api/ballots/submit`, submitPayload);
     console.log(`Ballot ${action} successful:`, submitResponse.data);
 
     // --- Success --- 
@@ -896,7 +896,7 @@ const { toast } = useToast()
 const handleEndVote = async (voteId) => {
   const voteTitle = selectedVote.value?.title || `Vote ID ${voteId}`; // Get title for message
   showConfirm(
-    'Confirm End Vote Early',
+    'End Vote Early',
     `Are you sure you want to end this vote early: "${voteTitle}"? This will close the vote immediately.`,
     async () => { // Action to perform on confirmation
       console.log(`[pages/group/[id].vue] Confirmed ending vote early for vote ID: ${voteId}`);
@@ -906,7 +906,6 @@ const handleEndVote = async (voteId) => {
         //   title: 'Vote Ended',
         //   description: `Vote "${selectedVote.value?.title || voteId}" has been closed successfully.`,
         // })
-        showAlert('Vote Ended', `Vote "${voteTitle}" has been closed successfully.`);
 
         // Update UI
         closeVoteDetailsHandler(); // Close dialog
@@ -928,7 +927,7 @@ const handleEndVote = async (voteId) => {
 const handleTallyDecrypt = async (voteId) => {
   const voteTitle = selectedVote.value?.title || `Vote ID ${voteId}`; // Get title for message
   showConfirm(
-    'Confirm Tally & Decrypt',
+    'Tally and Decrypt',
     `Are you sure you want to tally and decrypt the results for "${voteTitle}"? This uses the ElectionGuard process and may take a moment.`,
     async () => { // Action to perform on confirmation
       console.log(`[pages/group/[id].vue] Confirmed tally-decrypt event for vote ID: ${voteId}`);
@@ -939,7 +938,6 @@ const handleTallyDecrypt = async (voteId) => {
         //   title: 'Tally Completed',
         //   description: `Vote "${selectedVote.value?.title || voteId}" results decrypted successfully.`,
         // })
-        showAlert('Tally Completed', `Vote "${voteTitle}" results decrypted successfully.`);
 
         // Update UI - Refetch votes to get updated status and results string
         await fetchVotes(); 

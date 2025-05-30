@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 import LucideIcon from '@/components/LucideIcon.vue';
 import MemberRow from '~/components/members/MemberRow.vue';
 import { useUserService } from '~/composables/user-service';
@@ -55,7 +55,34 @@ const props = defineProps({
   }
 });
 
-defineEmits(['resend-invite', 'cancel-invite']);
+const emit = defineEmits(['resend-invite', 'cancel-invite', 'refresh-invited']);
+
+// Event handlers for auto-refresh
+const handleRefreshInvitedMembers = (event) => {
+  console.log('[InvitedMembersList] Received refresh-invited-members event:', event.detail);
+  if (event.detail?.groupId === props.groupId) {
+    // Emit refresh request to parent component
+    emit('refresh-invited');
+  }
+};
+
+const handleGroupDataUpdated = () => {
+  console.log('[InvitedMembersList] Received group-data-updated event');
+  // Emit refresh request to parent component
+  emit('refresh-invited');
+};
+
+// Setup event listeners
+onMounted(() => {
+  window.addEventListener('refresh-invited-members', handleRefreshInvitedMembers);
+  window.addEventListener('group-data-updated', handleGroupDataUpdated);
+});
+
+// Cleanup event listeners
+onUnmounted(() => {
+  window.removeEventListener('refresh-invited-members', handleRefreshInvitedMembers);
+  window.removeEventListener('group-data-updated', handleGroupDataUpdated);
+});
 
 // Watch for changes in invitedMembers and process them
 watch(() => props.invitedMembers, async (newInvitations) => {

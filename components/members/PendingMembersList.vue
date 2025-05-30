@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useNuxtApp } from '#app'
 import LucideIcon from '@/components/LucideIcon.vue'
 import MemberRow from '~/components/members/MemberRow.vue'
@@ -156,6 +156,38 @@ const memberToApprove = ref(null)
 const showDocumentsApprovalDialog = ref(false)
 const showDeclineDialog = ref(false)
 const memberToDecline = ref(null)
+
+// Event handlers for auto-refresh
+const handleRefreshPendingMembers = (event) => {
+  console.log('[PendingMembersList] Received refresh-pending-members event:', event.detail);
+  if (event.detail?.groupId === props.groupId) {
+    // Refresh pending members
+    fetchPendingMembers();
+  }
+};
+
+const handleGroupDataUpdated = () => {
+  console.log('[PendingMembersList] Received group-data-updated event');
+  // Refresh pending members
+  fetchPendingMembers();
+};
+
+// Setup event listeners
+onMounted(() => {
+  console.log('[PendingMembersList] Setting up event listeners');
+  window.addEventListener('refresh-pending-members', handleRefreshPendingMembers);
+  window.addEventListener('group-data-updated', handleGroupDataUpdated);
+  
+  // Initial fetch
+  fetchPendingMembers();
+});
+
+// Cleanup event listeners
+onUnmounted(() => {
+  console.log('[PendingMembersList] Cleaning up event listeners');
+  window.removeEventListener('refresh-pending-members', handleRefreshPendingMembers);
+  window.removeEventListener('group-data-updated', handleGroupDataUpdated);
+});
 
 // Use either provided props or local state
 const pendingMembers = computed(() => {

@@ -38,6 +38,7 @@
       <VotesTab 
         :group="group" 
         :current-user="currentUser" 
+        :is-current-user-admin="isCurrentUserAdmin"
         :votes="votes"
         :loading="isLoadingVotes"
         @create-vote="$emit('create-vote')"
@@ -50,6 +51,7 @@
       <PostsTab 
         :group="group" 
         :current-user="currentUser" 
+        :is-current-user-admin="isCurrentUserAdmin"
         @show-new-post="$emit('create-post')"
         @open-post="$emit('open-post', $event)"
       />

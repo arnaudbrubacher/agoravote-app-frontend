@@ -25,22 +25,24 @@
     </div>
     
     <!-- Group Info -->
-    <div class="flex-grow min-w-0 pr-4">
+    <div class="flex-grow min-w-0" :class="hasActions ? 'pr-20' : 'pr-4'">
       <div class="flex items-center space-x-2">
         <h3 class="font-medium" :class="{ 'text-gray-800 font-semibold': isActive }">{{ group.name }}</h3>
-        <!-- Private Badge (Inline) -->
-        <span 
-          v-if="showPrivateBadge && group.is_private" 
-          class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded"
-        >
-          Private
-        </span>
       </div>
-      <p class="text-sm text-muted-foreground truncate">{{ group.description || 'No description' }}</p>
+      <p class="text-sm text-muted-foreground multi-line-truncate">{{ group.description || 'No description' }}</p>
     </div>
     
-    <!-- Top Right Actions Slot - Modified to work as notification badges -->
-    <div class="absolute top-2 right-2 flex items-center space-x-2 z-10">
+    <!-- Private Badge - Top Right Corner -->
+    <Badge 
+      v-if="showPrivateBadge && group.is_private" 
+      variant="secondary"
+      class="absolute top-2 right-2 text-xs bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded-full border border-gray-300"
+    >
+      Private
+    </Badge>
+    
+    <!-- Center Right Actions Slot - Modified to center vertically -->
+    <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-2 z-10">
       <slot name="top-right-actions"></slot>
     </div>
     
@@ -77,6 +79,10 @@ const props = defineProps({
   isActive: {
     type: Boolean,
     default: false
+  },
+  hasActions: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -103,5 +109,16 @@ const groupPictureUrl = computed(() => {
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Multi-line text truncation with ellipsis */
+.multi-line-truncate {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  max-height: calc(1.3em * 1); /* 1 line * line-height */
 }
 </style> 

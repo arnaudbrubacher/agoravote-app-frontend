@@ -47,6 +47,10 @@ const props = defineProps({
   currentUser: {
     type: Object,
     default: () => ({})
+  },
+  isCurrentUserAdmin: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -65,21 +69,21 @@ const currentUserId = computed(() => {
   return ''
 })
 
-// Check if current user is admin of the group
-const isCurrentUserAdmin = computed(() => {
-  if (!props.group?.members || !currentUserId.value) return false
-  
-  const currentMember = props.group.members.find(member => 
-    member.user_id === currentUserId.value || member.id === currentUserId.value
-  )
-  
-  return currentMember?.role === 'admin'
-})
+// Use the isCurrentUserAdmin prop instead of computing it locally
+// const isCurrentUserAdmin = computed(() => {
+//   if (!props.group?.members || !currentUserId.value) return false
+//   
+//   const currentMember = props.group.members.find(member => 
+//     member.user_id === currentUserId.value || member.id === currentUserId.value
+//   )
+//   
+//   return currentMember?.role === 'admin'
+// })
 
 // Check if user can create votes based on permissions
 const canCreateVotes = computed(() => {
   // If user is admin, they can always create votes
-  if (isCurrentUserAdmin.value) {
+  if (props.isCurrentUserAdmin) {
     return true
   }
   
@@ -98,7 +102,7 @@ const canCreateVotes = computed(() => {
 const voteCreationTooltip = computed(() => {
   if (canCreateVotes.value) return ''
   
-  if (isCurrentUserAdmin.value) {
+  if (props.isCurrentUserAdmin) {
     return 'Vote creation is currently disabled'
   }
   

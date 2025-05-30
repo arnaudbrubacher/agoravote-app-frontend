@@ -161,7 +161,7 @@
       </div>
       
       <!-- Bottom Action Buttons -->
-      <div v-if="!editMode" class="border-t pt-4 flex justify-between">
+      <div v-if="!editMode && isCurrentUsersPost" class="border-t pt-4 flex justify-between">
         <AlertDialog>
           <AlertDialogTrigger as-child>
             <Button variant="destructive" size="sm">
@@ -171,9 +171,9 @@
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Post</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the post "{{ post.title }}" and remove all its data from our servers.
+                This action cannot be undone. The post "{{ post.title }}" will be permanently deleted.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

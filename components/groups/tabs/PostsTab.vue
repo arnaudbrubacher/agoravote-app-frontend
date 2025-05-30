@@ -51,6 +51,10 @@ const props = defineProps({
   currentUser: {
     type: Object,
     default: () => ({})
+  },
+  isCurrentUserAdmin: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -68,21 +72,21 @@ const currentUserId = computed(() => {
   return ''
 })
 
-// Check if current user is admin of the group
-const isCurrentUserAdmin = computed(() => {
-  if (!props.group?.members || !currentUserId.value) return false
-  
-  const currentMember = props.group.members.find(member => 
-    member.user_id === currentUserId.value || member.id === currentUserId.value
-  )
-  
-  return currentMember?.role === 'admin'
-})
+// Use the isCurrentUserAdmin prop instead of computing it locally
+// const isCurrentUserAdmin = computed(() => {
+//   if (!props.group?.members || !currentUserId.value) return false
+//   
+//   const currentMember = props.group.members.find(member => 
+//     member.user_id === currentUserId.value || member.id === currentUserId.value
+//   )
+//   
+//   return currentMember?.role === 'admin'
+// })
 
 // Check if user can create posts based on permissions
 const canCreatePosts = computed(() => {
   // If user is admin, they can always create posts
-  if (isCurrentUserAdmin.value) {
+  if (props.isCurrentUserAdmin) {
     return true
   }
   
@@ -101,7 +105,7 @@ const canCreatePosts = computed(() => {
 const postCreationTooltip = computed(() => {
   if (canCreatePosts.value) return ''
   
-  if (isCurrentUserAdmin.value) {
+  if (props.isCurrentUserAdmin) {
     return 'Post creation is currently disabled'
   }
   
@@ -151,6 +155,8 @@ const handleEditPost = async (updatedPost) => {
 const handleDeletePost = async (post) => {
      try {
        await deletePost(post); // Use the composable's function
+       selectedPost.value = null; // Close the dialog after successful deletion
+       await fetchPosts(); // Refresh the posts list
      } catch (error) {
        console.error('Failed to delete post:', error);
        alert('Failed to delete post');

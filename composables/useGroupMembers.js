@@ -236,6 +236,21 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       // Show success message (backend currently returns generic success)
       showAlert('Invitation Sent', `Invitation request sent for ${email}. They will receive an email if the address is valid and not already a member.`);
 
+      // Refresh the group data to update the members list
+      await fetchGroup()
+      
+      // Dispatch events to refresh invited and pending members lists
+      window.dispatchEvent(new CustomEvent('refresh-invited-members', {
+        detail: { groupId, email }
+      }))
+      
+      window.dispatchEvent(new CustomEvent('refresh-pending-members', {
+        detail: { groupId, email }
+      }))
+      
+      // Dispatch general group data updated event
+      window.dispatchEvent(new CustomEvent('group-data-updated'))
+
       return response.data; // Return data which might be just { message: "..." }
     } catch (err) {
       console.error('[useGroupMembers] Failed to invite member by email:', err);

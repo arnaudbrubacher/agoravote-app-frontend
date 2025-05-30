@@ -1,7 +1,7 @@
 import { defineNuxtPlugin, useRuntimeConfig } from '#app' // Or 'nuxt/app' depending on your Nuxt version/setup
 import axios from 'axios'
 import type { AxiosInstance } from 'axios' // Optional: for stronger typing
-// import Session from 'supertokens-web-js/recipe/session' // Import if you need it for global error handling here
+import Session from 'supertokens-web-js/recipe/session' // Import Session for axios interceptors
 
 export default defineNuxtPlugin((nuxtApp) => {
   const runtimeConfig = useRuntimeConfig()
@@ -19,6 +19,16 @@ export default defineNuxtPlugin((nuxtApp) => {
       'Content-Type': 'application/json'
     }
   })
+
+  // Add SuperTokens axios interceptors for automatic authentication
+  if (process.client) {
+    try {
+      Session.addAxiosInterceptors(configuredAxios)
+      console.log('[Axios Plugin] SuperTokens axios interceptors added successfully')
+    } catch (error) {
+      console.warn('[Axios Plugin] Failed to add SuperTokens interceptors:', error)
+    }
+  }
 
   // Add request interceptor to handle FormData properly
   configuredAxios.interceptors.request.use(
@@ -52,16 +62,10 @@ export default defineNuxtPlugin((nuxtApp) => {
         console.error('[Axios Interceptor in Plugin] Error for /user/groups:', error);
       }
       
-      // Example: Global error handling for SuperTokens session expiry
-      // if (error.response && error.response.status === 401) {
-      //   Session.doesSessionExist().then(doesSessionExist => {
-      //     if (!doesSessionExist) {
-      //       // redirect to login or refresh session
-      //       console.log("Session expired, redirecting to login...");
-      //       // nuxtApp.vueApp.router.push('/auth'); // Or however you handle redirection
-      //     }
-      //   });
-      // }
+      // SuperTokens interceptors will handle 401 errors, but we can add additional logging
+      if (error.response && error.response.status === 401) {
+        console.log("[Axios Plugin] 401 Unauthorized error detected, SuperTokens will handle session refresh");
+      }
       return Promise.reject(error);
     }
   );

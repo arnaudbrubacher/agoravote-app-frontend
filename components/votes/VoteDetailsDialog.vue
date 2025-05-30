@@ -160,7 +160,17 @@ const emit = defineEmits([
 ])
 
 const canEndEarly = computed(() => {
-  return props.vote.status === 'open' && props.currentUserId === props.vote.creator_id;
+  // Only show "End Vote Early" if:
+  // 1. Vote status is 'open' 
+  // 2. User is the creator
+  // 3. Current time is before the vote's end time (voting period hasn't naturally ended)
+  const now = new Date();
+  const voteEndTime = new Date(props.vote.end_time);
+  const votingTimeHasEnded = now >= voteEndTime;
+  
+  return props.vote.status === 'open' && 
+         props.currentUserId === props.vote.creator_id && 
+         !votingTimeHasEnded;
 })
 
 const canDelete = computed(() => {
@@ -171,7 +181,15 @@ const canDelete = computed(() => {
 })
 
 const canTally = computed(() => {
-  return props.vote.status === 'closed' && props.currentUserId === props.vote.creator_id;
+  // Show "Tally & Decrypt" if:
+  // 1. Vote status is 'closed' OR voting time has naturally ended (even if status is still 'open')
+  // 2. User is the creator
+  const now = new Date();
+  const voteEndTime = new Date(props.vote.end_time);
+  const votingTimeHasEnded = now >= voteEndTime;
+  
+  return (props.vote.status === 'closed' || votingTimeHasEnded) && 
+         props.currentUserId === props.vote.creator_id;
 });
 
 const handleEncryptVote = (payload) => {

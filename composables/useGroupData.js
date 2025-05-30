@@ -11,6 +11,7 @@ export function useGroupData(groupId) {
   
   const group = ref(null)
   const isLoading = ref(false)
+  const currentUserId = ref(null) // Add a ref to store the current user ID
   
   // Helper function to get axios instance
   const getAxiosInstance = () => {
@@ -23,9 +24,31 @@ export function useGroupData(groupId) {
     throw new Error('Axios instance not available')
   }
   
+  // Function to initialize current user ID
+  const initializeCurrentUserId = async () => {
+    if (process.client) {
+      try {
+        const userId = await getUserIdFromToken()
+        currentUserId.value = userId
+        // Also sync with localStorage for backward compatibility
+        if (userId) {
+          localStorage.setItem('userId', userId)
+        }
+      } catch (error) {
+        console.error('Failed to get user ID from token:', error)
+        // Fallback to localStorage
+        currentUserId.value = localStorage.getItem('userId')
+      }
+    }
+  }
+  
   const fetchGroup = async () => {
     try {
       isLoading.value = true
+      
+      // Initialize current user ID first
+      await initializeCurrentUserId()
+      
       const axiosInstance = getAxiosInstance()
       const response = await axiosInstance.get(`/api/groups/${groupId}`) // USE PASSED INSTANCE
       group.value = response.data
@@ -35,7 +58,7 @@ export function useGroupData(groupId) {
       console.log('User role in group:', group.value?.currentUserRole)
       console.log('Is admin flag:', group.value?.currentUserIsAdmin)
       console.log('Creator ID:', group.value?.creator_id)
-      console.log('Current user ID from API:', group.value?.currentUser?.id)
+      console.log('Current user ID from session:', currentUserId.value)
       
       // Check if the user has pending status
       if (group.value && (
@@ -55,16 +78,13 @@ export function useGroupData(groupId) {
       
       // If currentUserIsAdmin is not set but we have creator_id, check if current user is the creator
       if (group.value && group.value.currentUserIsAdmin === undefined) {
-        // Get current user ID from local storage or auth store
-        const currentUserId = localStorage.getItem('userId') // Adjust based on your auth implementation
-        
-        console.log('Current user ID from localStorage:', currentUserId)
+        console.log('Current user ID from session:', currentUserId.value)
         console.log('Comparing with creator_id:', group.value.creator_id || group.value.admin_id) // Support both for backward compatibility
         
         // Set admin flag if current user is the group creator
-        if (currentUserId && 
-            ((group.value.creator_id && currentUserId === group.value.creator_id) || 
-             (group.value.admin_id && currentUserId === group.value.admin_id))) {
+        if (currentUserId.value && 
+            ((group.value.creator_id && currentUserId.value === group.value.creator_id) || 
+             (group.value.admin_id && currentUserId.value === group.value.admin_id))) {
           console.log('Setting currentUserIsAdmin to true based on creator match')
           group.value.currentUserIsAdmin = true
         }
@@ -246,10 +266,7 @@ export function useGroupData(groupId) {
     // Log all relevant data
     console.log('---- ADMIN CHECK DATA ----');
     console.log('Group data:', group.value);
-    
-    // Get current user ID from local storage or auth store
-    const currentUserId = localStorage.getItem('userId'); // Adjust based on your auth implementation
-    console.log('Current user ID from localStorage:', currentUserId);
+    console.log('Current user ID from ref:', currentUserId.value);
     console.log('Creator ID from group:', group.value.creator_id || group.value.admin_id); // Support both for backward compatibility
     
     // Check all possible admin indicators
@@ -259,26 +276,26 @@ export function useGroupData(groupId) {
     const adminInMembers = group.value?.members?.some(m => {
       const memberId = m.id || m.userId || m.user_id;
       const memberUserId = m.user?.id || m.userId || m.user_id;
-      const isCurrentUser = (memberId === currentUserId || memberUserId === currentUserId);
+      const isCurrentUser = (memberId === currentUserId.value || memberUserId === currentUserId.value);
       const isAdmin = m.isAdmin || m.is_admin || m.role === 'admin';
       
       console.log('Member admin check:', {
         memberId,
         memberUserId,
-        currentUserId,
+        currentUserId: currentUserId.value,
         isCurrentUser,
         isAdmin
       });
       
       return isCurrentUser && isAdmin;
     });
-    const isGroupCreator = currentUserId && 
+    const isGroupCreator = currentUserId.value && 
                           ((group.value.creator_id && 
-                           (currentUserId === group.value.creator_id || 
-                            currentUserId === group.value.creator_id.toString())) ||
+                           (currentUserId.value === group.value.creator_id || 
+                            currentUserId.value === group.value.creator_id.toString())) ||
                            (group.value.admin_id && 
-                           (currentUserId === group.value.admin_id || 
-                            currentUserId === group.value.admin_id.toString())));
+                           (currentUserId.value === group.value.admin_id || 
+                            currentUserId.value === group.value.admin_id.toString())));
     
     console.log('Admin checks:', {
       adminByRole,

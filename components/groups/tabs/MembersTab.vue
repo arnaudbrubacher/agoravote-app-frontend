@@ -86,6 +86,7 @@
         :is-current-user-admin="isCurrentUserAdmin"
         @resend-invite="resendInvite"
         @cancel-invite="cancelInvite"
+        @refresh-invited="handleInvitedMembersRefresh"
       />
 
       <!-- Separator -->
@@ -396,29 +397,12 @@ const promoteMember = async (member) => {
       groupId: props.group.id
     });
     
-    // Debug: Log the token being used
-    const token = localStorage.getItem('token');
-    console.log('Token being used (first 20 chars):', token ? token.substring(0, 20) + '...' : 'No token found');
-    
-    // Debug: Make a direct fetch call to see the raw response
-    const config = useRuntimeConfig()
-    const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
-    const response = await fetch(`${baseUrl}/groups/${props.group.id}/members/${memberId}/role`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ role: "admin" })
+    // Use the configured axios instance with SuperTokens interceptors
+    const response = await $axiosInstance.put(`/api/groups/${props.group.id}/members/${memberId}/role`, {
+      role: "admin"
     });
     
-    console.log('Raw response status:', response.status);
-    const responseData = await response.json();
-    console.log('Raw response data:', responseData);
-    
-    if (!response.ok) {
-      throw new Error(responseData.error || 'Failed to promote member');
-    }
+    console.log('Promote response:', response.status, response.data);
     
     // Refresh group data to update members list
     emit('refresh-group');
@@ -443,29 +427,12 @@ const demoteMember = async (member) => {
       groupId: props.group.id
     });
     
-    // Debug: Log the token being used
-    const token = localStorage.getItem('token');
-    console.log('Token being used (first 20 chars):', token ? token.substring(0, 20) + '...' : 'No token found');
-    
-    // Debug: Make a direct fetch call to see the raw response
-    const config = useRuntimeConfig()
-    const baseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
-    const response = await fetch(`${baseUrl}/groups/${props.group.id}/members/${memberId}/role`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ role: "member" })
+    // Use the configured axios instance with SuperTokens interceptors
+    const response = await $axiosInstance.put(`/api/groups/${props.group.id}/members/${memberId}/role`, {
+      role: "member"
     });
     
-    console.log('Raw response status:', response.status);
-    const responseData = await response.json();
-    console.log('Raw response data:', responseData);
-    
-    if (!response.ok) {
-      throw new Error(responseData.error || 'Failed to demote member');
-    }
+    console.log('Demote response:', response.status, response.data);
     
     // Refresh group data to update members list
     emit('refresh-group');
@@ -1074,5 +1041,11 @@ const refreshAllLists = () => {
   if (shouldRefreshGroup) {
     emit('refresh-group'); // Only emit this when absolutely necessary
   }
+}
+
+// New function to handle refresh-invited event from InvitedMembersList
+const handleInvitedMembersRefresh = () => {
+  console.log('MembersTab - Received refresh-invited event');
+  fetchInvitedMembers();
 }
 </script>

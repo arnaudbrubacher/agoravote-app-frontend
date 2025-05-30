@@ -32,7 +32,6 @@ export function useGroupPosts(groupId) {
       return posts.value
     } catch (error) {
       console.error('Failed to fetch posts:', error)
-      alert('Failed to fetch posts')
       throw error
     } finally {
       isLoadingPosts.value = false
@@ -93,7 +92,6 @@ export function useGroupPosts(groupId) {
     } catch (err) {
       console.error('Failed to create post:', err);
       console.error('Error response:', err.response?.data);
-      alert('Failed to create post: ' + (err.response?.data?.error || err.message));
       throw err;
     }
   }
@@ -140,7 +138,6 @@ export function useGroupPosts(groupId) {
     } catch (err) {
       console.error('Failed to update post:', err);
       console.error('Error response:', err.response?.data);
-      alert('Failed to update post: ' + (err.response?.data?.error || err.message));
       throw err;
     }
   }
@@ -151,9 +148,6 @@ export function useGroupPosts(groupId) {
   // Delete a post
   const deletePost = async (post) => {
     try {
-      // Confirm before deleting
-      if (!confirm('Are you sure you want to delete this post?')) return
-      
       // Call API to delete the post
       const axiosInstance = getAxiosInstance()
       await axiosInstance.delete(`/api/posts/${post.id}`)
@@ -168,11 +162,8 @@ export function useGroupPosts(groupId) {
       if (selectedPost.value?.id === post.id) {
         selectedPost.value = null
       }
-      
-      alert('Post deleted successfully')
     } catch (err) {
       console.error('Failed to delete post:', err)
-      alert('Failed to delete post: ' + (err.response?.data?.error || err.message))
       throw err
     }
   }

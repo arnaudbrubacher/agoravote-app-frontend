@@ -90,7 +90,7 @@
          <SidebarGroup class="p-4 pt-0 pb-0"> <!-- Reduced bottom padding -->
            <CollapsibleTrigger asChild>
              <Button variant="ghost" class="w-full flex justify-between items-center px-2 py-1 text-sm font-medium hover:bg-accent/50 group">
-               <span>Group Invitations ({{ pendingEmailInvites.length }})</span>
+               <span>Group Invitations ({{ totalInvitationsCount }})</span>
                <ChevronDown class="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180 flex-shrink-0" />
              </Button>
            </CollapsibleTrigger>
@@ -101,8 +101,8 @@
                  <Loader2 class="h-5 w-5 animate-spin inline-block" />
                  <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
                </div>
-               <p v-else-if="pendingEmailInvites.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
-                 No pending email invitations.
+               <p v-else-if="pendingEmailInvites.length === 0 && pendingInvitationGroups.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
+                 No pending invitations.
                </p>
                <div v-else class="space-y-2">
                  <GroupCard
@@ -135,7 +135,7 @@
                         <Button
                           variant="default"
                           size="icon"
-                          class="h-7 w-7 rounded-full"
+                          class="h-7 w-7 rounded-full bg-green-600 hover:bg-green-700 text-white"
                           title="Accept"
                           @click.stop="acceptEmailInvite(invite)"
                         >
@@ -143,6 +143,56 @@
                         </Button>
                       </div>
                     </template>
+                 </GroupCard>
+                 <GroupCard
+                   v-for="group in pendingInvitationGroups"
+                   :key="group.id"
+                   :group="group"
+                   :clickable="false" 
+                   :show-private-badge="false" 
+                   :show-actions="false" 
+                   :is-active="isActiveGroup(group.id)"
+                   :has-actions="true"
+                   class="py-2 px-2 shadow-none hover:bg-gray-100 rounded-md"
+                   :class="{ 'border-l-2 border-gray-400 bg-gray-100 shadow-sm': isActiveGroup(group.id) }"
+                 >
+                   <template #top-right-actions>
+                      <div class="flex items-center space-x-1">
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          class="h-7 w-7 rounded-full"
+                          title="Cancel"
+                          @click.stop="cancelPendingGroup(group)"
+                        >
+                          <X class="h-3.5 w-3.5" />
+                        </Button>
+                        
+                        <Button
+                          v-if="hasDocuments(group)"
+                          variant="secondary" 
+                          size="icon"
+                          class="h-7 w-7 rounded-full"
+                          title="Review Documents"
+                          @click.stop="manageDocuments(group)"
+                        >
+                          <FileText class="h-3.5 w-3.5" />
+                        </Button>
+                        
+                        <Button
+                          v-else-if="!isWaitingForAdminApproval(group) && 
+                                     (!group.membership?.invitation_accepted || 
+                                      (group.membership?.status === 'pending' && !group.invitationToken))"
+                          variant="default"
+                          size="icon"
+                          class="h-7 w-7 rounded-full bg-green-600 hover:bg-green-700 text-white"
+                          title="Accept"
+                          @click.stop="acceptPendingGroup(group)"
+                        >
+                          <Check class="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                   </template>
                  </GroupCard>
                </div>
              </SidebarGroupContent>
@@ -180,6 +230,7 @@
                    :show-private-badge="false" 
                    :show-actions="false" 
                    :is-active="isActiveGroup(group.id)"
+                   :has-actions="true"
                    class="py-2 px-2 shadow-none hover:bg-gray-100 rounded-md"
                    :class="{ 'border-l-2 border-gray-400 bg-gray-100 shadow-sm': isActiveGroup(group.id) }"
                  >
@@ -219,7 +270,7 @@
                                         (group.membership?.status === 'pending' && !group.invitationToken))"
                             variant="default"
                             size="icon"
-                            class="h-7 w-7 rounded-full"
+                            class="h-7 w-7 rounded-full bg-green-600 hover:bg-green-700 text-white"
                             title="Accept"
                             @click.stop="acceptPendingGroup(group)"
                           >
@@ -468,7 +519,17 @@ const pendingGroups = computed(() => {
       console.log(`Excluding group ${group.name} from Pending Groups (already in Email Invites)`);
       return false;
     }
-    // Check primary membership status first
+
+    // Check if this is an invitation - these should go to Group Invitations, not Pending Admissions
+    if ((group.isInvitation === true || group.isInvitation === undefined) && 
+        group.membership && 
+        group.membership.status === 'pending' && 
+        group.membership.invitation_accepted !== true) {
+      console.log(`Excluding group ${group.name} from Pending Groups (it's an invitation)`);
+      return false;
+    }
+
+    // Check primary membership status for user-initiated requests
     if (group.membership && (group.membership.status === 'pending' || group.membership.status === 'pending_approval')) {
       console.log(`Including group with status '${group.membership.status}' in Pending Groups: ${group.name}`);
       return true;
@@ -484,6 +545,28 @@ const pendingGroups = computed(() => {
     }
     return false;
   });
+})
+
+// Get invitation-type groups that should appear in Group Invitations
+const pendingInvitationGroups = computed(() => {
+  if (!props.groups || props.groups.length === 0) return [];
+
+  return props.groups.filter(group => {
+    // Include groups that are invitations
+    if ((group.isInvitation === true || group.isInvitation === undefined) && 
+        group.membership && 
+        group.membership.status === 'pending' && 
+        group.membership.invitation_accepted !== true) {
+      console.log(`Including group ${group.name} in Group Invitations (it's an invitation)`);
+      return true;
+    }
+    return false;
+  });
+})
+
+// Combined invitations count for the header
+const totalInvitationsCount = computed(() => {
+  return pendingEmailInvites.value.length + pendingInvitationGroups.value.length;
 })
 
 // Function to fetch pending email invitations
