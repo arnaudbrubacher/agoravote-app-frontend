@@ -215,16 +215,30 @@ onMounted(() => {
   
   window.addEventListener('user-data-updated', handleDataUpdated)
   window.addEventListener('group-data-updated', handleDataUpdated)
+  window.addEventListener('refresh-members-list', handleRefreshMembersList)
+  window.addEventListener('refresh-invited-members', handleRefreshMembersList)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('user-data-updated', handleDataUpdated)
   window.removeEventListener('group-data-updated', handleDataUpdated)
+  window.removeEventListener('refresh-members-list', handleRefreshMembersList)
+  window.removeEventListener('refresh-invited-members', handleRefreshMembersList)
 })
 
 const handleDataUpdated = () => {
   console.log('MembersList received data update event')
   emit('refresh-members')
+}
+
+const handleRefreshMembersList = (event) => {
+  console.log('[MembersList] Received refresh event:', event.detail);
+  if (event.detail?.groupId === props.groupId) {
+    console.log('[MembersList] Event matches current group ID. Refreshing members...');
+    emit('refresh-members');
+  } else {
+    console.log('[MembersList] Event is for a different group. Ignoring.');
+  }
 }
 
 const hasDocuments = (member) => {
@@ -341,7 +355,7 @@ const handleMemberRemove = async (member) => {
   
   // Show confirmation dialog using MembersList's useAlertDialog instance
   showConfirm(
-    'Confirm Removal',
+    'Remove member',
     `Are you sure you want to remove ${member.name} from this group?`,
     async () => {
       // User confirmed - call the API

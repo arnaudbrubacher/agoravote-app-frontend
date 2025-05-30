@@ -99,6 +99,39 @@ export function useGroupData(groupId) {
     } catch (error) {
       console.error('Failed to fetch group:', error)
       
+      // Enhanced detection of database connection issues
+      const is404 = error.response && error.response.status === 404;
+      const is500 = error.response && error.response.status === 500;
+      
+      const isDatabaseConnectionIssue = (
+        // Connection-related errors
+        (error.message && (
+          error.message.includes('connection') || 
+          error.message.includes('timeout') ||
+          error.message.includes('network') ||
+          error.message.includes('ECONNREFUSED') ||
+          error.message.includes('ENOTFOUND')
+        )) ||
+        // Backend error messages indicating database issues
+        (error.response?.data?.error && (
+          error.response.data.error.includes('connection') ||
+          error.response.data.error.includes('SUPERUSER attribute') ||
+          error.response.data.error.includes('remaining connection slots') ||
+          error.response.data.error.includes('database') ||
+          error.response.data.error.includes('FATAL')
+        )) ||
+        // Server errors (500) often indicate database issues
+        is500 ||
+        // Generic backend error without specific message (likely database issue)
+        (is404 && !error.response?.data?.message)
+      );
+      
+      // For database connection issues, add a flag to the error to prevent redirects
+      if (isDatabaseConnectionIssue) {
+        console.warn('Database connection issue detected in fetchGroup, flagging error')
+        error.isDatabaseConnectionIssue = true;
+      }
+      
       // Check if this is a pending membership error
       if (error.response?.data?.pending_membership) {
         // Add the active groups to the error object so the component can handle it

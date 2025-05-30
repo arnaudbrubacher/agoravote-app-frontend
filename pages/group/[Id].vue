@@ -401,7 +401,24 @@ onMounted(async () => {
     await fetchVotes(); // Fetch votes
   } catch (err) {
     console.error('[Group Page] Error fetching initial data:', err);
-    error.value = 'Failed to load group data.';
+    
+    // Check if this is a database connection issue
+    if (err.isDatabaseConnectionIssue) {
+      console.warn('[Group Page] Database connection issue detected on initial load');
+      error.value = 'Temporary database connection issue. Please refresh the page in a moment.';
+      showAlert('Connection Issue', 'Temporary database connection issue. Please refresh the page in a moment.');
+    } else {
+      error.value = 'Failed to load group data.';
+      // For actual 404s (group not found), redirect to profile after delay
+      if (err.response?.status === 404 && !err.isDatabaseConnectionIssue) {
+        showAlert('Group Not Found', 'This group no longer exists or you no longer have access to it.');
+        setTimeout(() => {
+          router.push('/profile');
+        }, 2000);
+      } else {
+        showAlert('Error', 'Failed to load group data. Please try again later.');
+      }
+    }
   } finally {
     loading.value = false;
   }
@@ -777,9 +794,41 @@ const refreshGroupData = async () => {
   } catch (error) {
     console.warn('Error refreshing group data:', error)
     
-    // Only redirect for actual 404 errors (confirmed group no longer exists)
-    if (error.response && error.response.status === 404) {
-      console.log('Group no longer exists, redirecting to profile page')
+    // Check if this is a temporary database/connection issue vs a real 404
+    const is404 = error.response && error.response.status === 404;
+    const is500 = error.response && error.response.status === 500;
+    
+    // Enhanced detection of database connection issues
+    const isDatabaseConnectionIssue = (
+      // Connection-related errors
+      (error.message && (
+        error.message.includes('connection') || 
+        error.message.includes('timeout') ||
+        error.message.includes('network') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ENOTFOUND')
+      )) ||
+      // Backend error messages indicating database issues
+      (error.response?.data?.error && (
+        error.response.data.error.includes('connection') ||
+        error.response.data.error.includes('SUPERUSER attribute') ||
+        error.response.data.error.includes('remaining connection slots') ||
+        error.response.data.error.includes('database') ||
+        error.response.data.error.includes('FATAL')
+      )) ||
+      // Server errors (500) often indicate database issues
+      is500 ||
+      // Generic backend error without specific message (likely database issue)
+      (is404 && !error.response?.data?.message)
+    );
+    
+    if ((is404 || is500) && isDatabaseConnectionIssue) {
+      // This is likely a temporary database connection issue, don't redirect
+      console.warn('HTTP error appears to be due to database connection issues, not redirecting')
+      showAlert('Connection Issue', 'Temporary database connection issue. The invitation was sent successfully. Please refresh the page in a moment.')
+      return; // Exit early without redirecting
+    } else if (is404 && !isDatabaseConnectionIssue) {
+      console.log('Confirmed group no longer exists (non-connection 404), redirecting to profile page')
       
       // Show alert before redirecting
       showAlert('Group Not Found', 'This group no longer exists or you no longer have access to it.')
@@ -983,8 +1032,9 @@ const handleInviteMember = async (email) => {
     // Dispatch success event for MembersTab to catch
     window.dispatchEvent(new CustomEvent('invite-member-success'));
     
-    // Refresh data as needed
-    await fetchGroup();
+    // Don't call fetchGroup() here as it can cause redirect issues due to temporary DB connection problems
+    // The invitation events already trigger proper refreshes of the member lists
+    console.log(`[pages/group/[Id].vue] Invitation sent successfully, events dispatched for list refreshes`);
   } catch (error) {
     console.error(`[pages/group/[Id].vue] Error inviting member by email:`, error);
     

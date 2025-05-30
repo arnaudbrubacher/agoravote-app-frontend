@@ -30,6 +30,21 @@
 
       <!-- Settings Form -->
       <div v-else-if="userData" class="p-8">
+        <!-- Add loading overlay for account deletion -->
+        <div v-if="deleteLoading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full mx-4">
+            <div class="flex items-center justify-center mb-4">
+              <LucideIcon name="RefreshCw" size="8" class="h-8 w-8 animate-spin text-destructive" />
+            </div>
+            <div class="text-center">
+              <h3 class="text-lg font-semibold mb-2">Deleting Account</h3>
+              <p class="text-sm text-muted-foreground">
+                Please wait while we delete your account and all associated data...
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div class="space-y-8">
           <!-- Profile Picture Section -->
           <div class="flex flex-col items-center pb-8">
@@ -47,6 +62,7 @@
               <div 
                 class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 rounded-full flex items-center justify-center transition-all cursor-pointer"
                 @click="triggerFileInput"
+                :class="{ 'pointer-events-none opacity-50': deleteLoading }"
               >
                 <Camera class="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -57,6 +73,7 @@
               accept="image/*"
               class="hidden"
               @change="handleProfilePictureUpload"
+              :disabled="deleteLoading"
             />
             <Button
               type="button"
@@ -64,6 +81,7 @@
               size="sm"
               @click="triggerFileInput"
               class="flex items-center"
+              :disabled="deleteLoading"
             >
               <Camera class="h-4 w-4 mr-2" />
               Change Profile Picture
@@ -71,7 +89,7 @@
           </div>
 
           <!-- Personal Information Section -->
-          <div class="space-y-6">
+          <div class="space-y-6" :class="{ 'opacity-50 pointer-events-none': deleteLoading }">
             
             <!-- Name Field -->
             <div class="space-y-2">
@@ -82,12 +100,13 @@
                   v-model="userNameEdit"
                   class="flex-grow"
                   placeholder="Enter display name"
+                  :disabled="deleteLoading"
                 />
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   @click="saveSettings" 
-                  :disabled="!isNameChanged || saveLoading"
+                  :disabled="!isNameChanged || saveLoading || deleteLoading"
                   class="flex-shrink-0 border disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Save name"
                 >
@@ -123,7 +142,7 @@
                     variant="link" 
                     class="text-xs pl-1 h-auto p-0"
                     @click="resendVerification"
-                    :disabled="resendLoading"
+                    :disabled="resendLoading || deleteLoading"
                   >
                     {{ resendLoading ? 'Sending...' : 'Resend Verification' }}
                   </Button>
@@ -140,6 +159,7 @@
                   variant="outline"
                   size="sm"
                   @click="showPasswordChange = true"
+                  :disabled="deleteLoading"
                 >
                   Change Password
                 </Button>
@@ -154,17 +174,37 @@
                  variant="destructive" 
                  @click="confirmDeleteAccount"
                  :disabled="deleteLoading"
+                 class="relative"
                >
-                 <Trash class="mr-2 h-4 w-4" />
-                 {{ deleteLoading ? 'Deleting...' : 'Delete Account' }}
+                 <LucideIcon 
+                   v-if="deleteLoading" 
+                   name="RefreshCw" 
+                   size="4" 
+                   class="h-4 w-4 mr-2 animate-spin" 
+                 />
+                 <Trash v-else class="mr-2 h-4 w-4" />
+                 {{ deleteLoading ? 'Deleting Account...' : 'Delete Account' }}
                </Button>
+             </div>
+             
+             <!-- Warning message during deletion -->
+             <div v-if="deleteLoading" class="bg-red-50 p-4 rounded-lg border border-red-200">
+               <div class="flex items-start">
+                 <AlertCircle class="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+                 <div>
+                   <p class="text-sm font-medium text-red-700">Account Deletion in Progress</p>
+                   <p class="text-sm text-red-600 mt-1">
+                     Please do not close this page or navigate away. This process may take a few moments.
+                   </p>
+                 </div>
+               </div>
              </div>
           </div>
         </div>
       </div>
 
       <!-- Password Change Dialog -->
-      <Dialog :open="showPasswordChange" @update:open="showPasswordChange = $event">
+      <Dialog :open="showPasswordChange && !deleteLoading" @update:open="showPasswordChange = $event">
         <DialogContent class="w-full max-w-lg">
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
@@ -194,8 +234,14 @@
           </div>
 
           <DialogFooter>
-            <Button variant="outline" @click="showPasswordChange = false">Cancel</Button>
-            <Button type="submit" @click="changePasswordHandler" :disabled="changePasswordLoading">
+            <Button variant="outline" @click="showPasswordChange = false" :disabled="deleteLoading">Cancel</Button>
+            <Button type="submit" @click="changePasswordHandler" :disabled="changePasswordLoading || deleteLoading">
+               <LucideIcon 
+                 v-if="changePasswordLoading" 
+                 name="RefreshCw" 
+                 size="4" 
+                 class="h-4 w-4 mr-2 animate-spin" 
+               />
                {{ changePasswordLoading ? 'Changing...' : 'Change Password' }}
             </Button>
           </DialogFooter>
@@ -323,7 +369,7 @@ const handleProfilePictureUpload = async (event) => {
     await updateProfilePicture(userData.value.id, file) // Pass the user ID
     await fetchCurrentUserProfile() // Refresh data after upload
     window.dispatchEvent(new CustomEvent('user-data-updated')) // Notify other components
-    alert('Profile picture updated successfully.')
+    alert('Profile picture updated successfully.', 'New profile picture')
   } catch (uploadError) {
     console.error('Failed to upload profile picture:', uploadError)
     alert('Failed to upload profile picture: ' + (uploadError.response?.data?.error || uploadError.message || 'Unknown error'))
@@ -414,38 +460,74 @@ const changePasswordHandler = async () => {
 
 // Confirm account deletion
 const confirmDeleteAccount = async () => {
+  // Prevent deletion during other loading states
+  if (deleteLoading.value || saveLoading.value || changePasswordLoading.value) {
+    alert('Please wait for current operations to complete before deleting your account.')
+    return
+  }
+
  const confirmed = await confirm(
-   'Are you sure you want to delete your account? This action is permanent and cannot be undone.', 
-   'Confirm Account Deletion', 
-   { actionText: 'Yes, Delete My Account', cancelText: 'Cancel', variant: 'destructive' }
+    'Are you sure you want to delete your account? This action is permanent and cannot be undone.\n\nThis will:\n• Delete all your personal data\n• Remove you from all groups\n• Delete all your posts and votes\n• Cancel any active subscriptions', 
+    'Delete Account - Final Warning', 
+    { actionText: 'Yes, Delete My Account Forever', cancelText: 'Cancel', variant: 'destructive' }
  )
+  
  if (confirmed) {
+    // Show immediate feedback that deletion is starting
+    deleteLoading.value = true
+    
+    // Small delay to ensure UI updates before API call
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
     deleteAccount()
   }
 }
 
 // Delete user account
 const deleteAccount = async () => {
-  deleteLoading.value = true;
   try {
+    console.log('Starting account deletion process...')
+    
     // Backend delete should handle session invalidation via SuperTokens
     await authDeleteUserAccount($axiosInstance); 
+    
+    console.log('Account deletion successful, signing out...')
 
     // Frontend sign out as a fallback / cleanup
     await signOut(); 
+    
+    // Show success message briefly before redirect
+    alert('Your account has been successfully deleted.')
     
     // Redirect to auth page with full refresh
     window.location.href = '/auth'; 
 
   } catch (delError) {
     console.error('Failed to delete account:', delError);
-    alert(`Failed to delete account: ${delError.message || 'Unknown error'}`);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Unknown error occurred'
+    if (delError.response?.data?.error) {
+      errorMessage = delError.response.data.error
+    } else if (delError.message) {
+      errorMessage = delError.message
+    }
+    
+    // Check for specific error types
+    if (delError.response?.status === 401) {
+      errorMessage = 'Authentication failed. Please log in again and try deleting your account.'
+    } else if (delError.response?.status === 403) {
+      errorMessage = 'You do not have permission to delete this account.'
+    } else if (delError.response?.status >= 500) {
+      errorMessage = 'Server error occurred. Please try again later or contact support.'
+    }
+    
+    alert(`Failed to delete account: ${errorMessage}`);
     console.error('Error details:', delError.response?.data || delError);
   } finally {
     deleteLoading.value = false;
   }
 }
-
 
 // Resend verification email handler
 const resendVerification = async () => {

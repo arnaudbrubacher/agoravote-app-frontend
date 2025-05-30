@@ -141,23 +141,6 @@
       @submit="handleInviteSubmit"
     />
 
-    <!-- Success Alert Dialog -->
-    <AlertDialog :open="showSuccessDialog" @update:open="showSuccessDialog = $event">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Success</AlertDialogTitle>
-          <AlertDialogDescription>
-            {{ successMessage }}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogAction @click="showSuccessDialog = false">
-            OK
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
     <!-- Error Alert Dialog -->
     <AlertDialog :open="showErrorDialog" @update:open="showErrorDialog = $event">
       <AlertDialogContent>
@@ -203,8 +186,10 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog'
+import { useAlert } from '@/composables/useAlert'
 
 const { $axiosInstance } = useNuxtApp()
+const { alert, confirm } = useAlert()
 
 const props = defineProps({
   group: {
@@ -224,10 +209,6 @@ const props = defineProps({
     required: true
   }
 })
-
-// Variables for success alert dialog
-const showSuccessDialog = ref(false)
-const successMessage = ref('')
 
 // Variables for error alert dialog
 const showErrorDialog = ref(false)
@@ -326,11 +307,15 @@ onMounted(async () => {
   
   // Add event listener for refresh-pending-members event
   window.addEventListener('refresh-pending-members', handleRefreshPendingMembers)
+  
+  // Add event listener for members-refresh-button event (same as manual refresh button)
+  window.addEventListener('members-refresh-button', handleMembersRefreshButton)
 })
 
 onBeforeUnmount(() => {
   // Remove event listener when component is unmounted
   window.removeEventListener('refresh-pending-members', handleRefreshPendingMembers)
+  window.removeEventListener('members-refresh-button', handleMembersRefreshButton)
 })
 
 // Watch for changes in the isCurrentUserAdmin prop
@@ -537,10 +522,20 @@ const fetchInvitedMembers = async () => {
     // Assumes backend endpoint GET /groups/{groupId}/invitations exists
     const response = await $axiosInstance.get(`/api/groups/${props.group.id}/invitations`)
     console.log('[MembersTab] Raw API response for invited members:', response.data);
-    // Filter for invitations that are not used and not expired (if backend doesn't handle this)
-    invitedMembers.value = (response.data || []).filter(invite =>
-      !invite.used // && (!invite.expires_at || new Date(invite.expires_at) > new Date()) // Optional: Filter expired on frontend
-    ).map(invite => ({
+    // Filter for invitations that are active (not used, cancelled, expired, or declined)
+    invitedMembers.value = (response.data || []).filter(invite => {
+      // Check various fields that might indicate the invitation is no longer active
+      const isUsed = invite.used === true;
+      const isCancelled = invite.cancelled === true || invite.status === 'cancelled';
+      const isDeclined = invite.declined === true || invite.status === 'declined';
+      const isExpired = invite.expires_at && new Date(invite.expires_at) <= new Date();
+      
+      // Log the invitation status for debugging
+      console.log(`Invitation ${invite.email}: used=${isUsed}, cancelled=${isCancelled}, declined=${isDeclined}, expired=${isExpired}, status=${invite.status}`);
+      
+      // Keep only invitations that are not used, cancelled, declined, or expired
+      return !isUsed && !isCancelled && !isDeclined && !isExpired;
+    }).map(invite => ({
        ...invite,
        email: invite.email || 'No Email Provided',
     }));
@@ -567,11 +562,23 @@ const resendInvite = async (invitation) => {
         // Assumes backend endpoint POST /groups/{groupId}/invitations/{invitationId}/resend exists
         await $axiosInstance.post(`/api/groups/${props.group.id}/invitations/${invitation.id}/resend`);
         
-        // Show success message using ShadCN alert dialog
-        successMessage.value = `Invitation resent to ${invitation.email}`;
-        showSuccessDialog.value = true;
+        // No success dialog needed - the confirmation was enough feedback
         
-        // No need to refetch, invite stays in the list, maybe update timestamp if backend provides it
+        // Dispatch events to trigger auto-refresh in all member list components
+        window.dispatchEvent(new CustomEvent('refresh-invited-members', { 
+            detail: { groupId: props.group.id, resendedEmail: invitation.email } 
+        }));
+        window.dispatchEvent(new CustomEvent('refresh-pending-members', { 
+            detail: { groupId: props.group.id } 
+        }));
+        window.dispatchEvent(new CustomEvent('refresh-members-list', { 
+            detail: { groupId: props.group.id } 
+        }));
+        
+        // Refetch invited members to ensure consistency (as backup)
+        await fetchInvitedMembers();
+        
+        console.log(`[MembersTab] Invitation resended successfully for ${invitation.email}. Refresh events dispatched.`);
     } catch (error) {
         console.error('Failed to resend invite:', error);
         errorMessage.value = 'Failed to resend invite: ' + (error.response?.data?.error || error.message);
@@ -587,17 +594,42 @@ const cancelInvite = async (invitation) => {
         return;
     }
     
+    // Show confirmation dialog before cancelling
+    const confirmed = await confirm(
+        `Are you sure you want to cancel the invitation for ${invitation.email}? This action cannot be undone.`,
+        'Cancel Invitation',
+        { actionText: 'Yes, Cancel Invitation', cancelText: 'No, Keep Invitation', variant: 'destructive' }
+    );
+    
+    if (!confirmed) {
+        return; // User chose not to cancel
+    }
+    
     console.log('Canceling invite:', invitation);
     try {
         // Assumes backend endpoint DELETE /groups/{groupId}/invitations/{invitationId} exists
         await $axiosInstance.delete(`/api/groups/${props.group.id}/invitations/${invitation.id}`);
         
-        // Show success message using ShadCN alert dialog
-        successMessage.value = `Invitation for ${invitation.email} cancelled.`;
-        showSuccessDialog.value = true;
+        // Immediately remove the cancelled invitation from the local state
+        invitedMembers.value = invitedMembers.value.filter(invite => invite.id !== invitation.id);
         
-        // Refetch invited members to update the list
-        fetchInvitedMembers();
+        // No success dialog needed - the confirmation was enough feedback
+        
+        // Dispatch events to trigger auto-refresh in all member list components
+        window.dispatchEvent(new CustomEvent('refresh-invited-members', { 
+            detail: { groupId: props.group.id, cancelledEmail: invitation.email } 
+        }));
+        window.dispatchEvent(new CustomEvent('refresh-pending-members', { 
+            detail: { groupId: props.group.id } 
+        }));
+        window.dispatchEvent(new CustomEvent('refresh-members-list', { 
+            detail: { groupId: props.group.id } 
+        }));
+        
+        // Refetch invited members to ensure consistency (as backup)
+        await fetchInvitedMembers();
+        
+        console.log(`[MembersTab] Invitation cancelled successfully for ${invitation.email}. Refresh events dispatched.`);
     } catch (error) {
         console.error('Failed to cancel invite:', error);
         errorMessage.value = 'Failed to cancel invite: ' + (error.response?.data?.error || error.message);
@@ -635,8 +667,15 @@ const acceptPendingMember = async (member) => {
       return mId !== memberId
     })
     
-    // Refresh the group data to update the members list
-    emit('refresh-group')
+    // DO NOT emit refresh-group here as it can cause 404 redirect issues due to temporary DB connection problems
+    // Instead, dispatch events to refresh specific member lists
+    window.dispatchEvent(new CustomEvent('refresh-members-list', {
+      detail: { groupId: props.group.id, action: 'member-approved' }
+    }))
+    
+    window.dispatchEvent(new CustomEvent('refresh-pending-members', {
+      detail: { groupId: props.group.id, action: 'member-approved' }
+    }))
     
     // Show success message using the alert dialog
     const memberName = member.name || member.user?.name || 'Member'
@@ -687,12 +726,12 @@ const declinePendingMember = async (member) => {
 const handlePendingMembersRefresh = (data) => {
   console.log('Handling refresh from PendingMembersList', data);
   
-  // Refresh pending members
+  // Refresh pending members and invited members lists only
   fetchPendingMembers();
   fetchInvitedMembers();
   
-  // Also refresh the entire group data to update active members
-  emit('refresh-group');
+  // DO NOT emit refresh-group here as it can cause 404 redirect issues due to temporary DB connection problems
+  // The member list components handle their own refreshes via events
   
   // If we have data about an approved member, log it
   if (data && data.action === 'approve') {
@@ -895,6 +934,17 @@ const handleRefreshPendingMembers = (event) => {
     console.log('MembersTab - Refreshing pending members for group:', props.group.id)
     fetchPendingMembers()
     fetchInvitedMembers()
+  }
+}
+
+// Handler for members-refresh-button event (same as manual refresh button)
+const handleMembersRefreshButton = (event) => {
+  console.log('MembersTab - Received members-refresh-button event:', event.detail)
+  
+  // Check if the event is for this group
+  if (event.detail && event.detail.groupId === props.group.id) {
+    console.log('MembersTab - Triggering same refresh as manual refresh button for group:', props.group.id)
+    refreshPendingAndInvited()
   }
 }
 

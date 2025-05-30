@@ -37,9 +37,6 @@
           <span v-else-if="isInvited && !hideInvitedBadge" class="ml-2 text-xs bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-full">
             Invited
           </span>
-          <span v-if="isPending && !invitationAccepted && !member.isJoinRequest" class="ml-2 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
-            Awaiting Acceptance
-          </span>
         </div>
         <span class="text-sm text-muted-foreground">{{ getMemberEmail(member) }}</span>
       </div>
@@ -216,7 +213,7 @@
                   class="h-9 w-9"
                   :disabled="isCurrentMember(member)"
                 >
-                  <LucideIcon name="Trash" size="4" class="h-4 w-4" />
+                  <LucideIcon name="UserMinus" size="4" class="h-4 w-4" />
                 </Button>
              </TooltipTrigger>
              <TooltipContent>

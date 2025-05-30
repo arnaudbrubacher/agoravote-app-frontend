@@ -26,6 +26,7 @@ export default defineNuxtPlugin(nuxtApp => {
   })
 
   const alert = (message: string, title?: string) => {
+    console.log('[alertDialog plugin] alert called with:', { message, title })
     state.options = {
       title: title || 'Alert',
       message,
@@ -35,10 +36,13 @@ export default defineNuxtPlugin(nuxtApp => {
       onAction: null,
       onCancel: null,
     }
+    console.log('[alertDialog plugin] setting state.isOpen to true')
     state.isOpen = true
+    console.log('[alertDialog plugin] state after setting:', { ...state })
     
     return new Promise<void>((resolve) => {
       state.options.onAction = () => {
+        console.log('[alertDialog plugin] onAction called')
         resolve()
       }
     })

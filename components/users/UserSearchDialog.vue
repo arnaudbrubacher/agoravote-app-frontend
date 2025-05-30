@@ -282,11 +282,27 @@ const addUser = async (user) => {
     await $axiosInstance.post(`/api/groups/${props.groupId}/members`, { user_id: user.id })
     showAlert('Success', `User ${user.name || user.email} has been invited to the group.`)
     emit('user-added', user)
+    
     // Update user status locally to reflect they've been added/invited
     const foundUser = searchResults.value.find(u => u.id === user.id);
     if (foundUser) {
       foundUser.status = 'invited'; // Or whatever status the backend sets initially
     }
+    
+    // Add a small delay to allow the backend to process the invitation before refreshing
+    setTimeout(() => {
+      // Dispatch event to trigger the same refresh as the refresh button
+      console.log(`[UserSearchDialog] Dispatching members-refresh-button event for group: ${props.groupId}`);
+      window.dispatchEvent(new CustomEvent('members-refresh-button', {
+        detail: {
+          groupId: props.groupId,
+          action: 'member-invited',
+          invitedUserEmail: user.email,
+          invitedUserName: user.name || user.email
+        }
+      }));
+    }, 500); // 500ms delay to allow backend processing
+    
   } catch (err) {
     console.error('Error adding user to group:', err)
     showAlert('Error', `Failed to add user: ${err.response?.data?.error || 'Please try again.'}`)

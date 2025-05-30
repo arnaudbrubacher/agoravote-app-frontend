@@ -61,8 +61,20 @@ const emit = defineEmits(['resend-invite', 'cancel-invite', 'refresh-invited']);
 const handleRefreshInvitedMembers = (event) => {
   console.log('[InvitedMembersList] Received refresh-invited-members event:', event.detail);
   if (event.detail?.groupId === props.groupId) {
+    console.log('[InvitedMembersList] Event matches current group ID. Refreshing invited members...');
+    
+    // If we have the cancelled email, immediately remove it from local state for instant UI update
+    if (event.detail.cancelledEmail) {
+      console.log(`[InvitedMembersList] Immediately removing cancelled invitation for: ${event.detail.cancelledEmail}`);
+      processedInvitations.value = processedInvitations.value.filter(invite => 
+        invite.email !== event.detail.cancelledEmail
+      );
+    }
+    
     // Emit refresh request to parent component
     emit('refresh-invited');
+  } else {
+    console.log('[InvitedMembersList] Event is for a different group. Ignoring.');
   }
 };
 
@@ -72,22 +84,38 @@ const handleGroupDataUpdated = () => {
   emit('refresh-invited');
 };
 
+// Handle general refresh events
+const handleGeneralRefresh = (event) => {
+  console.log('[InvitedMembersList] Received general refresh event:', event.detail);
+  if (event.detail?.groupId === props.groupId) {
+    emit('refresh-invited');
+  }
+};
+
 // Setup event listeners
 onMounted(() => {
   window.addEventListener('refresh-invited-members', handleRefreshInvitedMembers);
   window.addEventListener('group-data-updated', handleGroupDataUpdated);
+  window.addEventListener('refresh-members-list', handleGeneralRefresh);
 });
 
 // Cleanup event listeners
 onUnmounted(() => {
   window.removeEventListener('refresh-invited-members', handleRefreshInvitedMembers);
   window.removeEventListener('group-data-updated', handleGroupDataUpdated);
+  window.removeEventListener('refresh-members-list', handleGeneralRefresh);
 });
 
 // Watch for changes in invitedMembers and process them
 watch(() => props.invitedMembers, async (newInvitations) => {
+  console.log('[InvitedMembersList] invitedMembers prop changed:', newInvitations?.length || 0, 'invitations');
+  
   if (newInvitations && newInvitations.length > 0) {
     await processInvitations(newInvitations);
+  } else {
+    // If no invitations or empty array, clear the processed list
+    console.log('[InvitedMembersList] No invitations, clearing processed list');
+    processedInvitations.value = [];
   }
 }, { immediate: true });
 

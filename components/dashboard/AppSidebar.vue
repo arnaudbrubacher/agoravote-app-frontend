@@ -28,18 +28,19 @@
             <Button
               variant="outline"
               size="sm"
-              class="flex-1 justify-start"
+              class="flex-1 justify-start hover:bg-gray-200"
               :class="route.path === '/usersettings'
-                       ? 'border-gray-600 bg-gray-100 shadow text-gray-800 border-l-2'
-                       : 'border-gray-200'"
+                       ? 'border-gray-600 bg-gray-600 shadow text-gray-800 border-l-2'
+                       : 'border-gray-300'"
               @click="goToSettings"
             >
               <Settings class="mr-2 h-4 w-4" />
               Settings
             </Button>
-            <Button variant="outline" size="sm" class="flex-1 justify-start text-red-600 hover:text-red-600 hover:bg-red-50 border-gray-200" @click="showLogoutDialog = true">
-              <LogOut class="mr-2 h-4 w-4" />
-              Logout
+            <Button variant="outline" size="sm" class="flex-1 justify-start text-red-600 hover:text-red-600 hover:bg-red-100 border-gray-300" @click="showLogoutDialog = true" :disabled="isLoggingOut">
+              <LogOut v-if="!isLoggingOut" class="mr-2 h-4 w-4" />
+              <Loader2 v-else class="mr-2 h-4 w-4 animate-spin" />
+              {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
             </Button>
           </div>
         </div>
@@ -58,7 +59,7 @@
             <SidebarMenuItem>
               <SidebarMenuButton
                 @click="router.push('/find-group')"
-                class="w-full justify-start border"
+                class="w-full justify-start border hover:bg-gray-200"
                 :class="route.path === '/find-group'
                          ? 'border-gray-600 bg-gray-100 shadow text-gray-800 border-l-2'
                          : 'border-gray-300'"
@@ -70,7 +71,7 @@
             <SidebarMenuItem>
               <SidebarMenuButton
                 @click="router.push('/create-group')"
-                class="w-full justify-start border"
+                class="w-full justify-start border hover:bg-gray-200"
                 :class="route.path === '/create-group'
                          ? 'border-gray-600 bg-gray-100 shadow text-gray-800 border-l-2'
                          : 'border-gray-300'"
@@ -315,7 +316,7 @@
                    :clickable="true"
                    :is-active="isActiveGroup(group.id)"
                    @click="navigateToGroup(group.id)"
-                   :show-private-badge="true" 
+                   :show-private-badge="false" 
                    :show-actions="false" 
                    class="py-2 px-2 shadow-none hover:bg-gray-100 rounded-md"
                    :class="{ 'border-l-2 border-gray-600 bg-gray-100 shadow': isActiveGroup(group.id) }"
@@ -341,17 +342,65 @@
   />
 
   <!-- Logout Confirmation Dialog -->
-  <AlertDialog :open="showLogoutDialog" @update:open="showLogoutDialog = $event">
+  <AlertDialog :open="showLogoutDialog && !isLoggingOut" @update:open="showLogoutDialog = $event">
     <AlertDialogContent>
       <AlertDialogHeader>
-        <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+        <AlertDialogTitle>Logout</AlertDialogTitle>
         <AlertDialogDescription>
           Are you sure you want to log out of AgoraVote?
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel @click="showLogoutDialog = false">Cancel</AlertDialogCancel>
-        <AlertDialogAction @click="confirmLogout">Logout</AlertDialogAction>
+        <AlertDialogCancel @click="showLogoutDialog = false" :disabled="isLoggingOut">Cancel</AlertDialogCancel>
+        <AlertDialogAction @click="confirmLogout" :disabled="isLoggingOut">
+          <Loader2 v-if="isLoggingOut" class="mr-2 h-4 w-4 animate-spin" />
+          {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+  <!-- Logout Progress Dialog -->
+  <AlertDialog :open="isLoggingOut" @update:open="() => {}">
+    <AlertDialogContent class="max-w-sm">
+      <AlertDialogHeader>
+        <AlertDialogTitle class="flex items-center justify-center">
+          <Loader2 class="mr-2 h-5 w-5 animate-spin" />
+          Logging Out
+        </AlertDialogTitle>
+        <AlertDialogDescription class="text-center">
+          Please wait while we securely log you out...
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+    </AlertDialogContent>
+  </AlertDialog>
+
+  <!-- Success Alert Dialog -->
+  <AlertDialog :open="showSuccessDialog" @update:open="showSuccessDialog = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ successTitle }}</AlertDialogTitle>
+        <AlertDialogDescription>
+          {{ successMessage }}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogAction @click="showSuccessDialog = false">OK</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+  <!-- Error Alert Dialog -->
+  <AlertDialog :open="showErrorDialog" @update:open="showErrorDialog = $event">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ errorTitle }}</AlertDialogTitle>
+        <AlertDialogDescription>
+          {{ errorMessage }}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogAction @click="showErrorDialog = false">OK</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
@@ -718,7 +767,6 @@ const acceptDirectInvite = async (group) => {
     // with no invitation token needed
     const response = await $axiosInstance.post(`/api/groups/${group.id}/accept`);
     console.log('Direct invitation acceptance response:', response.data);
-    alert(`Invitation for ${group.name} accepted successfully!`);
     emit('refresh-groups');
     
     // Navigate to the group if acceptance was successful
@@ -727,7 +775,7 @@ const acceptDirectInvite = async (group) => {
     }
   } catch (error) {
     console.error('Failed to accept direct invitation:', error);
-    alert('Failed to accept invitation: ' + (error.response?.data?.error || error.message || 'Unknown error'));
+    showErrorAlert('Failed to accept invitation: ' + (error.response?.data?.error || error.message || 'Unknown error'));
     emit('refresh-groups');
   }
 }
@@ -774,7 +822,6 @@ const acceptPendingGroup = async (group) => {
       } else {
         group.membership = { invitation_accepted: true, status: status };
       }
-      alert(response.data?.message || `You have successfully joined ${group.name || 'the group'}`);
       emit('refresh-groups');
       if (status === 'approved') {
         console.log('User was immediately approved, navigating to group');
@@ -783,7 +830,7 @@ const acceptPendingGroup = async (group) => {
     }
   } catch (error) {
     console.error('Failed to accept group membership:', error);
-    alert('Failed to accept group membership: ' + (error.response?.data?.error || 'Unknown error'));
+    showErrorAlert('Failed to accept group membership: ' + (error.response?.data?.error || 'Unknown error'));
   }
 }
 
@@ -936,7 +983,6 @@ const acceptEmailInvite = async (invite) => {
       // For direct invites, use the endpoint with correct API path
       await $axiosInstance.post(`/api/groups/${matchingPendingGroup.id}/accept`);
       console.log('Direct invitation acceptance successful');
-      alert(`Invitation for ${matchingPendingGroup.name} accepted successfully!`);
       fetchEmailInvites();
       emit('refresh-groups');
       return;
@@ -955,7 +1001,7 @@ const acceptEmailInvite = async (invite) => {
     // Skip token API call if there's no token
     if (!invite.token) {
       console.error('No token available for email invitation. Cannot proceed with token flow.');
-      alert('Cannot process this invitation: Missing required token');
+      showErrorAlert('Cannot process this invitation: Missing required token');
       return;
     }
     
@@ -974,7 +1020,6 @@ const acceptEmailInvite = async (invite) => {
       // Keep member endpoints as they are (no /api prefix)
       const acceptResponse = await $axiosInstance.post('/api/member/accept-invitation', { token: invite.token });
       console.log('Email invitation acceptance response:', acceptResponse.data);
-      alert(`Invitation for ${invite.group_name} accepted successfully!`);
       fetchEmailInvites();
       emit('refresh-groups');
       if (acceptResponse.data.groupId) {
@@ -993,15 +1038,14 @@ const acceptEmailInvite = async (invite) => {
       try {
         // Try direct acceptance with the correct API path
         await $axiosInstance.post(`/api/groups/${invite.group_id}/accept`);
-        alert(`Invitation for ${invite.group_name} accepted successfully!`);
         fetchEmailInvites();
         emit('refresh-groups');
       } catch (finalError) {
         console.error('All invitation acceptance methods failed:', finalError);
-        alert('Failed to process invitation: ' + (finalError.response?.data?.error || finalError.message || 'Unknown error'));
+        showErrorAlert('Failed to process invitation: ' + (finalError.response?.data?.error || finalError.message || 'Unknown error'));
       }
     } else {
-      alert('Failed to process invitation: ' + (error.response?.data?.error || error.message || 'Unknown error'));
+      showErrorAlert('Failed to process invitation: ' + (error.response?.data?.error || error.message || 'Unknown error'));
     }
     
     fetchEmailInvites();
@@ -1020,7 +1064,7 @@ const declineEmailInvite = async (invite) => {
     console.log('Declining email invite for group:', invite.group_name, 'Token:', invite.token);
     try {
       await $axiosInstance.post('/api/member/decline-invitation', { token: invite.token });
-      await alertDialog.alert(`Invitation for ${invite.group_name} declined.`, 'Success')
+      // Success alert removed - confirmation dialog is sufficient feedback
       fetchEmailInvites(); // Refresh list
     } catch (error) {
       console.error('Failed to decline email invitation:', error);
@@ -1037,6 +1081,31 @@ const goToSettings = () => {
 
 // State for logout confirmation dialog
 const showLogoutDialog = ref(false)
+const isLoggingOut = ref(false)
+
+// State for success alert dialog
+const showSuccessDialog = ref(false)
+const successTitle = ref('')
+const successMessage = ref('')
+
+// State for error alert dialog  
+const showErrorDialog = ref(false)
+const errorTitle = ref('')
+const errorMessage = ref('')
+
+// Helper function to show success dialog
+const showSuccessAlert = (message, title = 'Success') => {
+  successTitle.value = title
+  successMessage.value = message
+  showSuccessDialog.value = true
+}
+
+// Helper function to show error dialog
+const showErrorAlert = (message, title = 'Error') => {
+  errorTitle.value = title
+  errorMessage.value = message
+  showErrorDialog.value = true
+}
 
 // Handle user logout
 const handleLogout = async () => {
@@ -1045,14 +1114,45 @@ const handleLogout = async () => {
 
 // Confirm logout action
 const confirmLogout = async () => {
+  // Prevent multiple logout attempts
+  if (isLoggingOut.value) {
+    return
+  }
+
   try {
+    // Set loading state and close the confirmation dialog
+    isLoggingOut.value = true
+    showLogoutDialog.value = false
+    
+    console.log('Starting logout process...')
+    
+    // Perform the logout
     await signOut()
-    // Redirect to login page or home page after logout
-    // Using window.location.href for a full page reload to clear state
-    window.location.href = '/auth'
+    
+    console.log('Logout successful, redirecting...')
+    
+    // Show brief success message before redirect
+    showSuccessAlert('Successfully logged out. Redirecting...', 'Goodbye!')
+    
+    // Small delay to show the success message
+    setTimeout(() => {
+      // Redirect to login page with full page reload to clear all state
+      window.location.href = '/auth'
+    }, 1000)
+    
   } catch (error) {
     console.error('Logout failed:', error)
-    alert('Logout failed. Please try again.')
+    isLoggingOut.value = false
+    
+    // Provide more specific error messaging
+    let errorMessage = 'An error occurred during logout'
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    showErrorAlert(`Logout failed: ${errorMessage}. Please try again or close your browser.`)
   }
 }
 </script>

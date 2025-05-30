@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { inject } from 'vue'
+import { inject, computed, watch } from 'vue'
 
 const alertDialog = inject('alertDialog') as {
   state: {
@@ -26,9 +26,31 @@ const alertDialog = inject('alertDialog') as {
   }
 }
 
+console.log('[GlobalAlertDialog] Component mounted, alertDialog:', alertDialog)
+
 const { state } = alertDialog
 
+// Watch for state changes
+watch(() => state.isOpen, (newValue, oldValue) => {
+  console.log('[GlobalAlertDialog] isOpen changed from', oldValue, 'to', newValue)
+  console.log('[GlobalAlertDialog] Current state:', { ...state })
+}, { immediate: true })
+
+// Process the message to handle basic formatting
+const formattedMessage = computed(() => {
+  let message = state.options.message
+  
+  // Replace markdown-style bold **text** with HTML <strong>text</strong>
+  message = message.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  
+  // Convert line breaks to HTML
+  message = message.replace(/\n/g, '<br>')
+  
+  return message
+})
+
 const handleAction = () => {
+  console.log('[GlobalAlertDialog] handleAction called')
   if (state.options.onAction) {
     state.options.onAction()
   }
@@ -36,6 +58,7 @@ const handleAction = () => {
 }
 
 const handleCancel = () => {
+  console.log('[GlobalAlertDialog] handleCancel called')
   if (state.options.onCancel) {
     state.options.onCancel()
   }
@@ -45,11 +68,14 @@ const handleCancel = () => {
 
 <template>
   <AlertDialog :open="state.isOpen" @update:open="state.isOpen = $event" class="alert-dialog-z-override">
-    <AlertDialogContent class="z-[100]">
+    <AlertDialogContent class="z-[100] max-w-2xl">
       <AlertDialogHeader>
         <AlertDialogTitle>{{ state.options.title }}</AlertDialogTitle>
-        <AlertDialogDescription>
-          {{ state.options.message }}
+        <AlertDialogDescription class="max-h-96 overflow-y-auto">
+          <div 
+            v-html="formattedMessage" 
+            class="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed"
+          />
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
@@ -72,5 +98,24 @@ const handleCancel = () => {
 
 :deep(.alert-dialog-z-override [data-portal]) {
   z-index: 100 !important;
+}
+
+/* Styling for formatted content */
+:deep(.formatted-message) {
+  line-height: 1.6;
+}
+
+:deep(.formatted-message strong) {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+:deep(.formatted-message ul) {
+  margin: 0.5rem 0;
+  padding-left: 1rem;
+}
+
+:deep(.formatted-message li) {
+  margin: 0.25rem 0;
 }
 </style> 

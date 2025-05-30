@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 // import axios from '~/src/utils/axios' // REMOVED OLD AXIOS IMPORT
-import { useAlertDialog } from '@/composables/useAlertDialog'
+import { useAlert } from '@/composables/useAlert'
 import { useNuxtApp } from '#app'
 
 export function useGroupMembers(groupId, group, fetchGroup) {
@@ -9,7 +9,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
   const memberSearchQuery = ref('')
   
   // Initialize alert dialog system
-  const { showAlert } = useAlertDialog()
+  const { alert: showAlert } = useAlert()
 
   // Helper function to get axios instance
   const getAxiosInstance = () => {
@@ -53,7 +53,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       const response = await getAxiosInstance().post(`/api/groups/${groupId}/members`, requestData) // USE PASSED INSTANCE
       
       // Show success message
-      showAlert('Success', `Member ${memberData.email} added successfully`)
+      await showAlert(`Member ${memberData.email} added successfully`, 'Success')
       
       // Update admin status if provided in the response
       if (response.data.currentUserIsAdmin !== undefined) {
@@ -73,7 +73,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       return response.data
     } catch (err) {
       console.error('Failed to add member:', err)
-      showAlert('Error', 'Failed to add member: ' + (err.response?.data?.error || err.message))
+      await showAlert('Failed to add member: ' + (err.response?.data?.error || err.message), 'Error')
       throw err
     }
   }
@@ -102,36 +102,109 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       }))
 
       console.log('File processed successfully:', response.data)
-      // Provide more detailed feedback based on the response
+      
+      // Analyze and categorize the results for a comprehensive summary
       const results = response.data.results || []
-      const successCount = results.filter(r => r.success).length
-      const failCount = results.length - successCount
+      const totalEmails = results.length
       
-      // Create a detailed success message
-      let title = 'Invitations Sent Successfully!'
-      let message = ''
+      // Categorize results
+      const invitedUsers = results.filter(r => r.success && (r.message.includes('created and email sent') || r.message.includes('sent successfully')))
+      const alreadyMembers = results.filter(r => !r.success && r.message.includes('already an active member'))
+      const existingInvites = results.filter(r => !r.success && r.message.includes('active invitation already exists'))
+      const emailDisabledInvites = results.filter(r => r.success && r.message.includes('email sending is disabled'))
+      const otherFailures = results.filter(r => !r.success && 
+        !r.message.includes('already an active member') && 
+        !r.message.includes('active invitation already exists'))
       
-      if (successCount > 0) {
-        const successfulEmails = results.filter(r => r.success).map(r => r.email)
-        message = `✅ ${successCount} invitation${successCount === 1 ? '' : 's'} sent successfully:\n\n`
-        message += successfulEmails.map(email => `• ${email}`).join('\n')
-        
-        if (failCount > 0) {
-          message += `\n\n❌ ${failCount} invitation${failCount === 1 ? '' : 's'} failed. Check console for details.`
-          // Log detailed errors
-          results.filter(r => !r.success).forEach(r => console.warn(`Failed invitation for ${r.email}: ${r.message}`))
-        }
-      } else {
-        title = 'No Invitations Sent'
-        message = 'No valid email addresses were processed from the file.'
+      // Build comprehensive summary message
+      let title = 'Member Import Summary'
+      let message = `📊 **Processing Summary** (${totalEmails} email${totalEmails === 1 ? '' : 's'} processed)\n\n`
+      
+      // Successful invitations
+      if (invitedUsers.length > 0) {
+        message += `✅ **${invitedUsers.length} User${invitedUsers.length === 1 ? '' : 's'} Invited Successfully:**\n`
+        message += invitedUsers.map(r => `   • ${r.email}`).join('\n')
+        message += '\n\n'
       }
       
-      showAlert(title, message)
+      // Invitations created but email disabled
+      if (emailDisabledInvites.length > 0) {
+        message += `📧 **${emailDisabledInvites.length} Invitation${emailDisabledInvites.length === 1 ? '' : 's'} Created (Email Disabled):**\n`
+        message += emailDisabledInvites.map(r => `   • ${r.email}`).join('\n')
+        message += '\n\n'
+      }
+      
+      // Already existing members
+      if (alreadyMembers.length > 0) {
+        message += `👥 **${alreadyMembers.length} User${alreadyMembers.length === 1 ? '' : 's'} Already Group Member${alreadyMembers.length === 1 ? '' : 's'}:**\n`
+        message += alreadyMembers.map(r => `   • ${r.email}`).join('\n')
+        message += '\n\n'
+      }
+      
+      // Existing pending invitations
+      if (existingInvites.length > 0) {
+        message += `⏳ **${existingInvites.length} User${existingInvites.length === 1 ? '' : 's'} Already Invited:**\n`
+        message += existingInvites.map(r => `   • ${r.email}`).join('\n')
+        message += '\n\n'
+      }
+      
+      // Other failures
+      if (otherFailures.length > 0) {
+        message += `❌ **${otherFailures.length} Invitation${otherFailures.length === 1 ? '' : 's'} Failed:**\n`
+        message += otherFailures.map(r => `   • ${r.email} - ${r.message}`).join('\n')
+        message += '\n\n'
+      }
+      
+      // Summary line
+      const successCount = invitedUsers.length + emailDisabledInvites.length
+      if (successCount > 0 && (alreadyMembers.length > 0 || existingInvites.length > 0 || otherFailures.length > 0)) {
+        message += `📈 **Result:** ${successCount} new invitation${successCount === 1 ? '' : 's'} sent, ${alreadyMembers.length + existingInvites.length + otherFailures.length} skipped or failed.`
+      } else if (successCount > 0) {
+        message += `🎉 **All invitations sent successfully!**`
+        title = 'Invitations Sent Successfully!'
+      } else if (alreadyMembers.length === totalEmails) {
+        message += `ℹ️ **All users are already group members.**`
+        title = 'No New Invitations Needed'
+      } else {
+        message += `⚠️ **No invitations could be sent.**`
+        title = 'Import Failed'
+      }
+      
+      // Log detailed errors for debugging
+      if (otherFailures.length > 0) {
+        console.group('CSV Import - Detailed Errors:')
+        otherFailures.forEach(r => console.warn(`Failed invitation for ${r.email}: ${r.message}`))
+        console.groupEnd()
+      }
+      
+      console.log('About to show alert with:', { title, message })
+      await showAlert(message, title)
+      console.log('Alert should have been shown')
 
       return response.data
     } catch (err) {
       console.error('Failed to process file:', err)
-      showAlert('Error', 'Failed to process file: ' + (err.response?.data?.error || err.message))
+      
+      // Provide more specific error messaging
+      let errorMessage = 'Failed to process file'
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
+      // Check for specific error types
+      if (err.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in and try again.'
+      } else if (err.response?.status === 403) {
+        errorMessage = 'You do not have permission to invite members to this group.'
+      } else if (err.response?.status === 413) {
+        errorMessage = 'File is too large. Please use a smaller file.'
+      } else if (err.response?.status >= 500) {
+        errorMessage = 'Server error occurred. Please try again later.'
+      }
+      
+      await showAlert(errorMessage, 'Import Error')
 
       // Resetting the file input might be harder here as we don't have the original event
       // Consider handling this in the component that calls this function if needed.
@@ -146,17 +219,25 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     // Check if the user was added as pending
     if (user.status === 'pending') {
       console.log('User was invited with pending status')
-      showAlert('Info', `Invitation sent to ${user.name || user.email}. They will need to accept it.`)
+      await showAlert(`Invitation sent to ${user.name || user.email}. They will need to accept it.`, 'Info')
     } else {
       console.log('User was added directly')
-      showAlert('Success', `${user.name || user.email} added to the group successfully`)
+      await showAlert(`${user.name || user.email} added to the group successfully`, 'Success')
     }
     
-    // Refresh the group data to update the members list
-    await fetchGroup()
+    // DO NOT call fetchGroup() here as it can cause 404 redirect issues due to temporary DB connection problems
+    // The individual member list components handle their own refreshes via events
     
-    // Dispatch an event to refresh the pending members list
+    // Dispatch events to refresh the relevant member lists
     window.dispatchEvent(new CustomEvent('refresh-pending-members', {
+      detail: { groupId }
+    }))
+    
+    window.dispatchEvent(new CustomEvent('refresh-invited-members', {
+      detail: { groupId }
+    }))
+    
+    window.dispatchEvent(new CustomEvent('refresh-members-list', {
       detail: { groupId }
     }))
   }
@@ -181,9 +262,6 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       const response = await getAxiosInstance().delete(`/api/groups/${groupId}/members/${userId}`);
       console.log('useGroupMembers - API response:', response.data);
       
-      // Show success message
-      showAlert('Success', `${member.name} has been removed from the group`);
-      
       // Refresh group data to update members list
       console.log('useGroupMembers - Refreshing group data');
       await fetchGroup();
@@ -193,7 +271,7 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     } catch (err) {
       console.error('useGroupMembers - Failed to remove member:', err);
       console.error('useGroupMembers - Error response:', err.response?.data);
-      showAlert('Error', 'Failed to remove member: ' + (err.response?.data?.error || err.message));
+      await showAlert('Failed to remove member: ' + (err.response?.data?.error || err.message), 'Error')
       throw err;
     }
   }
@@ -218,12 +296,12 @@ export function useGroupMembers(groupId, group, fetchGroup) {
     console.log("[useGroupMembers] inviteMemberByEmail called with email:", email);
     if (!groupId) {
       console.error('Group ID is missing');
-      showAlert('Error', 'Cannot invite member: Group ID is missing.');
+      showAlert('Cannot invite member: Group ID is missing.', 'Error');
       return; // Or throw error
     }
     if (!email) {
       console.error('Email is missing');
-      showAlert('Error', 'Cannot invite member: Email is missing.');
+      showAlert('Cannot invite member: Email is missing.', 'Error');
       return; // Or throw error
     }
 
@@ -234,10 +312,10 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       console.log("[useGroupMembers] axiosInstance.post successful:", response.data);
 
       // Show success message (backend currently returns generic success)
-      showAlert('Invitation Sent', `Invitation request sent for ${email}. They will receive an email if the address is valid and not already a member.`);
+      await showAlert(`Invitation request sent for ${email}. They will receive an email if the address is valid and not already a member.`, 'Invitation Sent')
 
-      // Refresh the group data to update the members list
-      await fetchGroup()
+      // DO NOT call fetchGroup() here as it can cause 404 redirect issues due to temporary DB connection problems
+      // The individual member list components handle their own refreshes via events
       
       // Dispatch events to refresh invited and pending members lists
       window.dispatchEvent(new CustomEvent('refresh-invited-members', {
@@ -248,8 +326,12 @@ export function useGroupMembers(groupId, group, fetchGroup) {
         detail: { groupId, email }
       }))
       
-      // Dispatch general group data updated event
-      window.dispatchEvent(new CustomEvent('group-data-updated'))
+      // Dispatch general group data updated event (without triggering fetchGroup)
+      window.dispatchEvent(new CustomEvent('group-data-updated', {
+        detail: { action: 'invite-sent', groupId, email }
+      }))
+
+      console.log(`[useGroupMembers] Invitation sent successfully for ${email}. Events dispatched for list refreshes.`);
 
       return response.data; // Return data which might be just { message: "..." }
     } catch (err) {
@@ -289,13 +371,13 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       const response = await getAxiosInstance().patch(`/api/groups/${groupId}/members/${memberId}/promote`); // USE PASSED INSTANCE
       
       // Show success message
-      showAlert('Success', `${member.name} has been promoted to admin.`);
+      await showAlert(`${member.name} has been promoted to admin.`, 'Success')
       
       // Refresh group data to update members list
       await fetchGroup();
     } catch (err) {
       console.error('Failed to promote member:', err);
-      showAlert('Error', 'Failed to promote member: ' + (err.response?.data?.error || err.message));
+      await showAlert('Failed to promote member: ' + (err.response?.data?.error || err.message), 'Error')
       throw err;
     }
   }
@@ -316,13 +398,13 @@ export function useGroupMembers(groupId, group, fetchGroup) {
       const response = await getAxiosInstance().patch(`/api/groups/${groupId}/members/${memberId}/demote`); // USE PASSED INSTANCE
       
       // Show success message
-      showAlert('Success', `${member.name} has been demoted to member.`);
+      await showAlert(`${member.name} has been demoted to member.`, 'Success')
       
       // Refresh group data to update members list
       await fetchGroup();
     } catch (err) {
       console.error('Failed to demote member:', err);
-      showAlert('Error', 'Failed to demote member: ' + (err.response?.data?.error || err.message));
+      await showAlert('Failed to demote member: ' + (err.response?.data?.error || err.message), 'Error')
       throw err;
     }
   }

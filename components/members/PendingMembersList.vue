@@ -161,8 +161,11 @@ const memberToDecline = ref(null)
 const handleRefreshPendingMembers = (event) => {
   console.log('[PendingMembersList] Received refresh-pending-members event:', event.detail);
   if (event.detail?.groupId === props.groupId) {
+    console.log('[PendingMembersList] Event matches current group ID. Refreshing pending members...');
     // Refresh pending members
     fetchPendingMembers();
+  } else {
+    console.log('[PendingMembersList] Event is for a different group. Ignoring.');
   }
 };
 
@@ -172,11 +175,31 @@ const handleGroupDataUpdated = () => {
   fetchPendingMembers();
 };
 
+const handleRefreshMembersList = (event) => {
+  console.log('[PendingMembersList] Received refresh-members-list event:', event.detail);
+  if (event.detail?.groupId === props.groupId) {
+    console.log('[PendingMembersList] Event matches current group ID. Refreshing pending members...');
+    fetchPendingMembers();
+  } else {
+    console.log('[PendingMembersList] Event is for a different group. Ignoring.');
+  }
+};
+
+const handleRefreshInvitedMembers = (event) => {
+  console.log('[PendingMembersList] Received refresh-invited-members event:', event.detail);
+  if (event.detail?.groupId === props.groupId) {
+    console.log('[PendingMembersList] Refreshing pending members due to invitation change...');
+    fetchPendingMembers();
+  }
+};
+
 // Setup event listeners
 onMounted(() => {
   console.log('[PendingMembersList] Setting up event listeners');
   window.addEventListener('refresh-pending-members', handleRefreshPendingMembers);
   window.addEventListener('group-data-updated', handleGroupDataUpdated);
+  window.addEventListener('refresh-members-list', handleRefreshMembersList);
+  window.addEventListener('refresh-invited-members', handleRefreshInvitedMembers);
   
   // Initial fetch
   fetchPendingMembers();
@@ -187,6 +210,8 @@ onUnmounted(() => {
   console.log('[PendingMembersList] Cleaning up event listeners');
   window.removeEventListener('refresh-pending-members', handleRefreshPendingMembers);
   window.removeEventListener('group-data-updated', handleGroupDataUpdated);
+  window.removeEventListener('refresh-members-list', handleRefreshMembersList);
+  window.removeEventListener('refresh-invited-members', handleRefreshInvitedMembers);
 });
 
 // Use either provided props or local state
