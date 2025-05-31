@@ -12,7 +12,7 @@
         </DialogDescription>
       </DialogHeader>
       
-      <div class="py-4 min-h-[200px]">
+      <div class="py-4 min-h-[200px] relative">
         <!-- Loading State -->
         <div v-if="isLoadingDetails" class="flex justify-center items-center h-full">
           <LoadingSpinner />
@@ -21,6 +21,17 @@
 
         <!-- Content when not loading -->
         <div v-else>
+          <!-- Tallying Overlay -->
+          <div v-if="isTallying" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-lg">
+            <div class="text-center space-y-3">
+              <Loader2 class="h-8 w-8 animate-spin mx-auto text-blue-600" />
+              <div>
+                <h4 class="font-medium text-gray-900">Tallying and Decrypting Results</h4>
+                <p class="text-sm text-gray-600 mt-1">This may take a moment using ElectionGuard encryption...</p>
+              </div>
+            </div>
+          </div>
+          
           <!-- Vote Details -->
           <div class="space-y-4">
             <div class="prose max-w-none">
@@ -35,6 +46,7 @@
             <!-- Ballot Section (Handles Voting/Encryption/Casting/Spoiling/Status) -->
              <BallotForm
                 v-if="isVotingActive"
+                class="mt-6 pt-4 border-t"
                 :vote="vote"
                 :can-vote="vote.can_vote"
                 :user-tracker-hash="userTrackerHash"
@@ -56,9 +68,6 @@
               </div>
               <div class="p-4 bg-blue-50 border border-blue-200 rounded-md mb-4">
                 <p class="text-sm text-blue-800 font-medium">Voting will begin on {{ formatDate(vote.start_time) }}</p>
-                <p class="text-xs text-muted-foreground mt-1">
-                  Preview the voting options below. You'll be able to cast your vote once the voting period starts.
-                </p>
               </div>
               
               <div class="space-y-3">
@@ -87,9 +96,6 @@
               </div>
               <div class="p-4 bg-orange-50 border border-orange-200 rounded-md mb-4">
                 <p class="text-sm text-orange-800 font-medium">Voting period has ended on {{ formatDate(vote.end_time) }}</p>
-                <p class="text-xs text-muted-foreground mt-1">
-                  The vote is now closed for new submissions. Results need to be tallied and decrypted.
-                </p>
               </div>
               
               <div class="space-y-3">
@@ -111,7 +117,7 @@
             </div>
 
             <!-- Results Section for Closed or Decrypted Votes -->
-            <div v-else-if="vote.status === 'closed' || vote.status === 'decrypted'" class="mt-6 pt-4 border-t">
+            <div v-else-if="vote.status === 'decrypted' || (vote.status === 'closed' && !isVoteEndedButNotTallied)" class="mt-6 pt-4 border-t">
               <h4 class="font-medium mb-4">Results</h4>
               
               <div v-if="vote.status === 'closed'" class="text-sm text-muted-foreground">
@@ -133,20 +139,70 @@
           </div>
 
           <!-- Bottom Action Buttons (only show when not loading details) -->
-          <div class="border-t pt-4 flex justify-start space-x-2 mt-4">
-            <Button v-if="canDelete" variant="destructive" size="sm" @click="confirmDelete" :disabled="isDeletingVote">
-              <Loader2 v-if="isDeletingVote" class="mr-2 h-4 w-4 animate-spin" />
-              <LucideIcon v-else name="Trash" size="4" class="h-4 w-4 mr-1" />
-              {{ isDeletingVote ? 'Deleting...' : 'Delete' }}
-            </Button>
-            <Button v-if="canEndEarly" variant="outline" size="sm" @click="confirmEndEarly">
-              <LucideIcon name="TimerOff" size="4" class="h-4 w-4 mr-1" />
-              End Vote Early
-            </Button>
-            <Button v-if="canTally" variant="default" size="sm" @click="confirmTally">
-              <LucideIcon name="ListChecks" size="4" class="h-4 w-4 mr-1" />
-              Tally & Decrypt
-            </Button>
+          <div class="border-t pt-4 flex justify-between items-center mt-4">
+            <div class="flex space-x-2">
+              <Tooltip v-if="canDelete">
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    @click="confirmDelete" 
+                    :disabled="isDeletingVote || !hasDeletePermission"
+                    :class="{ 'opacity-50 cursor-not-allowed': !hasDeletePermission }"
+                  >
+                    <Loader2 v-if="isDeletingVote" class="mr-2 h-4 w-4 animate-spin" />
+                    <LucideIcon v-else name="Trash" size="4" class="h-4 w-4 mr-1" />
+                    {{ isDeletingVote ? 'Deleting...' : 'Delete' }}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent v-if="!hasDeletePermission">
+                  <p>Only group administrators or members with vote management permissions can delete votes</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip v-if="canEndEarly">
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    @click="confirmEndEarly"
+                    :disabled="!hasEndEarlyPermission"
+                    :class="{ 'opacity-50 cursor-not-allowed': !hasEndEarlyPermission }"
+                  >
+                    <LucideIcon name="TimerOff" size="4" class="h-4 w-4 mr-1" />
+                    End Vote Early
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent v-if="!hasEndEarlyPermission">
+                  <p>Only group administrators or members with vote management permissions can end votes early</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip v-if="canTally">
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    @click="confirmTally" 
+                    :disabled="isTallying || !hasTallyPermission"
+                    :class="{ 'opacity-50 cursor-not-allowed': !hasTallyPermission }"
+                  >
+                    <Loader2 v-if="isTallying" class="mr-2 h-4 w-4 animate-spin" />
+                    <LucideIcon v-else name="ListChecks" size="4" class="h-4 w-4 mr-1" />
+                    {{ isTallying ? 'Tallying...' : 'Tally & Decrypt' }}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent v-if="!hasTallyPermission">
+                  <p>Only group administrators or members with vote management permissions can tally and decrypt results</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div>
+              <Button v-if="canShowDone" variant="default" size="sm" @click="handleDone">
+                <LucideIcon name="Check" size="4" class="h-4 w-4 mr-1" />
+                Done
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -169,6 +225,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 const props = defineProps({
   vote: {
@@ -178,6 +239,14 @@ const props = defineProps({
   currentUserId: {
     type: String,
     default: ''
+  },
+  isCurrentUserAdmin: {
+    type: Boolean,
+    default: false
+  },
+  groupPermissions: {
+    type: Object,
+    default: () => ({})
   },
   userTrackerHash: {
     type: String,
@@ -206,6 +275,10 @@ const props = defineProps({
   isDeletingVote: {
     type: Boolean,
     default: false
+  },
+  isTallying: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -224,36 +297,34 @@ const emit = defineEmits([
 const canEndEarly = computed(() => {
   // Only show "End Vote Early" if:
   // 1. Voting is currently active (time-based)
-  // 2. User is the creator
-  // 3. Current time is before the vote's end time (voting period hasn't naturally ended)
+  // 2. Current time is before the vote's end time (voting period hasn't naturally ended)
   const now = currentTime.value;
   const voteEndTime = new Date(props.vote.end_time);
   const votingTimeHasEnded = now >= voteEndTime;
   
-  return isVotingActive.value && 
-         props.currentUserId === props.vote.creator_id && 
-         !votingTimeHasEnded;
+  return isVotingActive.value && !votingTimeHasEnded;
 })
 
 const canDelete = computed(() => {
-  return (
-    props.currentUserId === props.vote.creator_id || 
-    !props.vote.creator_id
-  )
+  // Always show delete button (will be disabled if no permission)
+  return true;
 })
 
 const canTally = computed(() => {
   // Show "Tally & Decrypt" if:
   // 1. Vote status is 'closed' OR voting time has naturally ended (even if status is still 'open')
-  // 2. User is the creator
-  // 3. Vote is NOT already decrypted
+  // 2. Vote is NOT already decrypted
   const now = currentTime.value;
   const voteEndTime = new Date(props.vote.end_time);
   const votingTimeHasEnded = now >= voteEndTime;
   
   return (props.vote.status === 'closed' || votingTimeHasEnded) && 
-         props.vote.status !== 'decrypted' &&
-         props.currentUserId === props.vote.creator_id;
+         props.vote.status !== 'decrypted';
+});
+
+const canShowDone = computed(() => {
+  // Show "Done" button when user has voted (has a tracker hash)
+  return !!props.userTrackerHash;
 });
 
 const handleEncryptVote = (payload) => {
@@ -327,6 +398,11 @@ const confirmDelete = () => {
   // }
 }
 
+const handleDone = () => {
+  console.log("[VoteDetailsDialog] Done button clicked, closing dialog");
+  emit('close');
+}
+
 // Computed property to handle results (which might be string or object from backend)
 const parsedTallyResults = computed(() => {
   const resultsData = props.vote?.plaintext_tally_results;
@@ -375,10 +451,9 @@ const parsedTallyResults = computed(() => {
 const isUpcomingVote = computed(() => {
   const now = currentTime.value;
   const voteStartTime = new Date(props.vote.start_time);
-  const voteEndTime = new Date(props.vote.end_time);
   
-  // Vote is upcoming if current time is before start time and before end time
-  return now < voteStartTime && now < voteEndTime;
+  // Vote is upcoming if current time is before start time
+  return now < voteStartTime;
 });
 
 // Computed property to determine if voting is currently active
@@ -387,9 +462,13 @@ const isVotingActive = computed(() => {
   const voteStartTime = new Date(props.vote.start_time);
   const voteEndTime = new Date(props.vote.end_time);
   
-  // Voting is active if current time is between start and end time
-  // Also check that the vote hasn't been manually closed
-  return now >= voteStartTime && now < voteEndTime && props.vote.status !== 'closed' && props.vote.status !== 'decrypted';
+  // Voting is active if:
+  // 1. Current time is between start and end time
+  // 2. Vote status is 'open' (with auto-updates, this should be the case during active period)
+  // 3. Vote hasn't been manually closed or decrypted
+  return now >= voteStartTime && 
+         now < voteEndTime && 
+         props.vote.status === 'open';
 });
 
 // Computed property to determine if voting time has ended but vote hasn't been tallied
@@ -397,8 +476,33 @@ const isVoteEndedButNotTallied = computed(() => {
   const now = currentTime.value;
   const voteEndTime = new Date(props.vote.end_time);
   
-  // Vote has ended if current time is past end time and status is still "open"
-  return now >= voteEndTime && props.vote.status !== 'closed' && props.vote.status !== 'decrypted';
+  // With auto-status-updates, when time ends, status changes to 'closed'
+  // Show this section when:
+  // 1. Current time is past end time AND status is 'closed' (auto-updated)
+  // 2. OR status is still 'open' but time has passed (edge case)
+  // 3. But NOT if already decrypted
+  const timeHasEnded = now >= voteEndTime;
+  const isClosedButNotDecrypted = props.vote.status === 'closed';
+  const isOpenButTimeEnded = props.vote.status === 'open' && timeHasEnded;
+  
+  return (isClosedButNotDecrypted || isOpenButTimeEnded) && 
+         props.vote.status !== 'decrypted';
+});
+
+// New computed properties to determine if user has permission (for disabled state)
+const hasEndEarlyPermission = computed(() => {
+  // Allow if user is admin OR if group allows non-admin vote management
+  return props.isCurrentUserAdmin || props.groupPermissions?.allowNonAdminCreateVotes;
+});
+
+const hasDeletePermission = computed(() => {
+  // Allow if user is admin OR if group allows non-admin vote management
+  return props.isCurrentUserAdmin || props.groupPermissions?.allowNonAdminCreateVotes;
+});
+
+const hasTallyPermission = computed(() => {
+  // Allow if user is admin OR if group allows non-admin vote management
+  return props.isCurrentUserAdmin || props.groupPermissions?.allowNonAdminCreateVotes;
 });
 
 // Reactive current time to trigger computed property updates

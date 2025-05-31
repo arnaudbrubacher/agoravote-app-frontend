@@ -157,7 +157,7 @@
                       @update:modelValue="savePermissionSetting('allowNonAdminCreateVotes')"
                     />
                     <Label for="non-admin-create-votes" class="text-sm">
-                      Allow non-admin members to create votes
+                      Allow non-admin members to manage votes
                     </Label>
                   </div>
                 </div>

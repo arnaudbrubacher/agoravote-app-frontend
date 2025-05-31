@@ -87,6 +87,7 @@
       :is-submitting="isSubmittingVote"
       :spoiled-selection-details="spoiledSelectionDetails"
       :is-deleting-vote="isDeletingVote"
+      :is-tallying="isTallying"
       @close-new-post="showNewPostDialog = false"
       @close-new-vote="showNewVoteDialog = false"
       @close-user-search="showUserSearchDialog = false"
@@ -1051,12 +1052,17 @@ const handleTallyDecrypt = async (voteId) => {
 
       } catch (error) {
         console.error('Failed to tally/decrypt vote:', error);
-        // toast({ // Replaced toast
-        //   variant: 'destructive',
-        //   title: 'Error Tallying Vote',
-        //   description: error.message || 'Could not tally and decrypt the vote results.',
-        // })
-        showAlert('Error Tallying Vote', error.message || 'Could not tally and decrypt the vote results.');
+        
+        // Check if this is the "no ballots cast" error
+        const errorMessage = error.message || 'Could not tally and decrypt the vote results.';
+        if (errorMessage.includes('no ballots were cast for this vote')) {
+          showAlert('No Ballots Were Cast', 'Cannot tally vote: no ballots were cast for this vote.');
+        } else if (errorMessage.includes('no valid ballots were found or processed')) {
+          showAlert('No Ballots Were Cast', 'Cannot tally vote: no valid ballots were found or processed.');
+        } else {
+          // Generic error for other cases
+          showAlert('Error Tallying Vote', errorMessage);
+        }
       } finally {
         isTallying.value = false;
       }
@@ -1117,4 +1123,10 @@ const handleInviteMember = async (email) => {
     }));
   }
 };
+
+// If selectedVote is set, fetch its full details
+if (selectedVote.value && !isLoadingDetails.value) {
+  console.log('🔍 [DEBUG] Loading vote details for vote:', selectedVote.value.id);
+  await openVoteDetails(selectedVote.value.id)
+}
 </script>

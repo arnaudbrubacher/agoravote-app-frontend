@@ -105,17 +105,14 @@
     </div>
 
     <!-- State 4: Ready to Vote (Select and Encrypt) -->
-    <div v-else class="mt-6 pt-4 border-t">
+    <div v-else>
         <div class="flex items-center space-x-2 mb-4">
             <LucideIcon name="Vote" class="h-5 w-5 text-green-600" />
             <h4 class="font-medium text-green-800">Cast Your Vote</h4>
         </div>
         
         <div class="p-4 bg-green-50 border border-green-200 rounded-md mb-4">
-            <p class="text-sm text-green-800 font-medium">Voting is now open!</p>
-            <p class="text-xs text-muted-foreground mt-1">
-                Select your choice below and encrypt your ballot. Your vote will be secured using ElectionGuard cryptography.
-            </p>
+            <p class="text-sm text-green-800 font-medium">Voting is now open.</p>
         </div>
 
         <form @submit.prevent="handleEncrypt" class="space-y-4">

@@ -52,6 +52,8 @@
       v-if="selectedVote"
       :vote="selectedVote"
       :current-user-id="currentUser?.id"
+      :is-current-user-admin="isCurrentUserAdmin"
+      :group-permissions="group?.permissions"
       :user-tracker-hash="userTrackerHash"
       :encrypted-ballot-data="encryptedBallotData"
       :is-encrypting="isEncrypting"
@@ -59,6 +61,7 @@
       :spoiled-selection-details="spoiledSelectionDetails"
       :is-deleting-vote="props.isDeletingVote"
       :is-loading-details="props.isLoadingDetails"
+      :is-tallying="props.isTallying"
       @close="$emit('close-vote-details')"
       @delete="$emit('vote-deleted', $event)"
       @encrypt-vote="$emit('encrypt-vote', $event)"
@@ -98,6 +101,7 @@ const props = defineProps({
   isCreatingVote: Boolean,
   isLoadingDetails: Boolean,
   isDeletingVote: Boolean,
+  isTallying: Boolean,
   selectedPost: Object,
   selectedVote: Object,
   group: Object,

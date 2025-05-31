@@ -49,6 +49,7 @@ export function useGroupVotes(groupId) {
       console.log(`[useGroupVotes.js] fetchVoteDetails starting for vote ID: ${voteId}`);
       const response = await getAxiosInstance().get(`/api/votes/${voteId}`);
       console.log(`[useGroupVotes.js] fetchVoteDetails successful for ${voteId}:`, response.data);
+      
       return response.data; 
     } catch (error) {
       console.error(`[useGroupVotes.js] fetchVoteDetails FAILED for vote ${voteId}:`, error);
