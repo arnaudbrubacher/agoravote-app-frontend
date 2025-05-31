@@ -82,6 +82,7 @@
         :group="group"
         :is-current-user-admin="isCurrentUserAdmin"
         :fetch-group="fetchGroup"
+        :is-deleting-group="isDeletingGroup"
         @group-updated="$emit('group-updated', $event)"
         @group-deleted="$emit('group-deleted')"
       />
@@ -136,6 +137,10 @@ const props = defineProps({
   modelValue: {
     type: String,
     required: true 
+  },
+  isDeletingGroup: {
+    type: Boolean,
+    default: false
   }
 })
 

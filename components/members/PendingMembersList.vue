@@ -378,6 +378,20 @@ const processMemberApproval = async () => {
       preventRedirect: true // Add this flag to prevent redirection
     });
     
+    // Add a small delay to allow the backend to process the approval before refreshing
+    setTimeout(() => {
+      // Dispatch event to trigger the same refresh as the refresh button
+      console.log(`[PendingMembersList] Dispatching members-refresh-button event after member approval for group: ${props.groupId}`);
+      window.dispatchEvent(new CustomEvent('members-refresh-button', {
+        detail: {
+          groupId: props.groupId,
+          action: 'member-approved',
+          approvedMemberEmail: memberToApprove.value.user?.email || memberToApprove.value.email,
+          approvedMemberName: memberToApprove.value.user?.name || memberToApprove.value.name || 'Unknown Member'
+        }
+      }));
+    }, 500); // 500ms delay to allow backend processing
+    
     // Clear the member to approve
     memberToApprove.value = null;
   } catch (error) {
@@ -530,6 +544,20 @@ const processDocumentsApproval = async () => {
       member: member,
       message: `${member.user?.name || member.name || 'Member'} has been approved with documents`
     });
+    
+    // Add a small delay to allow the backend to process the approval before refreshing
+    setTimeout(() => {
+      // Dispatch event to trigger the same refresh as the refresh button
+      console.log(`[PendingMembersList] Dispatching members-refresh-button event after member approval with documents for group: ${props.groupId}`);
+      window.dispatchEvent(new CustomEvent('members-refresh-button', {
+        detail: {
+          groupId: props.groupId,
+          action: 'member-approved-with-documents',
+          approvedMemberEmail: member.user?.email || member.email,
+          approvedMemberName: member.user?.name || member.name || 'Unknown Member'
+        }
+      }));
+    }, 500); // 500ms delay to allow backend processing
   } catch (error) {
     console.error('Failed to approve member with documents:', error);
     alert('Failed to approve member: ' + (error.response?.data?.error || error.message || 'Unknown error'));

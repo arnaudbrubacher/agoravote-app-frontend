@@ -17,10 +17,10 @@
         </div>
       </div>
       <div>
-        <span v-if="isVoteActive(vote)" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+        <span v-if="isVoteActive" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
           Active
         </span>
-        <span v-else-if="isVoteUpcoming(vote)" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+        <span v-else-if="isVoteUpcoming" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
           Upcoming
         </span>
         <span v-else class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
@@ -34,6 +34,7 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
 import { Icon } from '@iconify/vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   vote: {
@@ -44,16 +45,35 @@ const props = defineProps({
 
 defineEmits(['click'])
 
-// Helper functions for vote status
-const isVoteActive = (vote) => {
-  const now = new Date()
-  return new Date(vote.start_time) <= now && new Date(vote.end_time) >= now
-}
+// Reactive current time to trigger computed property updates
+const currentTime = ref(new Date())
 
-const isVoteUpcoming = (vote) => {
-  const now = new Date()
-  return new Date(vote.start_time) > now
-}
+// Timer to update current time every minute
+let timeUpdateInterval = null
+
+onMounted(() => {
+  // Update every minute to trigger reactivity
+  timeUpdateInterval = setInterval(() => {
+    currentTime.value = new Date()
+  }, 60000) // 60 seconds
+})
+
+onUnmounted(() => {
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval)
+  }
+})
+
+// Computed properties for vote status that react to time changes
+const isVoteActive = computed(() => {
+  const now = currentTime.value
+  return new Date(props.vote.start_time) <= now && new Date(props.vote.end_time) >= now
+})
+
+const isVoteUpcoming = computed(() => {
+  const now = currentTime.value
+  return new Date(props.vote.start_time) > now
+})
 
 // Format date for display
 const formatDateShort = (dateStr) => {

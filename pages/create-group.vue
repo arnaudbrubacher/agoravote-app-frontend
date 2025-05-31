@@ -399,8 +399,6 @@ const handleSubmit = async () => {
     // Use $axiosInstance for the POST request
     const response = await $axiosInstance.post('/api/groups', formData);
 
-    alert('Group Created', 'Your group has been successfully created.', 'success');
-    
     // Emit events to refresh the sidebar groups list
     window.dispatchEvent(new CustomEvent('group-data-updated'));
     

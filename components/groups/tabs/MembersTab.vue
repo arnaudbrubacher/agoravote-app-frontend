@@ -943,8 +943,17 @@ const handleMembersRefreshButton = (event) => {
   
   // Check if the event is for this group
   if (event.detail && event.detail.groupId === props.group.id) {
-    console.log('MembersTab - Triggering same refresh as manual refresh button for group:', props.group.id)
+    console.log('MembersTab - Triggering comprehensive refresh (same as manual refresh button) for group:', props.group.id)
+    
+    // Refresh pending and invited members lists
     refreshPendingAndInvited()
+    
+    // Also refresh the group data to ensure active members list is updated with newly approved members
+    // This is especially important when a pending member gets approved and should appear in active members
+    if (event.detail.action && (event.detail.action === 'member-approved' || event.detail.action === 'member-approved-with-documents')) {
+      console.log('MembersTab - Member was approved, refreshing group data to update active members list')
+      props.fetchGroup()
+    }
   }
 }
 

@@ -30,7 +30,7 @@
               size="sm"
               class="flex-1 justify-start hover:bg-gray-200"
               :class="route.path === '/usersettings'
-                       ? 'border-gray-600 bg-gray-600 shadow text-gray-800 border-l-2'
+                       ? 'border-gray-600 bg-gray-100 shadow text-gray-800 border-l-2'
                        : 'border-gray-300'"
               @click="goToSettings"
             >
@@ -1131,14 +1131,8 @@ const confirmLogout = async () => {
     
     console.log('Logout successful, redirecting...')
     
-    // Show brief success message before redirect
-    showSuccessAlert('Successfully logged out. Redirecting...', 'Goodbye!')
-    
-    // Small delay to show the success message
-    setTimeout(() => {
-      // Redirect to login page with full page reload to clear all state
-      window.location.href = '/auth'
-    }, 1000)
+    // Redirect to login page with full page reload to clear all state
+    window.location.href = '/auth'
     
   } catch (error) {
     console.error('Logout failed:', error)

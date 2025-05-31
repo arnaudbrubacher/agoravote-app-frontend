@@ -105,40 +105,68 @@
     </div>
 
     <!-- State 4: Ready to Vote (Select and Encrypt) -->
-    <form v-else @submit.prevent="handleEncrypt" class="space-y-4">
-        <h4 class="font-medium">Cast your vote</h4>
-        <RadioGroup v-model="selectedEgChoiceId" class="space-y-2">
-            <div v-for="(choice, index) in vote.choices" :key="getEgSelectionId(vote.id, index)" class="flex items-center space-x-2">
-                <RadioGroupItem
-                    :id="`choice-${vote.id}-${index}`"
-                    :value="getEgSelectionId(vote.id, index)"
-                    :disabled="!canVote || isEncrypting"
-                />
-                <Label :for="`choice-${vote.id}-${index}`">{{ choice.text }}</Label>
+    <div v-else class="mt-6 pt-4 border-t">
+        <div class="flex items-center space-x-2 mb-4">
+            <LucideIcon name="Vote" class="h-5 w-5 text-green-600" />
+            <h4 class="font-medium text-green-800">Cast Your Vote</h4>
+        </div>
+        
+        <div class="p-4 bg-green-50 border border-green-200 rounded-md mb-4">
+            <p class="text-sm text-green-800 font-medium">Voting is now open!</p>
+            <p class="text-xs text-muted-foreground mt-1">
+                Select your choice below and encrypt your ballot. Your vote will be secured using ElectionGuard cryptography.
+            </p>
+        </div>
+
+        <form @submit.prevent="handleEncrypt" class="space-y-4">
+            <div class="space-y-3">
+                <h5 class="font-medium text-sm text-muted-foreground">Voting Options</h5>
+                <RadioGroup v-model="selectedEgChoiceId" class="space-y-2">
+                    <div v-for="(choice, index) in vote.choices" :key="getEgSelectionId(vote.id, index)" 
+                         class="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-md hover:border-green-300 transition-colors"
+                         :class="{ 'border-green-500 bg-green-50': selectedEgChoiceId === getEgSelectionId(vote.id, index) }">
+                        <RadioGroupItem
+                            :id="`choice-${vote.id}-${index}`"
+                            :value="getEgSelectionId(vote.id, index)"
+                            :disabled="!canVote || isEncrypting"
+                        />
+                        <Label :for="`choice-${vote.id}-${index}`" class="flex-1 cursor-pointer">{{ choice.text }}</Label>
+                    </div>
+                </RadioGroup>
             </div>
-        </RadioGroup>
 
-        <div v-if="vote.allowWriteIn" class="space-y-2">
-            <Label>Write-in Answer (Optional)</Label>
-            <Input
-                v-model="writeInAnswer"
-                placeholder="Enter your answer"
-                :disabled="!canVote || isEncrypting"
-             />
-        </div>
+            <div v-if="vote.allowWriteIn" class="space-y-2">
+                <div class="p-3 bg-white border border-gray-200 rounded-md">
+                    <div class="flex items-center space-x-3 mb-2">
+                        <LucideIcon name="Edit3" class="h-4 w-4 text-gray-600" />
+                        <Label class="font-medium">Write-in Answer (Optional)</Label>
+                    </div>
+                    <Input
+                        v-model="writeInAnswer"
+                        placeholder="Enter your answer"
+                        :disabled="!canVote || isEncrypting"
+                        class="w-full"
+                    />
+                </div>
+            </div>
 
-        <div class="flex justify-end">
-            <Button
-                type="submit"
-                :disabled="!canVote || !isValidSelection || isEncrypting"
-            >
-                <LucideIcon v-if="isEncrypting" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
-                <LucideIcon v-else name="Lock" size="4" class="h-4 w-4 mr-2" />
-                Encrypt Vote
-            </Button>
-        </div>
-         <p v-if="!canVote" class="text-sm text-red-600 text-right pt-1">You are not eligible to vote in this election.</p>
-    </form>
+            <div class="flex justify-center pt-4">
+                <Button
+                    type="submit"
+                    :disabled="!canVote || !isValidSelection || isEncrypting"
+                    class="px-6"
+                >
+                    <LucideIcon v-if="isEncrypting" name="RefreshCw" size="4" class="h-4 w-4 mr-2 animate-spin" />
+                    <LucideIcon v-else name="Lock" size="4" class="h-4 w-4 mr-2" />
+                    Encrypt Vote
+                </Button>
+            </div>
+            
+            <div v-if="!canVote" class="text-center">
+                <p class="text-sm text-red-600 font-medium">You are not eligible to vote in this election.</p>
+            </div>
+        </form>
+    </div>
   </div>
 </template>
 

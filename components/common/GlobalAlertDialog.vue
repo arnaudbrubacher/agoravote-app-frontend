@@ -68,7 +68,7 @@ const handleCancel = () => {
 
 <template>
   <AlertDialog :open="state.isOpen" @update:open="state.isOpen = $event" class="alert-dialog-z-override">
-    <AlertDialogContent class="z-[100] max-w-2xl">
+    <AlertDialogContent class="z-[100] max-w-lg">
       <AlertDialogHeader>
         <AlertDialogTitle>{{ state.options.title }}</AlertDialogTitle>
         <AlertDialogDescription class="max-h-96 overflow-y-auto">

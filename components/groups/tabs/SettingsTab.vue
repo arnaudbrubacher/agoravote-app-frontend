@@ -44,12 +44,13 @@
             variant="destructive"
             size="sm"
             @click="handleDelete"
-            :disabled="!isCurrentUserAdmin"
+            :disabled="!isCurrentUserAdmin || props.isDeletingGroup"
             v-if="isCurrentUserAdmin"
             class="ml-4"
           >
-            <LucideIcon name="Trash" class="mr-2 h-4 w-4" />
-            Delete Group
+            <Loader2 v-if="props.isDeletingGroup" class="mr-2 h-4 w-4 animate-spin" />
+            <LucideIcon v-else name="Trash" class="mr-2 h-4 w-4" />
+            {{ props.isDeletingGroup ? 'Deleting...' : 'Delete Group' }}
           </Button>
         </div>
         
@@ -404,7 +405,7 @@
             </Button>
             <Button
               @click="handleSecuritySave"
-              :disabled="!securityModified"
+              :disabled="!canSaveSecuritySettings"
               class="disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save class="h-4 w-4 mr-2" />
@@ -543,6 +544,26 @@
         </DialogHeader>
 
         <div class="grid gap-4 py-4">
+          <div v-if="props.group.requires_password" class="space-y-2">
+            <Label for="current-password" class="text-sm font-medium">Current Password</Label>
+            <div class="relative">
+              <Input 
+                id="current-password" 
+                :type="showCurrentPasswordField ? 'text' : 'password'" 
+                v-model="currentPasswordInput" 
+                required 
+                class="pr-10"
+              />
+              <button 
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                @click="showCurrentPasswordField = !showCurrentPasswordField"
+              >
+                <LucideIcon :name="showCurrentPasswordField ? 'EyeOff' : 'Eye'" class="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
           <div class="space-y-2">
             <Label for="new-password" class="text-sm font-medium">{{ props.group.requires_password ? 'New Password' : 'Password' }}</Label>
             <div class="relative">
@@ -644,7 +665,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
-import { Users, Camera, Info, KeyRound, Save, Eye } from 'lucide-vue-next'
+import { Users, Camera, Info, KeyRound, Save, Eye, Loader2 } from 'lucide-vue-next'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useNuxtApp } from '#app'
 import { changeGroupPassword as authUtilChangeGroupPassword, emergencyChangeGroupPassword as authUtilEmergencyChangeGroupPassword } from '@/src/utils/auth'
@@ -677,6 +698,10 @@ const props = defineProps({
   fetchGroup: {
     type: Function,
     required: false
+  },
+  isDeletingGroup: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -695,6 +720,8 @@ const apiBaseUrl = config.public.apiBaseUrl || 'http://localhost:8088'
 const showPasswordChange = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const showCurrentPasswordField = ref(false)
+const currentPasswordInput = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 
@@ -1093,7 +1120,7 @@ const handleSubmit = async () => {
 }
 
 const handleDelete = () => {
-  if (!props.isCurrentUserAdmin) return;
+  if (!props.isCurrentUserAdmin || props.isDeletingGroup) return;
   emit('group-deleted')
 }
 
@@ -1142,6 +1169,30 @@ const securityModified = computed(() => {
   return JSON.stringify(current) !== JSON.stringify(original);
 })
 
+// Check if security settings are valid for saving
+const securitySettingsValid = computed(() => {
+  // If documents are required, check that at least one document is specified and all have names
+  if (formData.value.requires_documents) {
+    // No documents specified at all
+    if (formData.value.documents.length === 0) {
+      return false;
+    }
+    
+    // Check if any document has an empty name
+    const hasEmptyDocuments = formData.value.documents.some(doc => !doc.name || !doc.name.trim());
+    if (hasEmptyDocuments) {
+      return false;
+    }
+  }
+  
+  return true;
+})
+
+// Check if security settings can be saved (both modified and valid)
+const canSaveSecuritySettings = computed(() => {
+  return securityModified.value && securitySettingsValid.value;
+})
+
 const changePassword = async () => {
   if (!props.isCurrentUserAdmin) return;
 
@@ -1151,6 +1202,11 @@ const changePassword = async () => {
   }
 
   const isChangingExistingPassword = props.group.requires_password;
+
+  if (isChangingExistingPassword && !currentPasswordInput.value) {
+    alert('Please enter the current password')
+    return
+  }
 
   if (!newPassword.value) {
     alert('Please enter a new password')
@@ -1166,16 +1222,16 @@ const changePassword = async () => {
     if (!isChangingExistingPassword) {
       await authUtilEmergencyChangeGroupPassword($axiosInstance, props.group.id, newPassword.value);
     } else {
-      await authUtilChangeGroupPassword($axiosInstance, props.group.id, currentGroupPassword.value, newPassword.value)
+      await authUtilChangeGroupPassword($axiosInstance, props.group.id, currentPasswordInput.value, newPassword.value)
     }
 
+    currentPasswordInput.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
     showPasswordChange.value = false
     showPassword.value = false
     showConfirmPassword.value = false
-
-    alert('Group password ' + (isChangingExistingPassword ? 'changed' : 'set') + ' successfully')
+    showCurrentPasswordField.value = false
 
     if (props.fetchGroup) {
       props.fetchGroup();
@@ -1584,6 +1640,7 @@ const handleSecurityCancel = () => {
     description: "Security settings have been reset to their original values",
   });
 };
+
 </script>
 
 <style scoped>

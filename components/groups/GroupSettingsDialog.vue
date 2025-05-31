@@ -338,6 +338,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'submit', 'delete'])
+const { $axiosInstance } = useNuxtApp()
 const fileInput = ref(null)
 const previewImage = ref(null)
 const selectedFile = ref(null)
@@ -1145,10 +1146,10 @@ const changePassword = async () => {
     
     // If the group didn't previously require a password, use the emergency password change endpoint
     if (!groupPreviouslyRequiredPassword) {
-      await emergencyChangeGroupPassword(props.group.id, newPassword.value);
+      await emergencyChangeGroupPassword($axiosInstance, props.group.id, newPassword.value);
     } else {
       // Use the regular password change function with plaintext passwords
-      await changeGroupPassword(props.group.id, currentPassword.value, newPassword.value)
+      await changeGroupPassword($axiosInstance, props.group.id, currentPassword.value, newPassword.value)
     }
     
     // Reset form and close dialog

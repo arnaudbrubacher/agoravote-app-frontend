@@ -65,6 +65,7 @@
       @admin-status-update="handleAdminStatusUpdate"
       @group-updated="handleGroupUpdated"
       @group-deleted="handleGroupDeleted"
+      :is-deleting-group="isDeletingGroup"
     />
 
     <!-- All dialogs -->
@@ -107,7 +108,7 @@
   </div>
 
   <!-- Alert Dialog for General Success/Error Messages -->
-  <AlertDialog :open="isAlertOpen" @update:open="isAlertOpen = $event">
+  <AlertDialog :open="isAlertOpen && !isDeletingGroup" @update:open="isAlertOpen = $event">
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>{{ alertTitle }}</AlertDialogTitle>
@@ -122,7 +123,7 @@
   </AlertDialog>
 
   <!-- Confirmation Dialog -->
-  <AlertDialog :open="isConfirmOpen" @update:open="isConfirmOpen = $event">
+  <AlertDialog :open="isConfirmOpen && !isDeletingGroup" @update:open="isConfirmOpen = $event">
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>{{ confirmTitle }}</AlertDialogTitle>
@@ -131,9 +132,27 @@
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel @click="isConfirmOpen = false">Cancel</AlertDialogCancel>
-        <AlertDialogAction @click="executeConfirmAction">Confirm</AlertDialogAction>
+        <AlertDialogCancel @click="isConfirmOpen = false" :disabled="isDeletingGroup">Cancel</AlertDialogCancel>
+        <AlertDialogAction @click="executeConfirmAction" :disabled="isDeletingGroup">
+          <Loader2 v-if="isDeletingGroup" class="mr-2 h-4 w-4 animate-spin" />
+          {{ isDeletingGroup ? 'Deleting...' : 'Confirm' }}
+        </AlertDialogAction>
       </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+  <!-- Group Deletion Progress Dialog -->
+  <AlertDialog :open="isDeletingGroup" @update:open="() => {}">
+    <AlertDialogContent class="max-w-sm">
+      <AlertDialogHeader>
+        <AlertDialogTitle class="flex items-center justify-center">
+          <Loader2 class="mr-2 h-5 w-5 animate-spin" />
+          Deleting Group
+        </AlertDialogTitle>
+        <AlertDialogDescription class="text-center">
+          Please wait while we delete the group and all associated data...
+        </AlertDialogDescription>
+      </AlertDialogHeader>
     </AlertDialogContent>
   </AlertDialog>
 </template>
@@ -141,7 +160,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Users, Settings, LogOut } from 'lucide-vue-next'
+import { Users, Settings, LogOut, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import LoadingError from '@/components/group/core/LoadingError.vue'
@@ -292,6 +311,9 @@ const isTallying = ref(false); // Add loading state for tally
 
 // Loading state for vote deletion
 const isDeletingVote = ref(false)
+
+// Loading state for group deletion
+const isDeletingGroup = ref(false)
 
 // Helper to show AlertDialog
 function showAlert(title, message) {
@@ -465,17 +487,51 @@ const handleGroupUpdated = async (updatedGroupData) => {
 
 const handleGroupDeleted = async () => {
   showConfirm(
-    'Confirm Deletion',
-    'Are you sure you want to delete this group? This action cannot be undone.',
+    'Delete Group',
+    'Are you sure you want to delete this group? This action cannot be undone and will remove all posts, votes, and member data.',
     async () => { // The action to perform on confirm
+      // Prevent multiple deletion attempts
+      if (isDeletingGroup.value) {
+        return
+      }
+
       try {
-        await confirmDeleteGroup(); // Call the original composable function
-        router.push('/');
-        showAlert('Success', 'Group deleted successfully.'); // Use showAlert for success
+        // Set loading state and close confirmation dialog
+        isDeletingGroup.value = true
+        isConfirmOpen.value = false
+
+        console.log('Starting group deletion process...')
+
+        // Call the original composable function
+        await confirmDeleteGroup()
+
+        console.log('Group deletion successful, redirecting...')
+
+        // Show success message before redirect
+        showAlert('Group Deleted', 'The group has been successfully deleted. Redirecting to your profile...')
+
+        // Redirect to profile page with a delay to show the success message
+        setTimeout(() => {
+          router.push('/profile')
+        }, 2000)
+
       } catch (err) {
-        console.error('Failed to delete group:', err);
-        // Use showAlert for error
-        showAlert('Error Deleting Group', err.response?.data?.error || err.message || 'Could not delete the group.');
+        console.error('Failed to delete group:', err)
+        isDeletingGroup.value = false
+
+        // Provide more specific error messaging
+        let errorMessage = 'An error occurred while deleting the group'
+        if (err.response?.status === 403) {
+          errorMessage = 'You do not have permission to delete this group'
+        } else if (err.response?.status === 404) {
+          errorMessage = 'Group not found or already deleted'
+        } else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+
+        showAlert('Error Deleting Group', `Failed to delete group: ${errorMessage}. Please try again.`)
       }
     }
   );
@@ -487,7 +543,6 @@ const handleVoteCreated = async (voteData) => {
   error.value = null;
   try {
     await createNewVote(voteData); 
-    showAlert('Vote created', 'Vote created successfully.');
     showNewVoteDialog.value = false;
   } catch (err) {
     console.error("Error creating vote:", err);
@@ -714,7 +769,7 @@ const handleClearSpoiledDetails = () => {
 // Updated handleVoteDeleted to use confirmation dialog
 const handleDeleteVote = async (voteId) => {
   showConfirm(
-    'Confirm Delete Vote',
+    'Delete Vote',
     'Are you sure you want to delete this vote? This action cannot be undone.',
     async () => { // Action to perform on confirmation
       try {
@@ -727,8 +782,6 @@ const handleDeleteVote = async (voteId) => {
         // votes.value = votes.value.filter(v => v.id !== voteId) 
         // selectedVote.value = null 
         // showVoteDetailsDialog.value = false 
-
-        showAlert('Success', 'Vote deleted successfully.'); // Show success alert here
 
         // Ensure the list is refreshed if not already handled by deleteVote composable
         // await fetchVotes(); // Might be redundant if deleteVote calls it
@@ -902,7 +955,7 @@ const handleLeaveGroup = async () => {
   }
 
   showConfirm(
-    'Confirm Leave Group',
+    'Leave Group',
     'Are you sure you want to leave this group?',
     async () => { // Action to perform on confirmation
       try {

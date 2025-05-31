@@ -34,7 +34,7 @@
 
             <!-- Ballot Section (Handles Voting/Encryption/Casting/Spoiling/Status) -->
              <BallotForm
-                v-if="vote.status === 'open'"
+                v-if="isVotingActive"
                 :vote="vote"
                 :can-vote="vote.can_vote"
                 :user-tracker-hash="userTrackerHash"
@@ -47,6 +47,68 @@
                 @spoil-vote="handleSpoilVote"
                 @clear-spoiled-details="handleClearSpoiledDetails"
               />
+
+            <!-- Upcoming Vote Section (Show choices but don't allow voting) -->
+            <div v-if="isUpcomingVote" class="mt-6 pt-4 border-t">
+              <div class="flex items-center space-x-2 mb-4">
+                <LucideIcon name="Clock" class="h-5 w-5 text-blue-600" />
+                <h4 class="font-medium text-blue-800">Upcoming Vote</h4>
+              </div>
+              <div class="p-4 bg-blue-50 border border-blue-200 rounded-md mb-4">
+                <p class="text-sm text-blue-800 font-medium">Voting will begin on {{ formatDate(vote.start_time) }}</p>
+                <p class="text-xs text-muted-foreground mt-1">
+                  Preview the voting options below. You'll be able to cast your vote once the voting period starts.
+                </p>
+              </div>
+              
+              <div class="space-y-3">
+                <h5 class="font-medium text-sm text-muted-foreground">Voting Options</h5>
+                <div class="space-y-2">
+                  <div v-for="(choice, index) in vote.choices" :key="index" class="flex items-center space-x-3 p-3 bg-gray-50 border border-gray-200 rounded-md opacity-75">
+                    <div class="w-4 h-4 border-2 border-gray-300 rounded-full bg-white"></div>
+                    <span class="text-gray-700">{{ choice.text }}</span>
+                  </div>
+                </div>
+                
+                <div v-if="vote.allowWriteIn" class="p-3 bg-gray-50 border border-gray-200 rounded-md opacity-75">
+                  <div class="flex items-center space-x-3">
+                    <LucideIcon name="Edit3" class="h-4 w-4 text-gray-400" />
+                    <span class="text-sm text-gray-600">Write-in option will be available</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Vote Ended (Time Passed) But Not Tallied Section -->
+            <div v-if="isVoteEndedButNotTallied" class="mt-6 pt-4 border-t">
+              <div class="flex items-center space-x-2 mb-4">
+                <LucideIcon name="Clock3" class="h-5 w-5 text-orange-600" />
+                <h4 class="font-medium text-orange-800">Voting Closed</h4>
+              </div>
+              <div class="p-4 bg-orange-50 border border-orange-200 rounded-md mb-4">
+                <p class="text-sm text-orange-800 font-medium">Voting period has ended on {{ formatDate(vote.end_time) }}</p>
+                <p class="text-xs text-muted-foreground mt-1">
+                  The vote is now closed for new submissions. Results need to be tallied and decrypted.
+                </p>
+              </div>
+              
+              <div class="space-y-3">
+                <h5 class="font-medium text-sm text-muted-foreground">Final Voting Options</h5>
+                <div class="space-y-2">
+                  <div v-for="(choice, index) in vote.choices" :key="index" class="flex items-center space-x-3 p-3 bg-gray-50 border border-gray-200 rounded-md opacity-75">
+                    <div class="w-4 h-4 border-2 border-gray-300 rounded-full bg-white"></div>
+                    <span class="text-gray-700">{{ choice.text }}</span>
+                  </div>
+                </div>
+                
+                <div v-if="vote.allowWriteIn" class="p-3 bg-gray-50 border border-gray-200 rounded-md opacity-75">
+                  <div class="flex items-center space-x-3">
+                    <LucideIcon name="Edit3" class="h-4 w-4 text-gray-400" />
+                    <span class="text-sm text-gray-600">Write-in option was available</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <!-- Results Section for Closed or Decrypted Votes -->
             <div v-else-if="vote.status === 'closed' || vote.status === 'decrypted'" class="mt-6 pt-4 border-t">
@@ -97,7 +159,7 @@ import LucideIcon from '@/components/LucideIcon.vue'
 import BallotForm from '@/components/votes/BallotForm.vue'
 import ElectionResults from '@/components/votes/ElectionResults.vue'
 import LoadingSpinner from '@/components/utils/LoadingSpinner.vue'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
@@ -161,14 +223,14 @@ const emit = defineEmits([
 
 const canEndEarly = computed(() => {
   // Only show "End Vote Early" if:
-  // 1. Vote status is 'open' 
+  // 1. Voting is currently active (time-based)
   // 2. User is the creator
   // 3. Current time is before the vote's end time (voting period hasn't naturally ended)
-  const now = new Date();
+  const now = currentTime.value;
   const voteEndTime = new Date(props.vote.end_time);
   const votingTimeHasEnded = now >= voteEndTime;
   
-  return props.vote.status === 'open' && 
+  return isVotingActive.value && 
          props.currentUserId === props.vote.creator_id && 
          !votingTimeHasEnded;
 })
@@ -184,11 +246,13 @@ const canTally = computed(() => {
   // Show "Tally & Decrypt" if:
   // 1. Vote status is 'closed' OR voting time has naturally ended (even if status is still 'open')
   // 2. User is the creator
-  const now = new Date();
+  // 3. Vote is NOT already decrypted
+  const now = currentTime.value;
   const voteEndTime = new Date(props.vote.end_time);
   const votingTimeHasEnded = now >= voteEndTime;
   
   return (props.vote.status === 'closed' || votingTimeHasEnded) && 
+         props.vote.status !== 'decrypted' &&
          props.currentUserId === props.vote.creator_id;
 });
 
@@ -306,4 +370,53 @@ const parsedTallyResults = computed(() => {
   console.error("[VoteDetailsDialog] Unexpected type for plaintext_tally_results:", typeof resultsData);
   return null;
 });
+
+// Computed property to determine if vote is upcoming
+const isUpcomingVote = computed(() => {
+  const now = currentTime.value;
+  const voteStartTime = new Date(props.vote.start_time);
+  const voteEndTime = new Date(props.vote.end_time);
+  
+  // Vote is upcoming if current time is before start time and before end time
+  return now < voteStartTime && now < voteEndTime;
+});
+
+// Computed property to determine if voting is currently active
+const isVotingActive = computed(() => {
+  const now = currentTime.value;
+  const voteStartTime = new Date(props.vote.start_time);
+  const voteEndTime = new Date(props.vote.end_time);
+  
+  // Voting is active if current time is between start and end time
+  // Also check that the vote hasn't been manually closed
+  return now >= voteStartTime && now < voteEndTime && props.vote.status !== 'closed' && props.vote.status !== 'decrypted';
+});
+
+// Computed property to determine if voting time has ended but vote hasn't been tallied
+const isVoteEndedButNotTallied = computed(() => {
+  const now = currentTime.value;
+  const voteEndTime = new Date(props.vote.end_time);
+  
+  // Vote has ended if current time is past end time and status is still "open"
+  return now >= voteEndTime && props.vote.status !== 'closed' && props.vote.status !== 'decrypted';
+});
+
+// Reactive current time to trigger computed property updates
+const currentTime = ref(new Date())
+
+// Timer to update current time every minute
+let timeUpdateInterval = null
+
+onMounted(() => {
+  // Update every minute to trigger reactivity
+  timeUpdateInterval = setInterval(() => {
+    currentTime.value = new Date()
+  }, 60000) // 60 seconds
+})
+
+onUnmounted(() => {
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval)
+  }
+})
 </script>

@@ -447,11 +447,12 @@ export const changeUserPassword = async (axiosInstance, userId, currentPassword,
 }
 
 // MODIFIED SIGNATURE: Added axiosInstance parameter
-export const changeGroupPassword = async (axiosInstance, groupId, newPassword) => {
+export const changeGroupPassword = async (axiosInstance, groupId, currentPassword, newPassword) => {
   try {
     console.log('Changing group password for group:', groupId)
     
     const response = await axiosInstance.put(`/api/groups/${groupId}/password`, {
+      current_password: currentPassword,
       new_password: newPassword
     })
     
